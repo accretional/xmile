@@ -1,0 +1,46 @@
+document = [declaration] root-element
+root-element = markup-element
+
+declaration "<?" "xml" {attribute} "?>"
+// when possible I prefer to explicitly enumerate the legal "special" values of what is normally unconstrained arguments with something like
+// declaration-attribute = declaration-propname "=" '"' ident '"'
+// declaration-propname = "version" | "language" ... 
+// or
+// declaration-attribute = "version" "=" '"' version-vals '"' | "language" "=" '"' language-vals '"'
+// or pairwise. However, this breaks some of the CFG structure of the language by making these particular constrained productions structurally different than the generic production used elsewhere, and makes it so that the "=" is not actually grammatically encoded, which is a smell
+// but OTOH it is nice to enumerate explicitly constrained values so that parsing fails syntactically rather than later as a semantic (structural, but non-structurally-encoded, which is the whole reason we are doing this metaparsing) failure
+
+
+markup-element = start-tag markup-content end-tag | empty-element-tag
+attribute = tagident "=" '"' ident '"' 
+start-tag = "<" tagident {attribute} ">"
+end-tag = "</" tagident ">"
+empty-element-tag = "<" tagident "/>"
+tagident = letter [{letter | digit | "-" | "."}] // most symbols forbidden except these, need to write them out as valid markup-contnet
+letter = capital_letter | lowercase_letter
+capital_letter = "A" | ... "Z"
+lowercase_letter = "a" | ... "z"
+
+markup-content = {markup-element} | markup-text
+
+markup-text = {markup-char} | cdata
+markup-char = letter | digit | markup-symbol
+markup-symbol = "!" | "#" | "$" | "%" | "(" | ")" | "*" | "," | "/" | ";" | "=" | "?" | "@" | "[" | "\" | "]" | "^" | "{" | "|" | "}" | "~" | "-" | "."
+
+markup-escape-char = "&" escape-symbol | unicode-num-ref ";"
+escape-symbol = lt | gt | amp | apos | quot
+
+lt = "lt" // "<"
+gt = "gt" // ">"
+amp = "amp" // "&"
+apos = "apos" // "'"
+quot = "quot" // '"'
+
+unicode-num-ref = "#" unicode-num
+unicode-num = hexnum | digitnum
+digitnum = {digit}
+digit = "0" | "1" ... "9"
+hexnum = {digit | "a" | "b" | "c" | "d" | "e" | "f"}
+
+comment = "<!--" {markup-char} "-->" // I think this might be lexical? idk. also could be markup-text, idk if cdata can be in comments
+cdata = "<![CDATA[" {markup-char | markup-escape-char} "]]>" // this might be lexical too? Or just a peculir way to encode text? idk. Also nested CDATA isn't allowed
