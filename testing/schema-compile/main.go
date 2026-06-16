@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/accretional/xmile/service"
+	"github.com/accretional/xmile/testing/progress"
 )
 
 const (
@@ -74,49 +75,24 @@ func run() error {
 	}
 
 	pass, fail, totalItems := 0, 0, 0
+	var report []string
+	bar := progress.New("project", len(files))
 	for _, fp := range files {
-		base := filepath.Base(fp)
-		data, err := os.ReadFile(fp)
-		if err != nil {
-			fail++
-			fmt.Printf("[fail] %s: read: %v\n", base, err)
-			continue
-		}
-		doc, err := parser.Parse(string(data))
-		if err != nil {
-			fail++
-			fmt.Printf("[fail] %s: not well-formed: %v\n", base, err)
-			continue
-		}
-		root := doc.GetRoot()
-		if root.GetName() != "rss" {
-			fail++
-			fmt.Printf("[fail] %s: root <%s>, want <rss>\n", base, root.GetName())
-			continue
-		}
-
-		msg := dynamicpb.NewMessage(rssDesc)
-		unknown := dedup(service.ProjectTag(root, rssDesc, msg))
-		if _, err := proto.Marshal(msg); err != nil {
-			fail++
-			fmt.Printf("[fail] %s: marshal projected message: %v\n", base, err)
-			continue
-		}
-		items := itemCount(msg)
+		line, ok, items := checkFeed(parser, rssDesc, filepath.Base(fp), fp)
 		totalItems += items
-		switch {
-		case len(unknown) > 0:
-			fail++
-			fmt.Printf("[fail] %s: %d items but %d out-of-vocabulary: %v\n", base, items, len(unknown), unknown)
-		case items == 0:
-			fail++
-			fmt.Printf("[fail] %s: projected no items\n", base)
-		default:
+		if ok {
 			pass++
-			if *verbose {
-				fmt.Printf("[pass] %s: %d items, full schema coverage\n", base, items)
-			}
+		} else {
+			fail++
 		}
+		if line != "" {
+			report = append(report, line)
+		}
+		bar.Inc()
+	}
+	bar.Finish()
+	for _, line := range report {
+		fmt.Println(line)
 	}
 
 	fmt.Printf("\nschema-compile: %d/%d feeds projected with full coverage, %d items total\n", pass, pass+fail, totalItems)
@@ -124,6 +100,42 @@ func run() error {
 		return fmt.Errorf("%d feed(s) did not project cleanly through the generated schema", fail)
 	}
 	return nil
+}
+
+// checkFeed parses one corpus feed and projects it into a fresh Rss message
+// built from the generated descriptor. It returns a report line (empty for a
+// silent pass), whether the feed projected cleanly, and its item count.
+func checkFeed(parser *service.Parser, rssDesc protoreflect.MessageDescriptor, base, fp string) (string, bool, int) {
+	data, err := os.ReadFile(fp)
+	if err != nil {
+		return fmt.Sprintf("[fail] %s: read: %v", base, err), false, 0
+	}
+	doc, err := parser.Parse(string(data))
+	if err != nil {
+		return fmt.Sprintf("[fail] %s: not well-formed: %v", base, err), false, 0
+	}
+	root := doc.GetRoot()
+	if root.GetName() != "rss" {
+		return fmt.Sprintf("[fail] %s: root <%s>, want <rss>", base, root.GetName()), false, 0
+	}
+	msg := dynamicpb.NewMessage(rssDesc)
+	unknown := dedup(service.ProjectTag(root, rssDesc, msg))
+	if _, err := proto.Marshal(msg); err != nil {
+		return fmt.Sprintf("[fail] %s: marshal projected message: %v", base, err), false, 0
+	}
+	items := itemCount(msg)
+	switch {
+	case len(unknown) > 0:
+		return fmt.Sprintf("[fail] %s: %d items but %d out-of-vocabulary: %v", base, items, len(unknown), unknown), false, items
+	case items == 0:
+		return fmt.Sprintf("[fail] %s: projected no items", base), false, 0
+	default:
+		line := ""
+		if *verbose {
+			line = fmt.Sprintf("[pass] %s: %d items, full schema coverage", base, items)
+		}
+		return line, true, items
+	}
 }
 
 // itemCount returns the number of channel items projected into rss.

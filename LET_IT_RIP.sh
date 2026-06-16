@@ -7,6 +7,8 @@ cd "$(dirname "$0")"
 ./test.sh
 
 echo "[rip] live parse demo:"
+echo '<?xml version="1.0"?><!DOCTYPE doc [<!ENTITY who "world">]><doc x="1">hello &who;<b/></doc>'
+echo "[rip] parsed: "
 printf '<?xml version="1.0"?><!DOCTYPE doc [<!ENTITY who "world">]><doc x="1">hello &who;<b/></doc>' \
   | go run ./cmd/xmlparse
 

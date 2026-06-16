@@ -29,6 +29,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/accretional/xmile/service"
+	"github.com/accretional/xmile/testing/progress"
 )
 
 // testingDir is the root of the organized corpus (built by `go run ./testing`).
@@ -146,6 +147,7 @@ func runCorpus(filter string) bool {
 	}
 
 	results := make([]corpusResult, len(tasks))
+	bar := progress.New("parse", len(tasks))
 	idx := make(chan int)
 	var wg sync.WaitGroup
 	for w := 0; w < runtime.NumCPU(); w++ {
@@ -156,6 +158,7 @@ func runCorpus(filter string) bool {
 				t := tasks[i]
 				ok, detail := checkFile(t.path, t.verdict, t.isZip)
 				results[i] = corpusResult{t.group, t.path, detail, ok}
+				bar.Inc()
 			}
 		}()
 	}
@@ -164,6 +167,7 @@ func runCorpus(filter string) bool {
 	}
 	close(idx)
 	wg.Wait()
+	bar.Finish()
 
 	tallies := map[string]*tally{}
 	failsShown := 0
