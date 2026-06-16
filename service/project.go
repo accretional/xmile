@@ -9,17 +9,31 @@ import (
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
-// projector projects a CST into the AST, resolving declared general entities
-// (text-only) to their replacement text.
+// projector projects a CST into the AST, resolving declared general entities:
+// text-only ones to their replacement text (in attribute values), and ones
+// whose replacement contains markup to the element/content they expand to (in
+// element content).
 type projector struct {
-	ents map[string]string // entity name -> resolved text
+	p          *Parser
+	info       *dtdInfo
+	is11       bool
+	ents       map[string]string                // entity name -> resolved text (attr values)
+	entContent map[string][]*xmlpb.ContentItem  // entity name -> expanded content items (memo)
+	expanding  map[string]bool                  // recursion guard for entity expansion
 }
 
 // projectDocument projects a well-formed CST into the xml.proto AST. It
 // references grammar rule names (the CST node kinds) but encodes no grammar
 // rules — those live in lang/xml.ebnf.
-func projectDocument(root *pb.ASTNode, info *dtdInfo) *xmlpb.Document {
-	pr := &projector{ents: resolvedTextEntities(info)}
+func projectDocument(p *Parser, root *pb.ASTNode, info *dtdInfo, is11 bool) *xmlpb.Document {
+	pr := &projector{
+		p:          p,
+		info:       info,
+		is11:       is11,
+		ents:       resolvedTextEntities(info),
+		entContent: map[string][]*xmlpb.ContentItem{},
+		expanding:  map[string]bool{},
+	}
 	doc := &xmlpb.Document{}
 	if prolog := directChild(root, "prolog"); prolog != nil {
 		doc.XmlDecl = projectXMLDecl(prolog)
@@ -221,7 +235,7 @@ func (pr *projector) content(content *pb.ASTNode) []*xmlpb.ContentItem {
 			out = append(out, textItem(x.GetValue()))
 			return
 		case "Reference", "EntityRef", "CharRef":
-			out = append(out, textItem(pr.resolveRef(x)))
+			out = append(out, pr.refContent(x)...)
 			return
 		case "element":
 			out = append(out, &xmlpb.ContentItem{Item: &xmlpb.ContentItem_Child{Child: pr.tag(x)}})
@@ -293,6 +307,70 @@ func (pr *projector) resolveRef(ref *pb.ASTNode) string {
 		return string(rune(n))
 	}
 	return ""
+}
+
+// refContent projects an entity or character reference appearing in element
+// content into the content items it stands for. A character reference and the
+// five predefined entities become text; a declared internal general entity
+// expands to the content of its replacement (which may be markup — elements,
+// CDATA, nested references); an undeclared or external entity is left as its
+// literal "&name;".
+func (pr *projector) refContent(ref *pb.ASTNode) []*xmlpb.ContentItem {
+	if er := firstDescendant(ref, "EntityRef"); er != nil {
+		name := ""
+		if n := firstDescendant(er, "Name"); n != nil {
+			name = n.GetValue()
+		}
+		switch name {
+		case "amp":
+			return []*xmlpb.ContentItem{textItem("&")}
+		case "lt":
+			return []*xmlpb.ContentItem{textItem("<")}
+		case "gt":
+			return []*xmlpb.ContentItem{textItem(">")}
+		case "quot":
+			return []*xmlpb.ContentItem{textItem("\"")}
+		case "apos":
+			return []*xmlpb.ContentItem{textItem("'")}
+		}
+		if ent, ok := pr.info.general[name]; ok && !ent.external {
+			return pr.entityContentItems(name)
+		}
+		return []*xmlpb.ContentItem{textItem("&" + name + ";")}
+	}
+	return []*xmlpb.ContentItem{textItem(pr.resolveRef(ref))}
+}
+
+// entityContentItems expands a declared internal general entity into the
+// content items it contributes. The replacement text is fully expanded (the
+// same expansion the entity well-formedness check validated), reparsed inside
+// a synthetic wrapper element, and projected. Results are memoized per entity.
+func (pr *projector) entityContentItems(name string) []*xmlpb.ContentItem {
+	if items, ok := pr.entContent[name]; ok {
+		return items
+	}
+	if pr.expanding[name] { // guarded; recursion is already a WF error
+		return nil
+	}
+	expanded, err := pr.info.expandValue(name, map[string]bool{})
+	if err != nil {
+		return []*xmlpb.ContentItem{textItem("&" + name + ";")}
+	}
+	pr.expanding[name] = true
+	defer delete(pr.expanding, name)
+
+	cst, perr := pr.p.ParseCST("<xmilewrap>" + expanded + "</xmilewrap>")
+	if perr != nil {
+		return []*xmlpb.ContentItem{textItem("&" + name + ";")}
+	}
+	var items []*xmlpb.ContentItem
+	if wrap := directChild(cst.GetRoot(), "element"); wrap != nil {
+		if content := directChild(wrap, "content"); content != nil {
+			items = pr.content(content)
+		}
+	}
+	pr.entContent[name] = items
+	return items
 }
 
 func textItem(s string) *xmlpb.ContentItem {

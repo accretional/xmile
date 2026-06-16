@@ -52,20 +52,31 @@ synthetic root name is discarded.
 
 ## 4. Content-model → proto mapping
 
+A DTD content model is an **ordered** regular expression over child elements,
+so the lowering preserves order:
+
 | DTD | proto |
 |---|---|
 | `<!ELEMENT e (#PCDATA)>` | `message E { string text = 1; }` |
 | `<!ELEMENT e (a)>` | `message E { A a = 1; }` |
-| `<!ELEMENT e (a \| b \| c)*>` | `message E { repeated A a; repeated B b; repeated C c; }` |
-| `<!ELEMENT e (a+)>` | `message E { repeated A a; }` |
 | `<!ELEMENT e (a, b?, c*)>` | `message E { A a; B b; repeated C c; }` |
+| `<!ELEMENT e (a \| b \| c)>` | `message E { oneof v { A a; B b; C c; } }` |
+| `<!ELEMENT e (a \| b \| c)*>` | `message E { repeated Entry entry; }`, `Entry { oneof v { A a; B b; C c; } }` |
+| `<!ELEMENT e (#PCDATA \| a)*>` | `message E { repeated Entry entry; }`, `Entry { oneof v { string text; A a; } }` |
+| `<!ELEMENT e (a+)>` | `message E { repeated A a; }` (a single-member group, not a choice) |
 | `<!ATTLIST e k CDATA …>` | adds `string k` to `message E` |
 
-**A repeated choice becomes a bag of repeated fields, not a repeated oneof.**
-`repeated oneof` is not legal proto3, and for an order-insensitive data
-vocabulary like RSS the bag form is what consumers want. This is the load-bearing
-design choice; it also makes a generic descriptor-driven projector trivial
-(element name → field of the same message type).
+**A choice lowers to a proto oneof; a repeated choice to a repeated
+message-with-oneof.** This is the load-bearing design choice, and it is dictated
+by fidelity: `(a | b | c)` means *exactly one of*, and `(a | b | c)*` is an
+*ordered sequence* of those, so the children's interleaved document order must
+be preserved. A bag of per-type repeated fields (`repeated A a; repeated B b`)
+would discard that cross-type order, making the typed AST *less* faithful than
+the homogeneous `Tag` tree it refines. proto3 cannot repeat a oneof field
+directly, so the compiler wraps the oneof in a message and repeats that,
+reusing the same shape `proto/xml.proto` already uses for `Tag.contents` and
+`ContentItem`. The wrapper costs one level of nesting
+(`channel.entry[i].getItem()`); fidelity is worth it for a grammar-driven tool.
 
 ## 5. Scope boundaries (v1)
 
@@ -76,8 +87,11 @@ design choice; it also makes a generic descriptor-driven projector trivial
 - **Parameter entities / conditional sections** are not expanded. The RSS 0.91
   DTD needs neither (its only `%…;` is inside a comment). Vocabularies that build
   content models through PEs (XHTML, DocBook) require an expansion pass first.
-- **Mixed content** `(#PCDATA | a | b)*` lowers to a `text` string plus a
-  repeated field per child; ordering between text and children is not retained.
+- **Mixed content** `(#PCDATA | a | b)*` lowers to the same repeated
+  message-with-oneof, with a `text` string variant alongside the child variants,
+  so text and child order is preserved on the wire. (`ProjectTag` populates the
+  child variants; interleaving text runs into the wrapper is not yet done, but no
+  RSS 0.91 element uses mixed content.)
 - **Names.** RSS 0.91 element names are plain ASCII, so PascalCase/snake_case
   mangling round-trips. Namespaced vocabularies (`dc:date`) need reversible
   mangling before this generalizes.

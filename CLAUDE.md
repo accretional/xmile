@@ -28,6 +28,8 @@ record lives in `docs/decisions/`.
   lexical.go}`, `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`.
 - `proto/xml.proto` and `proto/xml_service.proto` are **hand-written** (see
   ADR 0003) and run through `protoc` during that manual regeneration step.
+- Any changes made in the project must be then updated in the respective documents.
+  There should be NO stale document in the project.
 
 ## Pipeline
 
@@ -45,12 +47,16 @@ proto/pb/{xml,dtd}/*.pb.go
         ▼
 service/  parse pipeline:
   1. gluon CST parse (lang/xml.ebnf + generated lexical matchers via pkg lex)
-  2. project CST -> xml.proto Document
-  3. well-formedness walk (tag match, dup attrs, PI target, charref, pubid)
-  4. DTD second pass (lang/dtd.ebnf): parse internal subset + entity WFCs
+  2. well-formedness walk (tag match, dup attrs, PI target, charref, pubid)
+  3. DTD second pass (lang/dtd.ebnf): parse internal subset + entity WFCs
+  4. project CST -> xml.proto Document (general entities expanded into content)
+  5. DTD validity (validate.go): content models, attribute decls, ID/IDREF,
+     when the document has an internal subset (no external subset / PEs)
         │
         ▼
-XmlService.Parse(bytes) -> Document   (cmd/xmlserve serves it; cmd/xmlparse is a CLI)
+XmlService.Parse(bytes) -> Document
+  not-well-formed -> INVALID_ARGUMENT ; DTD-invalid -> FAILED_PRECONDITION
+  (cmd/xmlserve serves it; cmd/xmlparse is a CLI)
 ```
 
 ## Architecture
@@ -66,17 +72,26 @@ XmlService.Parse(bytes) -> Document   (cmd/xmlserve serves it; cmd/xmlparse is a
   `dtd.ebnf` parses the DOCTYPE body. Entity/well-formedness constraints that a
   CFG can't express (tag matching, entity declaration/recursion, char/pubid
   legality) are tree-level walks in `service/`, not grammar.
+- **Validity is a separate pass.** `validate.go` builds a model from the parsed
+  DTD (content models, attribute declarations, notations) and checks the
+  projected tree against it: element content models, attribute types and
+  defaults, ID/IDREF, and the DTD-level VCs. It runs only for an internal subset
+  with no external declarations or parameter entities (which it does not expand),
+  so a valid document is never wrongly rejected. See ADR 0005.
 
 ## Testing
 
 - **`service` is the gate** (`go test ./...`): `TestCorpusWellFormed` runs over
-  `testing/corpus/xml/<verdict>/` and requires every valid/invalid document to
-  parse and every not-wf document to be rejected, at or above `minRejectRate`.
+  `testing/corpus/xml/<verdict>/` and requires every valid document to parse,
+  every invalid document to be rejected as DTD-invalid (a `*ValidityError`), and
+  every not-wf document to be rejected, at or above `minRejectRate`.
 - The corpus is fetched and organized by file type via `go run ./testing`;
   `go run ./testing/xml-parse` prints the corpus report (xml, docx, xlsx, rss).
 - The corpus is the applicable subset (XML 1.0 5th edition and 1.1; no
   namespaces or external entities), filtered at fetch time, so nothing is
-  skipped at test time. The IBM `P85-P89` name-character tests are 4th-edition
+  skipped at test time. `invalid` tests with no internal subset, or whose DTD
+  uses parameter entities, are out of the validity scope and also filtered (see
+  `testing/README.md`). The IBM `P85-P89` name-character tests are 4th-edition
   only and are excluded by the edition filter.
 
 ## Layout

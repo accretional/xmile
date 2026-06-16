@@ -106,7 +106,18 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 	if err := p.checkEntities(cst.GetRoot(), info, is11); err != nil {
 		return nil, err
 	}
-	return projectDocument(cst.GetRoot(), info), nil
+	doc := projectDocument(p, cst.GetRoot(), info, is11)
+	// DTD validity: only when we can read the whole content model — an internal
+	// subset with no external declarations and no parameter entities (which we
+	// do not expand). A declaration could hide inside an unexpanded PE, so
+	// validating then would risk wrongly rejecting a valid document; we report
+	// such documents as well-formed, never invalid.
+	if dtdRoot != nil && !info.hasExternal && !info.hasPERef {
+		if verr := validate(doc, buildModel(dtdRoot, info), is11); verr != nil {
+			return nil, verr
+		}
+	}
+	return doc, nil
 }
 
 // DumpCST renders a CST for debugging.

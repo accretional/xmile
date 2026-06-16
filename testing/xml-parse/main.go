@@ -261,12 +261,17 @@ func checkZip(path, want string) (bool, string) {
 }
 
 // matchVerdict reports whether a verdict satisfies the folder's expectation.
-// valid and invalid both require well-formedness; DTD validity (which would
-// split them) is not yet checked, so an invalid document is accepted here.
+// The W3C xml corpus distinguishes valid from invalid (DTD conformance); the
+// real-world corpora (rss, docx, xlsx) only assert well-formedness, so for
+// those a "valid" folder is satisfied by either valid or invalid — anything
+// that is not not-wf. The strict valid-vs-invalid split is gated by the
+// service conformance test.
 func matchVerdict(want string, got verdict) bool {
 	switch want {
-	case "valid", "invalid":
-		return got == wellFormed
+	case "valid":
+		return got == valid || got == invalid
+	case "invalid":
+		return got == invalid
 	case "not-wf":
 		return got == notWF
 	}

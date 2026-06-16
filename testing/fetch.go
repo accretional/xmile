@@ -242,6 +242,77 @@ func referenceCharset(label string, input io.Reader) (io.Reader, error) {
 	return nil, fmt.Errorf("unsupported encoding %q", label)
 }
 
+// hasInternalSubset reports whether the document has a real DOCTYPE with an
+// internal subset ("<!DOCTYPE name [ ... ]>") — i.e. declarations we can
+// validate against. Comments are skipped first so a "<!DOCTYPE" that only
+// appears inside a comment (as in some OASIS production tests) does not count.
+func hasInternalSubset(b []byte) bool {
+	s := string(b)
+	for i := 0; i < len(s); {
+		switch {
+		case strings.HasPrefix(s[i:], "<!--"): // skip a comment
+			j := strings.Index(s[i+4:], "-->")
+			if j < 0 {
+				return false
+			}
+			i += 4 + j + 3
+		case strings.HasPrefix(s[i:], "<?"): // skip a processing instruction
+			j := strings.Index(s[i+2:], "?>")
+			if j < 0 {
+				return false
+			}
+			i += 2 + j + 2
+		case strings.HasPrefix(s[i:], "<![CDATA["): // skip a CDATA section
+			j := strings.Index(s[i+9:], "]]>")
+			if j < 0 {
+				return false
+			}
+			i += 9 + j + 3
+		case strings.HasPrefix(s[i:], "<!DOCTYPE"):
+			// A real DOCTYPE: an internal subset opens with '[' before its
+			// closing '>' (skipping quoted system/public literals).
+			for j := i + len("<!DOCTYPE"); j < len(s); j++ {
+				switch s[j] {
+				case '"', '\'':
+					q := s[j]
+					for j++; j < len(s) && s[j] != q; j++ {
+					}
+				case '[':
+					return true
+				case '>':
+					return false
+				}
+			}
+			return false
+		default:
+			i++
+		}
+	}
+	return false
+}
+
+// usesParameterEntities reports whether the document declares a parameter
+// entity ("<!ENTITY % ..."). The parser does not expand parameter entities, so
+// it cannot fully validate a DTD that uses them; such invalid tests are out of
+// scope and skipped.
+func usesParameterEntities(b []byte) bool {
+	s := string(b)
+	for i := 0; ; {
+		k := strings.Index(s[i:], "<!ENTITY")
+		if k < 0 {
+			return false
+		}
+		j := i + k + len("<!ENTITY")
+		for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\r' || s[j] == '\n') {
+			j++
+		}
+		if j < len(s) && s[j] == '%' {
+			return true
+		}
+		i = i + k + len("<!ENTITY")
+	}
+}
+
 // classifyXML copies each conformance test file from the suite at root into
 // testing/corpus/xml/<verdict>/, filtered to the subset this parser targets
 // (XML 1.0 5th edition + 1.1; no namespaces or external entities).
@@ -269,6 +340,15 @@ func classifyXML(root string) int {
 			}
 			b, err := os.ReadFile(rt.path)
 			if err != nil {
+				continue
+			}
+			// Validity is defined relative to a DTD, and we validate only what we
+			// can fully read: an internal subset with no parameter entities
+			// (which we do not expand). An "invalid" document with no internal
+			// subset (most OASIS o-pNNpass well-formedness tests and the edition
+			// character tests) or one whose declarations depend on parameter
+			// entities is out of the DTD-validity scope. Skip it.
+			if verdict == "invalid" && (!hasInternalSubset(b) || usesParameterEntities(b)) {
 				continue
 			}
 			id := strings.TrimSuffix(rt.t.ID, ".xml")

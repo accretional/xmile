@@ -138,18 +138,28 @@ func checkFeed(parser *service.Parser, rssDesc protoreflect.MessageDescriptor, b
 	}
 }
 
-// itemCount returns the number of channel items projected into rss.
+// itemCount returns the number of channel items projected into rss. The
+// channel's children are a repeated oneof wrapper (`entry`), so an item is an
+// entry whose oneof selects the `item` variant.
 func itemCount(rss protoreflect.Message) int {
 	cf := rss.Descriptor().Fields().ByName("channel")
 	if cf == nil || !rss.Has(cf) {
 		return 0
 	}
 	ch := rss.Get(cf).Message()
-	itf := ch.Descriptor().Fields().ByName("item")
-	if itf == nil || !itf.IsList() {
+	ef := ch.Descriptor().Fields().ByName("entry")
+	if ef == nil || !ef.IsList() {
 		return 0
 	}
-	return ch.Get(itf).List().Len()
+	entries := ch.Get(ef).List()
+	n := 0
+	for i := 0; i < entries.Len(); i++ {
+		e := entries.Get(i).Message()
+		if iv := e.Descriptor().Fields().ByName("item"); iv != nil && e.Has(iv) {
+			n++
+		}
+	}
+	return n
 }
 
 func dedup(in []string) []string {

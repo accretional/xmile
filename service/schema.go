@@ -158,16 +158,28 @@ func elementBody(cs *pb.ASTNode, attrNames []string, declared func(string) bool)
 	case cs == nil, hasTerminal(cs, "EMPTY"), hasTerminal(cs, "ANY"):
 		// EMPTY/ANY/absent → no structural content fields.
 	case firstDescendant(cs, "mixed") != nil:
-		// (#PCDATA) or (#PCDATA | a | b)*: a text run plus a repeated field
-		// per allowed child element.
-		fields = append(fields, scalarNode("text"))
 		mixed := firstDescendant(cs, "mixed")
+		var names []string
 		seen := map[string]bool{}
 		for _, nm := range descendants(mixed, "Name") {
 			if n := nm.GetValue(); n != "" && !seen[n] {
 				seen[n] = true
-				fields = append(fields, repeatedOf(childField(n, declared)))
+				names = append(names, n)
 			}
+		}
+		if len(names) == 0 {
+			// (#PCDATA): a text run.
+			fields = append(fields, scalarNode("text"))
+		} else {
+			// (#PCDATA | a | b)*: interleaved text and children in document
+			// order, lowered to a repeated message-with-oneof over a text
+			// variant and one variant per child (the same shape as xml.proto's
+			// ContentItem).
+			alt := &pb.ASTNode{Kind: compiler.KindAlternation, Value: choiceWrapperName, Children: []*pb.ASTNode{scalarNode("text")}}
+			for _, n := range names {
+				alt.Children = append(alt.Children, childField(n, declared))
+			}
+			fields = append(fields, repeatedOf(alt))
 		}
 	case firstDescendant(cs, "children") != nil:
 		model := parseContentModel(leafText(firstDescendant(cs, "children")))
@@ -176,8 +188,24 @@ func elementBody(cs *pb.ASTNode, attrNames []string, declared func(string) bool)
 	return seqOrSingle(fields)
 }
 
+// choiceWrapperName names the nested message that wraps a repeated choice's
+// oneof (e.g. Channel.Entry). It is scoped inside its element message, so the
+// same short name is reused across elements without collision.
+const choiceWrapperName = "Entry"
+
 // particleFields lowers a content-model particle into the proto fields it
 // contributes to the enclosing message.
+//
+// A DTD content model is an ordered regular expression over child elements, so
+// the lowering preserves that order:
+//
+//   - a choice (a | b | c) is "exactly one of", i.e. a proto oneof;
+//   - a repeated choice (…)* / (…)+ is an ordered sequence of those, so it
+//     becomes a repeated message-with-oneof (proto3 cannot repeat a oneof field
+//     directly; the compiler builds the wrapper from a repeated KindAlternation)
+//     — preserving the interleaved order of children across variants, which a
+//     bag of per-type repeated fields would discard;
+//   - a sequence (a, b, c) keeps its fixed order as flat sibling fields.
 func particleFields(p *particle, declared func(string) bool) []*pb.ASTNode {
 	if p == nil {
 		return nil
@@ -188,36 +216,38 @@ func particleFields(p *particle, declared func(string) bool) []*pb.ASTNode {
 	groupRepeated := p.occ == '*' || p.occ == '+'
 
 	if p.choice {
-		// (a | b | c …): one field per distinct member. Under a repetition
-		// every member is repeated; a bare choice keeps each member singular
-		// (a per-member '?' optional, '+'/'*' repeated).
+		// One variant per distinct member. A member's own occurrence is
+		// subsumed by the choice (and, when repeated, by the outer repetition),
+		// so it is dropped: `(a | b+ | c?)*` accepts the same language as
+		// `(a | b | c)*`.
+		alt := &pb.ASTNode{Kind: compiler.KindAlternation, Value: choiceWrapperName}
 		seen := map[string]bool{}
-		var out []*pb.ASTNode
 		for _, c := range p.children {
 			if c.name == "" {
-				continue // nested groups in a choice don't occur in RSS DTDs
+				alt.Children = append(alt.Children, groupNode(c, declared))
+				continue
 			}
 			if seen[c.name] {
 				continue
 			}
 			seen[c.name] = true
-			field := childField(c.name, declared)
-			switch {
-			case groupRepeated || c.occ == '*' || c.occ == '+':
-				field = repeatedOf(field)
-			case c.occ == '?':
-				field = optionalOf(field)
-			}
-			out = append(out, field)
+			alt.Children = append(alt.Children, childField(c.name, declared))
 		}
-		return out
+		if groupRepeated {
+			return []*pb.ASTNode{repeatedOf(alt)}
+		}
+		return []*pb.ASTNode{alt}
 	}
 
-	// Sequence: members flatten into sibling fields, each keeping its own
-	// occurrence. (RSS DTDs have no repeating multi-member sequence.)
+	// Sequence: members flatten into sibling fields in order, each keeping its
+	// occurrence. A repeating multi-member sequence becomes one repeated nested
+	// message (rare; not in the RSS DTD).
 	var out []*pb.ASTNode
 	for _, c := range p.children {
 		out = append(out, particleFields(c, declared)...)
+	}
+	if groupRepeated && len(out) > 1 {
+		return []*pb.ASTNode{repeatedOf(seqOrSingle(out))}
 	}
 	if groupRepeated {
 		for i, f := range out {
@@ -225,6 +255,28 @@ func particleFields(p *particle, declared func(string) bool) []*pb.ASTNode {
 		}
 	}
 	return out
+}
+
+// groupNode lowers a nested group (used as a oneof variant or a single field)
+// into a message node: an alternation for a choice, a sequence otherwise.
+// Nested groups do not occur in the RSS DTD; this keeps the lowering total.
+func groupNode(p *particle, declared func(string) bool) *pb.ASTNode {
+	if p.choice {
+		alt := &pb.ASTNode{Kind: compiler.KindAlternation, Value: choiceWrapperName}
+		for _, c := range p.children {
+			if c.name != "" {
+				alt.Children = append(alt.Children, childField(c.name, declared))
+			} else {
+				alt.Children = append(alt.Children, groupNode(c, declared))
+			}
+		}
+		return alt
+	}
+	var fields []*pb.ASTNode
+	for _, c := range p.children {
+		fields = append(fields, particleFields(c, declared)...)
+	}
+	return seqOrSingle(fields)
 }
 
 // childField references a child element: a message field when declared, else
@@ -371,10 +423,12 @@ func (p *cmParser) occ() byte {
 
 // ProjectTag fills msg (described by md, a message from CompileDTD output) from
 // a parsed Tag. Attributes map to string fields by snake-cased name; the text
-// of a leaf maps to its `text` field; child elements map to the field whose
-// message type is named after the element. It returns the names of elements /
-// attributes (@-prefixed) with no matching field — empty for a document fully
-// covered by the schema, non-empty for one carrying out-of-vocabulary markup.
+// of a leaf maps to its `text` field; each child element maps either to a
+// direct message field named after it or, for a lowered choice, to a oneof
+// variant inside a wrapper message (appended in document order for a repeated
+// choice). It returns the names of elements / attributes (@-prefixed) with no
+// matching field — empty for a document fully covered by the schema, non-empty
+// for one carrying out-of-vocabulary markup.
 func ProjectTag(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protoreflect.Message) []string {
 	var unknown []string
 	for _, a := range tag.GetAttrs() {
@@ -408,23 +462,43 @@ func ProjectTag(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protorefl
 	}
 
 	for _, child := range children {
-		f := childMessageField(md, child.GetName())
-		if f == nil {
+		cd, cm, ok := placeChild(md, msg, child.GetName())
+		if !ok {
 			unknown = append(unknown, child.GetName())
 			continue
 		}
-		var sub protoreflect.Message
-		if f.IsList() {
-			sub = msg.Mutable(f).List().AppendMutable().Message()
-		} else {
-			sub = msg.Mutable(f).Message()
-		}
-		unknown = append(unknown, ProjectTag(child, f.Message(), sub)...)
+		unknown = append(unknown, ProjectTag(child, cd, cm)...)
 	}
 	return unknown
 }
 
-func childMessageField(md protoreflect.MessageDescriptor, element string) protoreflect.FieldDescriptor {
+// placeChild finds where a child element belongs in msg (described by md) and
+// returns the descriptor and mutable message to project it into. It handles a
+// direct message field (a sequence/single element, or an inline oneof variant)
+// and a message-with-oneof wrapper field (a lowered choice): for the wrapper it
+// appends a new element to the repeated wrapper (or takes the singular one) and
+// selects the matching oneof variant.
+func placeChild(md protoreflect.MessageDescriptor, msg protoreflect.Message, element string) (protoreflect.MessageDescriptor, protoreflect.Message, bool) {
+	if f := msgFieldByType(md, element); f != nil {
+		return f.Message(), mutableMessage(msg, f), true
+	}
+	fs := md.Fields()
+	for i := 0; i < fs.Len(); i++ {
+		f := fs.Get(i)
+		if f.Kind() != protoreflect.MessageKind {
+			continue
+		}
+		if vf := msgFieldByType(f.Message(), element); vf != nil {
+			wrap := mutableMessage(msg, f)
+			return vf.Message(), mutableMessage(wrap, vf), true
+		}
+	}
+	return nil, nil, false
+}
+
+// msgFieldByType returns the message field of md whose message type is named
+// after element (PascalCase), matching how CompileDTD names element messages.
+func msgFieldByType(md protoreflect.MessageDescriptor, element string) protoreflect.FieldDescriptor {
 	want := pascalName(element)
 	fs := md.Fields()
 	for i := 0; i < fs.Len(); i++ {
@@ -434,6 +508,16 @@ func childMessageField(md protoreflect.MessageDescriptor, element string) protor
 		}
 	}
 	return nil
+}
+
+// mutableMessage returns a mutable message to fill for field f: a freshly
+// appended element for a repeated field, or the field's message otherwise
+// (which selects f's oneof variant when f belongs to a oneof).
+func mutableMessage(msg protoreflect.Message, f protoreflect.FieldDescriptor) protoreflect.Message {
+	if f.IsList() {
+		return msg.Mutable(f).List().AppendMutable().Message()
+	}
+	return msg.Mutable(f).Message()
 }
 
 func scalarField(md protoreflect.MessageDescriptor, attr string) protoreflect.FieldDescriptor {

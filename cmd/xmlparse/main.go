@@ -1,6 +1,7 @@
 // Command xmlparse parses an XML file (or stdin) with the service parser
 // and prints the resulting AST as textproto. With -cst it prints the raw
-// concrete syntax tree instead. Not-well-formed input exits non-zero.
+// concrete syntax tree instead. Not-well-formed input ("not well-formed: ...")
+// and DTD-invalid input ("invalid: ...") both exit non-zero.
 package main
 
 import (
@@ -48,7 +49,8 @@ func main() {
 
 	doc, perr := p.Parse(string(src))
 	if perr != nil {
-		fmt.Fprintln(os.Stderr, "not well-formed:", perr)
+		// WFError and ValidityError each format their own category prefix.
+		fmt.Fprintln(os.Stderr, perr)
 		os.Exit(1)
 	}
 	fmt.Print(prototext.Format(doc))
