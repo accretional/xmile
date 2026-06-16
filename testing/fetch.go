@@ -80,6 +80,17 @@ func fetchRSS() {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return
 	}
+	os.MkdirAll(filepath.Join(testingDir, "rss", "not-wf"), 0o755)
+
+	// Idempotent: if feeds are already fetched, don't hit the network again —
+	// just re-check their classification against the current oracle (so an
+	// oracle fix relabels the existing corpus without a volatile re-fetch).
+	if rssCorpusPresent() {
+		fmt.Println("rss:  corpus already present")
+		reconcileRSS()
+		return
+	}
+
 	paths, err := listRepoOPML(rssRepo)
 	if err != nil {
 		fmt.Printf("rss:  could not reach %s (%v) — skipping\n", rssRepo, err)
@@ -124,6 +135,51 @@ func fetchRSS() {
 	fmt.Printf("rss:  %d OPML + %d live feeds (classified valid/not-wf by encoding/xml)\n", opml, feeds)
 }
 
+// rssCorpusPresent reports whether any rss feeds have already been fetched.
+func rssCorpusPresent() bool {
+	for _, v := range []string{"valid", "not-wf"} {
+		e, _ := os.ReadDir(filepath.Join(testingDir, "rss", v))
+		if len(e) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// reconcileRSS re-evaluates the already-fetched feeds with the current
+// reference oracle and moves any whose verdict changed, so the corpus labels
+// stay correct after an oracle change without re-fetching from the network.
+func reconcileRSS() {
+	moved := 0
+	for _, v := range []string{"valid", "not-wf"} {
+		dir := filepath.Join(testingDir, "rss", v)
+		entries, _ := os.ReadDir(dir)
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			body, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				continue
+			}
+			want := "not-wf"
+			if referenceWellFormed(body) {
+				want = "valid"
+			}
+			if want != v {
+				if os.Rename(filepath.Join(dir, e.Name()), filepath.Join(testingDir, "rss", want, e.Name())) == nil {
+					moved++
+				}
+			}
+		}
+	}
+	if moved > 0 {
+		fmt.Printf("rss:  reclassified %d feed(s) to match the reference oracle\n", moved)
+	} else {
+		fmt.Println("rss:  corpus labels already consistent with the oracle")
+	}
+}
+
 // routeRSS writes a fetched feed into rss/valid or rss/not-wf depending on
 // whether Go's standard encoding/xml accepts it — an independent reference
 // oracle. The corpus check then verifies our parser agrees.
@@ -136,19 +192,54 @@ func routeRSS(body []byte, name string) bool {
 }
 
 // referenceWellFormed reports whether the standard library's XML decoder
-// accepts the document as well-formed.
+// accepts the document as well-formed. Two adjustments make it a more faithful
+// conformance oracle than the stock decoder (both verified against libxml2):
+//   - a CharsetReader for the non-UTF-8 encodings this project supports, so a
+//     well-formed Latin-1 feed is judged on its structure rather than rejected
+//     for a charset the bare decoder cannot read; and
+//   - rejecting a "<?xml ...?>" processing instruction anywhere but the very
+//     start of the document — elsewhere its target is the reserved name "xml"
+//     (XML 1.0 §2.6), which the stock decoder otherwise tolerates.
 func referenceWellFormed(b []byte) bool {
 	dec := xml.NewDecoder(bytes.NewReader(b))
 	dec.Strict = true
+	dec.CharsetReader = referenceCharset
+	first := true
 	for {
-		_, err := dec.Token()
+		tok, err := dec.Token()
 		if err == io.EOF {
 			return true
 		}
 		if err != nil {
 			return false
 		}
+		if pi, ok := tok.(xml.ProcInst); ok && strings.EqualFold(pi.Target, "xml") && !first {
+			return false
+		}
+		first = false
 	}
+}
+
+// referenceCharset lets the reference decoder read the encodings this project
+// supports: UTF-8/ASCII pass through unchanged, and Latin-1 maps each byte to
+// its Unicode rune. Any other declared encoding returns an error, so the
+// decoder rejects it — the same scope as the runtime parser.
+func referenceCharset(label string, input io.Reader) (io.Reader, error) {
+	switch strings.ToLower(strings.TrimSpace(label)) {
+	case "utf-8", "utf8", "us-ascii", "ascii", "":
+		return input, nil
+	case "iso-8859-1", "latin1", "latin-1", "iso8859-1", "iso_8859-1":
+		data, err := io.ReadAll(input)
+		if err != nil {
+			return nil, err
+		}
+		var sb strings.Builder
+		for _, c := range data {
+			sb.WriteRune(rune(c))
+		}
+		return strings.NewReader(sb.String()), nil
+	}
+	return nil, fmt.Errorf("unsupported encoding %q", label)
 }
 
 // classifyXML copies each conformance test file from the suite at root into
