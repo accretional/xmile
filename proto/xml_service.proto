@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package xml;
+
+import "xml.proto";
+
+option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
+
+// xml_service.proto — parsing exposed as a service (see docs/decisions/0003).
+//
+// The service *is* the parser: callers send XML bytes and receive the
+// parsed, augmented AST. Modeled on proto-http's HttpService.Parse.
+service XmlService {
+  // Parse parses XML bytes into a Document AST.
+  //
+  // On success it returns the parsed and (if a DTD is present) validated +
+  // augmented Document. The outcome is carried by the RPC status, not a
+  // verdict field. Not-well-formed and invalid inputs return an error and
+  // no tree, distinguished by status code:
+  //   - INVALID_ARGUMENT    — not well-formed
+  //   - FAILED_PRECONDITION  — well-formed but invalid against its DTD
+  rpc Parse(ParseRequest) returns (ParseResponse);
+}
+
+message ParseRequest {
+  bytes xml = 1;
+}
+
+message ParseResponse {
+  // The parsed, augmented AST. When the document had a DOCTYPE, the parsed
+  // inline DTD rides on Document.doctype (dtd.Doctype); whether the tree was
+  // merely well-formed or DTD-valid is visible from there, not surfaced as a
+  // separate field.
+  Document document = 1;
+}

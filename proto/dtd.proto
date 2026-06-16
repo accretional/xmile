@@ -1,0 +1,595 @@
+syntax = "proto3";
+
+package dtd;
+
+option go_package = "github.com/accretional/xmile/proto/pb/dtd;dtdpb";
+
+message Doctype {
+  OptS opt_s = 1;
+
+  string name = 2;
+
+  ExternalId external_id = 3;
+
+  OptS opt_s_2 = 4;
+
+  InternalSubset internal_subset = 5;
+
+  OptS opt_s_3 = 6;
+}
+
+message ExternalId {
+  Seq1 seq1 = 1;
+
+  message Seq1 {
+    string s = 1;
+
+    ExtId ext_id = 2;
+  }
+}
+
+message ExtId {
+  oneof value {
+    System system = 1;
+
+    Public public = 2;
+  }
+
+  message System {
+    string s = 1;
+
+    SystemLiteral system_literal = 2;
+  }
+
+  message Public {
+    string s = 1;
+
+    PubidLiteral pubid_literal = 2;
+
+    string s_2 = 3;
+
+    SystemLiteral system_literal = 4;
+  }
+}
+
+message InternalSubset {
+  LeftSquareBracket left_square_bracket = 1;
+
+  message LeftSquareBracket {
+    Decls decls = 1;
+
+    RightSquareBracketKeyword right_square_bracket_keyword = 2;
+  }
+}
+
+message Decls {
+  repeated Markupdecl markupdecl = 1;
+}
+
+message Markupdecl {
+  oneof value {
+    ElementDecl element_decl = 1;
+
+    AttlistDecl attlist_decl = 2;
+
+    EntityDecl entity_decl = 3;
+
+    NotationDecl notation_decl = 4;
+
+    Pereference pereference = 5;
+
+    Comment comment = 6;
+
+    Pi pi = 7;
+
+    string s = 8;
+  }
+}
+
+message ElementDecl {
+  string s = 1;
+
+  string name = 2;
+
+  string s_2 = 3;
+
+  Contentspec contentspec = 4;
+
+  OptS opt_s = 5;
+
+  GreaterThanSignKeyword greater_than_sign_keyword = 6;
+}
+
+message Contentspec {
+  oneof value {
+    EmptyKeyword empty_keyword = 1;
+
+    AnyKeyword any_keyword = 2;
+
+    Mixed mixed = 3;
+
+    Children children = 4;
+  }
+}
+
+message Mixed {
+  OptS opt_s = 1;
+
+  NumberSignPcdataKeyword number_sign_pcdata_keyword = 2;
+
+  repeated Seq1 seq1 = 3;
+
+  OptS opt_s_2 = 4;
+
+  RightParenthesisKeyword right_parenthesis_keyword = 5;
+
+  AsteriskKeyword asterisk_keyword = 6;
+
+  message Seq1 {
+    OptS opt_s = 1;
+
+    VerticalLineKeyword vertical_line_keyword = 2;
+
+    OptS opt_s_2 = 3;
+
+    string name = 4;
+  }
+}
+
+message Children {
+  Alt1 alt1 = 1;
+
+  Occ occ = 2;
+
+  message Alt1 {
+    oneof value {
+      Choice choice = 1;
+
+      Seq seq = 2;
+    }
+  }
+}
+
+message Choice {
+  OptS opt_s = 1;
+
+  Cp cp = 2;
+
+  repeated Seq1 seq1 = 3;
+
+  OptS opt_s_2 = 4;
+
+  RightParenthesisKeyword right_parenthesis_keyword = 5;
+
+  message Seq1 {
+    OptS opt_s = 1;
+
+    VerticalLineKeyword vertical_line_keyword = 2;
+
+    OptS opt_s_2 = 3;
+
+    Cp cp = 4;
+  }
+}
+
+message Seq {
+  OptS opt_s = 1;
+
+  Cp cp = 2;
+
+  repeated Seq1 seq1 = 3;
+
+  OptS opt_s_2 = 4;
+
+  RightParenthesisKeyword right_parenthesis_keyword = 5;
+
+  message Seq1 {
+    OptS opt_s = 1;
+
+    CommaKeyword comma_keyword = 2;
+
+    OptS opt_s_2 = 3;
+
+    Cp cp = 4;
+  }
+}
+
+message Cp {
+  Alt1 alt1 = 1;
+
+  Occ occ = 2;
+
+  message Alt1 {
+    oneof value {
+      string name = 1;
+
+      Choice choice = 2;
+
+      Seq seq = 3;
+    }
+  }
+}
+
+message Occ {
+  oneof value {
+    QuestionMarkKeyword question_mark_keyword = 1;
+
+    AsteriskKeyword asterisk_keyword = 2;
+
+    PlusSignKeyword plus_sign_keyword = 3;
+  }
+}
+
+message AttlistDecl {
+  string s = 1;
+
+  string name = 2;
+
+  repeated AttDef att_def = 3;
+
+  OptS opt_s = 4;
+
+  GreaterThanSignKeyword greater_than_sign_keyword = 5;
+}
+
+message AttDef {
+  string s = 1;
+
+  string name = 2;
+
+  string s_2 = 3;
+
+  AttType att_type = 4;
+
+  string s_3 = 5;
+
+  DefaultDecl default_decl = 6;
+}
+
+message AttType {
+  oneof value {
+    CdataKeyword cdata_keyword = 1;
+
+    IdrefsKeyword idrefs_keyword = 2;
+
+    IdrefKeyword idref_keyword = 3;
+
+    IdKeyword id_keyword = 4;
+
+    EntitiesKeyword entities_keyword = 5;
+
+    EntityKeyword entity_keyword = 6;
+
+    NmtokensKeyword nmtokens_keyword = 7;
+
+    NmtokenKeyword nmtoken_keyword = 8;
+
+    NotationType notation_type = 9;
+
+    Enumeration enumeration = 10;
+  }
+}
+
+message NotationType {
+  string s = 1;
+
+  LeftParenthesisKeyword left_parenthesis_keyword = 2;
+
+  OptS opt_s = 3;
+
+  string name = 4;
+
+  repeated Seq1 seq1 = 5;
+
+  OptS opt_s_2 = 6;
+
+  RightParenthesisKeyword right_parenthesis_keyword = 7;
+
+  message Seq1 {
+    OptS opt_s = 1;
+
+    VerticalLineKeyword vertical_line_keyword = 2;
+
+    OptS opt_s_2 = 3;
+
+    string name = 4;
+  }
+}
+
+message Enumeration {
+  OptS opt_s = 1;
+
+  string nmtoken = 2;
+
+  repeated Seq1 seq1 = 3;
+
+  OptS opt_s_2 = 4;
+
+  RightParenthesisKeyword right_parenthesis_keyword = 5;
+
+  message Seq1 {
+    OptS opt_s = 1;
+
+    VerticalLineKeyword vertical_line_keyword = 2;
+
+    OptS opt_s_2 = 3;
+
+    string nmtoken = 4;
+  }
+}
+
+message DefaultDecl {
+  oneof value {
+    NumberSignRequiredKeyword number_sign_required_keyword = 1;
+
+    NumberSignImpliedKeyword number_sign_implied_keyword = 2;
+
+    FixedDefault fixed_default = 3;
+  }
+}
+
+message FixedDefault {
+  NumberSignFixed number_sign_fixed = 1;
+
+  AttLiteral att_literal = 2;
+
+  message NumberSignFixed {
+    string s = 1;
+  }
+}
+
+message EntityDecl {
+  string s = 1;
+
+  EntityKind entity_kind = 2;
+
+  OptS opt_s = 3;
+
+  GreaterThanSignKeyword greater_than_sign_keyword = 4;
+}
+
+message EntityKind {
+  oneof value {
+    PercentSign percent_sign = 1;
+
+    Seq1 seq1 = 2;
+  }
+
+  message PercentSign {
+    string s = 1;
+
+    string name = 2;
+
+    string s_2 = 3;
+
+    EntityValue entity_value = 4;
+  }
+
+  message Seq1 {
+    string name = 1;
+
+    string s = 2;
+
+    EntityValue entity_value = 3;
+  }
+}
+
+message EntityValue {
+  oneof value {
+    AttLiteral att_literal = 1;
+
+    Seq1 seq1 = 2;
+  }
+
+  message Seq1 {
+    ExtId ext_id = 1;
+
+    Seq1 seq1 = 2;
+
+    message Seq1 {
+      string s = 1;
+
+      NdataKeyword ndata_keyword = 2;
+
+      string s_2 = 3;
+
+      string name = 4;
+    }
+  }
+}
+
+message NotationDecl {
+  string s = 1;
+
+  string name = 2;
+
+  string s_2 = 3;
+
+  NotationId notation_id = 4;
+
+  OptS opt_s = 5;
+
+  GreaterThanSignKeyword greater_than_sign_keyword = 6;
+}
+
+message NotationId {
+  oneof value {
+    ExtId ext_id = 1;
+
+    Public public = 2;
+  }
+
+  message Public {
+    string s = 1;
+
+    PubidLiteral pubid_literal = 2;
+  }
+}
+
+message Pereference {
+  string name = 1;
+
+  SemicolonKeyword semicolon_keyword = 2;
+}
+
+message Comment {
+  string comment_text = 1;
+
+  HyphenMinusHyphenMinusGreaterThanSignKeyword hyphen_minus_hyphen_minus_greater_than_sign_keyword = 2;
+}
+
+message Pi {
+  string name = 1;
+
+  string pi_text = 2;
+
+  QuestionMarkGreaterThanSignKeyword question_mark_greater_than_sign_keyword = 3;
+}
+
+message SystemLiteral {
+  oneof value {
+    QuotationMark quotation_mark = 1;
+
+    Apostrophe apostrophe = 2;
+  }
+
+  message QuotationMark {
+    string lit_dq = 1;
+
+    QuotationMarkKeyword quotation_mark_keyword = 2;
+  }
+
+  message Apostrophe {
+    string lit_sq = 1;
+
+    ApostropheKeyword apostrophe_keyword = 2;
+  }
+}
+
+message PubidLiteral {
+  oneof value {
+    QuotationMark quotation_mark = 1;
+
+    Apostrophe apostrophe = 2;
+  }
+
+  message QuotationMark {
+    string lit_dq = 1;
+
+    QuotationMarkKeyword quotation_mark_keyword = 2;
+  }
+
+  message Apostrophe {
+    string lit_sq = 1;
+
+    ApostropheKeyword apostrophe_keyword = 2;
+  }
+}
+
+message AttLiteral {
+  oneof value {
+    QuotationMark quotation_mark = 1;
+
+    Apostrophe apostrophe = 2;
+  }
+
+  message QuotationMark {
+    string lit_dq = 1;
+
+    QuotationMarkKeyword quotation_mark_keyword = 2;
+  }
+
+  message Apostrophe {
+    string lit_sq = 1;
+
+    ApostropheKeyword apostrophe_keyword = 2;
+  }
+}
+
+message OptS {
+  string s = 1;
+}
+
+message AnyKeyword {
+}
+
+message ApostropheKeyword {
+}
+
+message AsteriskKeyword {
+}
+
+message CdataKeyword {
+}
+
+message CommaKeyword {
+}
+
+message EmptyKeyword {
+}
+
+message EntitiesKeyword {
+}
+
+message EntityKeyword {
+}
+
+message GreaterThanSignKeyword {
+}
+
+message HyphenMinusHyphenMinusGreaterThanSignKeyword {
+}
+
+message IdKeyword {
+}
+
+message IdrefKeyword {
+}
+
+message IdrefsKeyword {
+}
+
+message LeftParenthesisKeyword {
+}
+
+message NdataKeyword {
+}
+
+message NmtokenKeyword {
+}
+
+message NmtokensKeyword {
+}
+
+message NumberSignImpliedKeyword {
+}
+
+message NumberSignPcdataKeyword {
+}
+
+message NumberSignRequiredKeyword {
+}
+
+message PlusSignKeyword {
+}
+
+message QuestionMarkGreaterThanSignKeyword {
+}
+
+message QuestionMarkKeyword {
+}
+
+message QuotationMarkKeyword {
+}
+
+message RightParenthesisKeyword {
+}
+
+message RightSquareBracketKeyword {
+}
+
+message SemicolonKeyword {
+}
+
+message VerticalLineKeyword {
+}

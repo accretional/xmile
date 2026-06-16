@@ -1,0 +1,65 @@
+(* dtd.ebnf — grammar for an XML DOCTYPE body: the root element name, an
+   optional external ID, and the internal subset's markup declarations.
+
+   This is parsed as a SECOND pass over the DOCTYPE span captured by the
+   main XML parse (the dtd_text token). Keeping it separate keeps the
+   well-formedness parser robust and independent of DTD complexity, per the
+   two-pass design (docs).
+
+   As in xml.ebnf, all structure lives here; only lexical runs are token
+   matchers (see dtd.go):
+
+     S        XML whitespace
+     Name     an XML Name
+     Nmtoken  a name token (NameChar+, no start-char restriction)
+     litDq    characters up to a closing "
+     litSq    characters up to a closing '
+
+   The first production (doctype) is the start rule.
+*)
+
+doctype        = optS , Name , externalID , optS , internalSubset , optS ;
+externalID     = [ S , extID ] ;
+extID          = "SYSTEM" , S , SystemLiteral
+               | "PUBLIC" , S , PubidLiteral , S , SystemLiteral ;
+internalSubset = [ "[" , decls , "]" ] ;
+decls          = { markupdecl } ;
+markupdecl     = elementDecl | attlistDecl | entityDecl | notationDecl
+               | PEReference | Comment | PI | S ;
+
+elementDecl    = "<!ELEMENT" , S , Name , S , contentspec , optS , ">" ;
+contentspec    = "EMPTY" | "ANY" | mixed | children ;
+mixed          = "(" , optS , "#PCDATA" , { optS , "|" , optS , Name } , optS , ")" , [ "*" ] ;
+children       = ( choice | seq ) , [ occ ] ;
+choice         = "(" , optS , cp , { optS , "|" , optS , cp } , optS , ")" ;
+seq            = "(" , optS , cp , { optS , "," , optS , cp } , optS , ")" ;
+cp             = ( Name | choice | seq ) , [ occ ] ;
+occ            = "?" | "*" | "+" ;
+
+attlistDecl    = "<!ATTLIST" , S , Name , { attDef } , optS , ">" ;
+attDef         = S , Name , S , attType , S , defaultDecl ;
+attType        = "CDATA" | "IDREFS" | "IDREF" | "ID" | "ENTITIES" | "ENTITY"
+               | "NMTOKENS" | "NMTOKEN" | notationType | enumeration ;
+notationType   = "NOTATION" , S , "(" , optS , Name , { optS , "|" , optS , Name } , optS , ")" ;
+enumeration    = "(" , optS , Nmtoken , { optS , "|" , optS , Nmtoken } , optS , ")" ;
+defaultDecl    = "#REQUIRED" | "#IMPLIED" | fixedDefault ;
+fixedDefault   = [ "#FIXED" , S ] , attLiteral ;
+
+entityDecl     = "<!ENTITY" , S , entityKind , optS , ">" ;
+entityKind     = "%" , S , Name , S , entityValue
+               | Name , S , entityValue ;
+entityValue    = attLiteral | extID , [ S , "NDATA" , S , Name ] ;
+
+notationDecl   = "<!NOTATION" , S , Name , S , notationID , optS , ">" ;
+notationID     = extID | "PUBLIC" , S , PubidLiteral ;
+
+PEReference    = "%" , Name , ";" ;
+
+Comment        = "<!--" , comment_text , "-->" ;
+PI             = "<?" , Name , pi_text , "?>" ;
+
+SystemLiteral  = '"' , litDq , '"' | "'" , litSq , "'" ;
+PubidLiteral   = '"' , litDq , '"' | "'" , litSq , "'" ;
+attLiteral     = '"' , litDq , '"' | "'" , litSq , "'" ;
+
+optS           = [ S ] ;

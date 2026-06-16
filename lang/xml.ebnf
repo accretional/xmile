@@ -1,0 +1,82 @@
+(* xml.ebnf — a generic, well-formedness-oriented grammar for XML 1.0.
+
+   This grammar encapsulates the entire context-free structure of XML:
+   the framing of elements, attributes, references, comments, processing
+   instructions, CDATA sections, the XML and DOCTYPE declarations, and the
+   character/hex digits of numeric references. Composition lives here, not
+   in Go.
+
+   Only two kinds of thing live outside the grammar:
+
+   1. Lexical runs — a maximal span of characters collapsed into a single
+      token, so the AST holds tokens rather than one node per character.
+      These are token matchers (see matchers.go), referenced below with no
+      production of their own:
+
+        S             one or more XML whitespace chars (#x20 #x9 #xD #xA)
+        Name          an XML Name  (NameStartChar NameChar* )
+        CharData      a run of characters with no '<' or '&'
+        dqText        a run with no '"', '<' or '&'   (")-quoted attr value)
+        sqText        a run with no "'", '<' or '&'   (')-quoted attr value)
+        comment_text  characters up to the next "--"
+        cdata_text    characters up to "]]>"
+        pi_text       characters up to "?>"
+        xmldecl_text  characters up to "?>"
+        dtd_text      the DOCTYPE internal subset, up to its closing '>'
+
+   2. The genuinely non-CFG constraints, enforced by the post-parse
+      well-formedness walk (see docs/decisions/0001-tag-name-matching.md):
+        - an end-tag name must equal its start-tag name
+        - an attribute name may not repeat within a tag
+        - a PI target may not be 'xml'
+        - the literal "]]>" may not appear in character data
+      (single-root also falls out of EOF-complete parsing).
+
+   The first production (document) is the start rule. XML whitespace is
+   positional, so the parser does NO automatic whitespace skipping; every
+   place whitespace may appear is spelled out via S / optS.
+*)
+
+document     = prolog , element , miscs ;
+
+prolog       = [ XMLDecl ] , miscs , [ doctypedecl , miscs ] ;
+XMLDecl      = "<?xml" , VersionInfo , [ EncodingDecl ] , [ SDDecl ] , optS , "?>" ;
+VersionInfo  = S , "version" , Eq , ( "'" , VersionNum , "'" | '"' , VersionNum , '"' ) ;
+VersionNum   = "1." , digit , { digit } ;
+EncodingDecl = S , "encoding" , Eq , ( '"' , EncName , '"' | "'" , EncName , "'" ) ;
+EncName      = encStart , { encChar } ;
+encStart     = "A" ... "Z" | "a" ... "z" ;
+encChar      = encStart | digit | "." | "_" | "-" ;
+SDDecl       = S , "standalone" , Eq , ( "'" , YesNo , "'" | '"' , YesNo , '"' ) ;
+YesNo        = "yes" | "no" ;
+Eq           = optS , "=" , optS ;
+doctypedecl  = "<!DOCTYPE" , dtd_text , ">" ;
+miscs        = { Misc } ;
+Misc         = Comment | PI | S ;
+
+Comment      = "<!--" , comment_text , "-->" ;
+PI           = "<?" , Name , pi_text , "?>" ;
+
+element      = EmptyElemTag | ( STag , content , ETag ) ;
+STag         = "<" , Name , attributes , optS , ">" ;
+EmptyElemTag = "<" , Name , attributes , optS , "/>" ;
+ETag         = "</" , Name , optS , ">" ;
+
+attributes   = { S , Attribute } ;
+Attribute    = Name , optS , "=" , optS , AttValue ;
+AttValue     = '"' , dqValue , '"' | "'" , sqValue , "'" ;
+dqValue      = { dqText | Reference } ;
+sqValue      = { sqText | Reference } ;
+
+content      = { element | Reference | CDSect | PI | Comment | CharData } ;
+
+Reference    = EntityRef | CharRef ;
+EntityRef    = "&" , Name , ";" ;
+CharRef      = "&#x" , hexDigit , { hexDigit } , ";"
+             | "&#" , digit , { digit } , ";" ;
+digit        = "0" ... "9" ;
+hexDigit     = "0" ... "9" | "a" ... "f" | "A" ... "F" ;
+
+CDSect       = "<![CDATA[" , cdata_text , "]]>" ;
+
+optS         = [ S ] ;

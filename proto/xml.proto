@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package xml;
+
+import "dtd.proto";
+
+option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
+
+// xml.proto — the hand-written XML AST (see docs/decisions/0003).
+//
+// This is a *homogeneous* tree: every element, whatever its name, is a
+// `Tag`; the element type lives in `Tag.name` as data, not as a distinct
+// message type. The parser produces this by projecting gluon's concrete
+// syntax tree (parsed against lang/xml.ebnf) into the shape below.
+//
+// This is a complete, valid XML AST on its own — no field depends on a DTD.
+// (Validation may materialize DTD default attribute values into the tree,
+// but those appear as ordinary attributes; the AST records no provenance.)
+
+// Document is the root of a parsed XML document.
+message Document {
+  // <?xml version="1.0" encoding="…" standalone="…"?>, if present.
+  XmlDecl xml_decl = 1;
+
+  // The DOCTYPE, if present. Its body — root name, external ID, and the
+  // inline internal subset's declarations — is parsed by lang/dtd.ebnf and
+  // represented by the generated dtd.Doctype. nil when there is no DOCTYPE.
+  dtd.Doctype doctype = 2;
+
+  // Comments / PIs in the prolog (before the root element).
+  repeated Misc prolog_misc = 3;
+
+  // The single root element.
+  Tag root = 4;
+
+  // Comments / PIs after the root element (the epilog).
+  repeated Misc epilog_misc = 5;
+}
+
+// XmlDecl is the optional XML declaration.
+message XmlDecl {
+  string version = 1;     // e.g. "1.0"
+  string encoding = 2;    // e.g. "UTF-8"; empty if absent
+  string standalone = 3;  // "yes" / "no"; empty if absent
+}
+
+// Tag is an element node. Homogeneous across all element types.
+message Tag {
+  string name = 1;
+  repeated Attribute attrs = 2;
+  repeated ContentItem contents = 3;
+}
+
+// Attribute is one name=value pair. The value is normalized: entity and
+// character references are resolved and whitespace is normalized per the
+// declared type.
+message Attribute {
+  string name = 1;
+  string value = 2;
+}
+
+// ContentItem is one item in an element's content. References (entity /
+// character) are resolved during parsing and therefore never appear here:
+// they fold into `text` or, for markup-bearing entities, into `child`.
+message ContentItem {
+  oneof item {
+    string text = 1;     // character data
+    Tag child = 2;       // nested element
+    string cdata = 3;    // raw text from <![CDATA[ … ]]>
+    string comment = 4;  // text from <!-- … -->
+    PI pi = 5;           // a processing instruction
+  }
+}
+
+// PI is a processing instruction: <?target data?> (target != "xml").
+message PI {
+  string target = 1;
+  string data = 2;
+}
+
+// Misc is a prolog/epilog item: a comment or a PI. Insignificant
+// whitespace between them is not retained.
+message Misc {
+  oneof item {
+    string comment = 1;
+    PI pi = 2;
+  }
+}
