@@ -17,7 +17,10 @@ for dep in gluon proto-merge; do
     echo "[setup] cloning $dep -> ../$dep"
     git clone --depth 1 "https://github.com/accretional/$dep" "../$dep"
   else
-    echo "[setup] $dep present"
+    echo "[setup] updating $dep -> latest"
+    git -C "../$dep" fetch --quiet origin || true
+    git -C "../$dep" pull --ff-only --quiet 2>/dev/null \
+      || echo "[setup] WARN: $dep not fast-forwarded (diverged or local changes) — using current state"
   fi
 done
 
