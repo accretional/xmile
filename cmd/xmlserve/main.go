@@ -26,7 +26,8 @@ func main() {
 	}
 	g := grpc.NewServer()
 	xmlpb.RegisterXmlServiceServer(g, srv)
-	log.Printf("xmile XmlService listening on %s", *addr)
+	xmlpb.RegisterSchemaServiceServer(g, service.NewSchemaServer())
+	log.Printf("xmile XmlService + SchemaService listening on %s", *addr)
 	if err := g.Serve(lis); err != nil {
 		log.Fatalf("serve: %v", err)
 	}

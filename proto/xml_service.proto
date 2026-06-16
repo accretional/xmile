@@ -3,6 +3,7 @@ syntax = "proto3";
 package xml;
 
 import "xml.proto";
+import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 
@@ -32,4 +33,32 @@ message ParseResponse {
   // merely well-formed or DTD-valid is visible from there, not surfaced as a
   // separate field.
   Document document = 1;
+}
+
+// SchemaService is the *type-level* companion to XmlService (see ADR 0004).
+// Where Parse takes one document's bytes and returns that document's AST,
+// Compile takes a DTD (a schema for a whole family of documents) and returns a
+// proto descriptor of that family: one message per <!ELEMENT>. Compiling a
+// vocabulary's DTD once yields a typed AST (e.g. an rss.Rss) for every document
+// in it, instead of the homogeneous Tag.
+service SchemaService {
+  // Compile lowers a DTD (an external subset — the bare markup declarations of
+  // a .dtd file) into a FileDescriptorProto. INVALID_ARGUMENT if the bytes are
+  // not a well-formed DTD.
+  rpc Compile(CompileRequest) returns (CompileResponse);
+}
+
+message CompileRequest {
+  // The DTD external subset to compile.
+  bytes dtd = 1;
+  // Naming options for the emitted descriptor; all optional.
+  string package = 2;     // proto package (e.g. "rss"); defaults to "lang".
+  string go_package = 3;  // go_package file option; omitted if empty.
+  string file_name = 4;   // FileDescriptorProto.name; "<package>.proto" default.
+}
+
+message CompileResponse {
+  // The compiled schema. It can be linked with protodesc for dynamic use or
+  // written out as a .proto / FileDescriptorSet.
+  google.protobuf.FileDescriptorProto file = 1;
 }

@@ -61,6 +61,7 @@ func fetchCorpus() error {
 
 	downloadOOXML()
 	fetchRSS()
+	downloadRSS091()
 	return nil
 }
 

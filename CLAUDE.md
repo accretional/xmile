@@ -15,25 +15,26 @@ record lives in `docs/decisions/`.
 - **NEVER commit or push without running `./LET_IT_RIP.sh` first.**
 - **NEVER commit or push if `./LET_IT_RIP.sh` is failing or has skipped tests.**
 - Scripts are idempotent and chained:
-  `build.sh` → `setup.sh`; `test.sh` → `build.sh`; `LET_IT_RIP.sh` → `test.sh`;
-  `serve.sh` → `setup.sh`.
+  `build.sh` -> `setup.sh`; `test.sh` -> `build.sh`; `LET_IT_RIP.sh` -> `test.sh`;
+  `serve.sh` -> `setup.sh`.
 - **All grammar logic lives in the grammar.** The runtime parser carries no
   grammar knowledge. Structure is in `lang/*.ebnf`; lexing is in `lang/*.lex`;
   both are compiled by `genproto` into `proto/`. Never hand-code grammar rules,
   keyword lists, or character classes in Go.
-- **NEVER edit generated files by hand.** Regenerate via `go run ./lang/cmd/genproto`
-  (run by `build.sh`). Generated: `proto/dtd.proto`, `proto/pb/dtd/{dtd.pb.go,
-  prefix_map.go,separator_map.go,lexical.go}`, `proto/pb/xml/{*.pb.go,lexical.go}`,
-  `lang/dtd.fdset`.
+- **NEVER edit generated files by hand.** Regenerate manually via
+  `go run ./lang/cmd/genproto` plus protoc when the grammar or protos change;
+  the artifacts are committed, so `build.sh` only sets up and builds. Generated:
+  `proto/dtd.proto`, `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,
+  lexical.go}`, `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`.
 - `proto/xml.proto` and `proto/xml_service.proto` are **hand-written** (see
-  ADR 0003) and run through `protoc` by `build.sh`.
+  ADR 0003) and run through `protoc` during that manual regeneration step.
 
 ## Pipeline
 
 ```
 lang/dtd.ebnf  ─┐
 lang/xml.lex   ─┤ go run ./lang/cmd/genproto
-lang/dtd.lex   ─┘   (ParseEBNF → GrammarToAST → transforms → Compile; lex tables)
+lang/dtd.lex   ─┘   (ParseEBNF -> GrammarToAST -> transforms -> Compile; lex tables)
         │
         ▼
 proto/dtd.proto + proto/pb/{xml,dtd}/lexical.go + prefix/separator maps
@@ -44,12 +45,12 @@ proto/pb/{xml,dtd}/*.pb.go
         ▼
 service/  parse pipeline:
   1. gluon CST parse (lang/xml.ebnf + generated lexical matchers via pkg lex)
-  2. project CST → xml.proto Document
+  2. project CST -> xml.proto Document
   3. well-formedness walk (tag match, dup attrs, PI target, charref, pubid)
   4. DTD second pass (lang/dtd.ebnf): parse internal subset + entity WFCs
         │
         ▼
-XmlService.Parse(bytes) → Document   (cmd/xmlserve serves it; cmd/xmlparse is a CLI)
+XmlService.Parse(bytes) -> Document   (cmd/xmlserve serves it; cmd/xmlparse is a CLI)
 ```
 
 ## Architecture
@@ -61,20 +62,22 @@ XmlService.Parse(bytes) → Document   (cmd/xmlserve serves it; cmd/xmlparse is 
 - **Homogeneous AST.** Every element is a `Tag`; the element type is data
   (`Tag.name`), not a message type. `Document.doctype` references the generated
   `dtd.Doctype`.
-- **Two grammars, two alphabets.** `xml.ebnf` parses characters → element tree.
+- **Two grammars, two alphabets.** `xml.ebnf` parses characters -> element tree.
   `dtd.ebnf` parses the DOCTYPE body. Entity/well-formedness constraints that a
   CFG can't express (tag matching, entity declaration/recursion, char/pubid
   legality) are tree-level walks in `service/`, not grammar.
 
 ## Testing
 
-- **`service` is the gate** (`go test ./...`): `TestW3CConformance` (manifest-
-  driven, EDITION-5-filtered) requires **every valid/invalid document to parse**
-  and not-wf rejection at or above `minRejectRate`; `TestLocalCorpus` requires
-  every `testing/xml/{valid,invalid}` document to parse.
-- `go run ./cmd/conformance` prints the per-collection W3C report.
-- Conformance is scored against XML 1.0 **5th edition**; the IBM `P85–P89`
-  name-character tests are 4e-only (`EDITION="1 2 3 4"`) and correctly skipped.
+- **`service` is the gate** (`go test ./...`): `TestCorpusWellFormed` runs over
+  `testing/corpus/xml/<verdict>/` and requires every valid/invalid document to
+  parse and every not-wf document to be rejected, at or above `minRejectRate`.
+- The corpus is fetched and organized by file type via `go run ./testing`;
+  `go run ./testing/xml-parse` prints the corpus report (xml, docx, xlsx, rss).
+- The corpus is the applicable subset (XML 1.0 5th edition and 1.1; no
+  namespaces or external entities), filtered at fetch time, so nothing is
+  skipped at test time. The IBM `P85-P89` name-character tests are 4th-edition
+  only and are excluded by the edition filter.
 
 ## Layout
 
@@ -82,15 +85,14 @@ XmlService.Parse(bytes) → Document   (cmd/xmlserve serves it; cmd/xmlparse is 
 |---|---|
 | `lang/xml.ebnf`, `lang/dtd.ebnf` | grammars (hand-edited) |
 | `lang/xml.lex`, `lang/dtd.lex` | lexical specs (hand-edited) |
-| `lang/cmd/genproto/` | grammar → proto + maps + lexical tables |
+| `lang/cmd/genproto/` | grammar -> proto + maps + lexical tables |
 | `lang/embed.go` | embeds the grammars for the runtime |
 | `lex/` | generic lexical-matcher engine (no grammar knowledge) |
 | `proto/xml.proto`, `proto/xml_service.proto` | hand-written AST + service |
 | `proto/dtd.proto`, `proto/pb/**` | generated |
 | `service/` | parser + gRPC server |
-| `cmd/xmlparse/` | CLI: file/stdin → AST (or `-cst`) |
+| `cmd/xmlparse/` | CLI: file/stdin -> AST (or `-cst`) |
 | `cmd/xmlserve/` | gRPC server |
-| `cmd/conformance/` | W3C conformance report |
-| `testing/` | corpora (gitignored, fetched on demand) |
+| `testing/` | corpus fetcher (`go run ./testing`); corpora are gitignored |
 | `testing/xml-parse/` | corpus harness (`go run ./testing/xml-parse`) |
 | `docs/decisions/` | ADRs |

@@ -9,6 +9,7 @@ package xmlpb
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -113,18 +114,144 @@ func (x *ParseResponse) GetDocument() *Document {
 	return nil
 }
 
+type CompileRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The DTD external subset to compile.
+	Dtd []byte `protobuf:"bytes,1,opt,name=dtd,proto3" json:"dtd,omitempty"`
+	// Naming options for the emitted descriptor; all optional.
+	Package       string `protobuf:"bytes,2,opt,name=package,proto3" json:"package,omitempty"`                      // proto package (e.g. "rss"); defaults to "lang".
+	GoPackage     string `protobuf:"bytes,3,opt,name=go_package,json=goPackage,proto3" json:"go_package,omitempty"` // go_package file option; omitted if empty.
+	FileName      string `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`    // FileDescriptorProto.name; "<package>.proto" default.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompileRequest) Reset() {
+	*x = CompileRequest{}
+	mi := &file_xml_service_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompileRequest) ProtoMessage() {}
+
+func (x *CompileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompileRequest.ProtoReflect.Descriptor instead.
+func (*CompileRequest) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CompileRequest) GetDtd() []byte {
+	if x != nil {
+		return x.Dtd
+	}
+	return nil
+}
+
+func (x *CompileRequest) GetPackage() string {
+	if x != nil {
+		return x.Package
+	}
+	return ""
+}
+
+func (x *CompileRequest) GetGoPackage() string {
+	if x != nil {
+		return x.GoPackage
+	}
+	return ""
+}
+
+func (x *CompileRequest) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+type CompileResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The compiled schema. It can be linked with protodesc for dynamic use or
+	// written out as a .proto / FileDescriptorSet.
+	File          *descriptorpb.FileDescriptorProto `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompileResponse) Reset() {
+	*x = CompileResponse{}
+	mi := &file_xml_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompileResponse) ProtoMessage() {}
+
+func (x *CompileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
+func (*CompileResponse) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CompileResponse) GetFile() *descriptorpb.FileDescriptorProto {
+	if x != nil {
+		return x.File
+	}
+	return nil
+}
+
 var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\" \n" +
+	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a google/protobuf/descriptor.proto\" \n" +
 	"\fParseRequest\x12\x10\n" +
 	"\x03xml\x18\x01 \x01(\fR\x03xml\":\n" +
 	"\rParseResponse\x12)\n" +
-	"\bdocument\x18\x01 \x01(\v2\r.xml.DocumentR\bdocument2<\n" +
+	"\bdocument\x18\x01 \x01(\v2\r.xml.DocumentR\bdocument\"x\n" +
+	"\x0eCompileRequest\x12\x10\n" +
+	"\x03dtd\x18\x01 \x01(\fR\x03dtd\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12\x1d\n" +
+	"\n" +
+	"go_package\x18\x03 \x01(\tR\tgoPackage\x12\x1b\n" +
+	"\tfile_name\x18\x04 \x01(\tR\bfileName\"K\n" +
+	"\x0fCompileResponse\x128\n" +
+	"\x04file\x18\x01 \x01(\v2$.google.protobuf.FileDescriptorProtoR\x04file2<\n" +
 	"\n" +
 	"XmlService\x12.\n" +
-	"\x05Parse\x12\x11.xml.ParseRequest\x1a\x12.xml.ParseResponseB1Z/github.com/accretional/xmile/proto/pb/xml;xmlpbb\x06proto3"
+	"\x05Parse\x12\x11.xml.ParseRequest\x1a\x12.xml.ParseResponse2E\n" +
+	"\rSchemaService\x124\n" +
+	"\aCompile\x12\x13.xml.CompileRequest\x1a\x14.xml.CompileResponseB1Z/github.com/accretional/xmile/proto/pb/xml;xmlpbb\x06proto3"
 
 var (
 	file_xml_service_proto_rawDescOnce sync.Once
@@ -138,21 +265,27 @@ func file_xml_service_proto_rawDescGZIP() []byte {
 	return file_xml_service_proto_rawDescData
 }
 
-var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_xml_service_proto_goTypes = []any{
-	(*ParseRequest)(nil),  // 0: xml.ParseRequest
-	(*ParseResponse)(nil), // 1: xml.ParseResponse
-	(*Document)(nil),      // 2: xml.Document
+	(*ParseRequest)(nil),                     // 0: xml.ParseRequest
+	(*ParseResponse)(nil),                    // 1: xml.ParseResponse
+	(*CompileRequest)(nil),                   // 2: xml.CompileRequest
+	(*CompileResponse)(nil),                  // 3: xml.CompileResponse
+	(*Document)(nil),                         // 4: xml.Document
+	(*descriptorpb.FileDescriptorProto)(nil), // 5: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
-	2, // 0: xml.ParseResponse.document:type_name -> xml.Document
-	0, // 1: xml.XmlService.Parse:input_type -> xml.ParseRequest
-	1, // 2: xml.XmlService.Parse:output_type -> xml.ParseResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: xml.ParseResponse.document:type_name -> xml.Document
+	5, // 1: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
+	0, // 2: xml.XmlService.Parse:input_type -> xml.ParseRequest
+	2, // 3: xml.SchemaService.Compile:input_type -> xml.CompileRequest
+	1, // 4: xml.XmlService.Parse:output_type -> xml.ParseResponse
+	3, // 5: xml.SchemaService.Compile:output_type -> xml.CompileResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_xml_service_proto_init() }
@@ -167,9 +300,9 @@ func file_xml_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_service_proto_rawDesc), len(file_xml_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_xml_service_proto_goTypes,
 		DependencyIndexes: file_xml_service_proto_depIdxs,

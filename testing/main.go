@@ -38,6 +38,12 @@ var formats = []struct {
 var verdictDirs = []string{"valid", "invalid", "not-wf"}
 
 func main() {
+	// `go run ./testing rss0.91` fetches only the RSS 0.91 corpus (used by the
+	// schema-compile harness) without re-running the full corpus build.
+	if len(os.Args) > 1 && os.Args[1] == rss091Dir {
+		downloadRSS091()
+		return
+	}
 	if err := fetchCorpus(); err != nil {
 		fmt.Fprintln(os.Stderr, "fetch:", err)
 		os.Exit(1)
