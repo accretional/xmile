@@ -696,15 +696,14 @@ func (*Contentspec_Mixed) isContentspec_Value() {}
 func (*Contentspec_Children) isContentspec_Value() {}
 
 type Mixed struct {
-	state                   protoimpl.MessageState   `protogen:"open.v1"`
-	OptS                    *OptS                    `protobuf:"bytes,1,opt,name=opt_s,json=optS,proto3" json:"opt_s,omitempty"`
-	NumberSignPcdataKeyword *NumberSignPcdataKeyword `protobuf:"bytes,2,opt,name=number_sign_pcdata_keyword,json=numberSignPcdataKeyword,proto3" json:"number_sign_pcdata_keyword,omitempty"`
-	Seq1                    []*Mixed_Seq1            `protobuf:"bytes,3,rep,name=seq1,proto3" json:"seq1,omitempty"`
-	OptS_2                  *OptS                    `protobuf:"bytes,4,opt,name=opt_s_2,json=optS2,proto3" json:"opt_s_2,omitempty"`
-	RightParenthesisKeyword *RightParenthesisKeyword `protobuf:"bytes,5,opt,name=right_parenthesis_keyword,json=rightParenthesisKeyword,proto3" json:"right_parenthesis_keyword,omitempty"`
-	AsteriskKeyword         *AsteriskKeyword         `protobuf:"bytes,6,opt,name=asterisk_keyword,json=asteriskKeyword,proto3" json:"asterisk_keyword,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*Mixed_LeftParenthesis_
+	//	*Mixed_LeftParenthesis2_
+	Value         isMixed_Value `protobuf_oneof:"value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Mixed) Reset() {
@@ -737,47 +736,46 @@ func (*Mixed) Descriptor() ([]byte, []int) {
 	return file_dtd_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *Mixed) GetOptS() *OptS {
+func (x *Mixed) GetValue() isMixed_Value {
 	if x != nil {
-		return x.OptS
+		return x.Value
 	}
 	return nil
 }
 
-func (x *Mixed) GetNumberSignPcdataKeyword() *NumberSignPcdataKeyword {
+func (x *Mixed) GetLeftParenthesis() *Mixed_LeftParenthesis {
 	if x != nil {
-		return x.NumberSignPcdataKeyword
+		if x, ok := x.Value.(*Mixed_LeftParenthesis_); ok {
+			return x.LeftParenthesis
+		}
 	}
 	return nil
 }
 
-func (x *Mixed) GetSeq1() []*Mixed_Seq1 {
+func (x *Mixed) GetLeftParenthesis2() *Mixed_LeftParenthesis2 {
 	if x != nil {
-		return x.Seq1
+		if x, ok := x.Value.(*Mixed_LeftParenthesis2_); ok {
+			return x.LeftParenthesis2
+		}
 	}
 	return nil
 }
 
-func (x *Mixed) GetOptS_2() *OptS {
-	if x != nil {
-		return x.OptS_2
-	}
-	return nil
+type isMixed_Value interface {
+	isMixed_Value()
 }
 
-func (x *Mixed) GetRightParenthesisKeyword() *RightParenthesisKeyword {
-	if x != nil {
-		return x.RightParenthesisKeyword
-	}
-	return nil
+type Mixed_LeftParenthesis_ struct {
+	LeftParenthesis *Mixed_LeftParenthesis `protobuf:"bytes,1,opt,name=left_parenthesis,json=leftParenthesis,proto3,oneof"`
 }
 
-func (x *Mixed) GetAsteriskKeyword() *AsteriskKeyword {
-	if x != nil {
-		return x.AsteriskKeyword
-	}
-	return nil
+type Mixed_LeftParenthesis2_ struct {
+	LeftParenthesis2 *Mixed_LeftParenthesis2 `protobuf:"bytes,2,opt,name=left_parenthesis2,json=leftParenthesis2,proto3,oneof"`
 }
+
+func (*Mixed_LeftParenthesis_) isMixed_Value() {}
+
+func (*Mixed_LeftParenthesis2_) isMixed_Value() {}
 
 type Children struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1971,6 +1969,88 @@ func (*EntityKind_PercentSign_) isEntityKind_Value() {}
 
 func (*EntityKind_Seq1_) isEntityKind_Value() {}
 
+type PeValue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*PeValue_AttLiteral
+	//	*PeValue_ExtId
+	Value         isPeValue_Value `protobuf_oneof:"value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PeValue) Reset() {
+	*x = PeValue{}
+	mi := &file_dtd_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PeValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PeValue) ProtoMessage() {}
+
+func (x *PeValue) ProtoReflect() protoreflect.Message {
+	mi := &file_dtd_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PeValue.ProtoReflect.Descriptor instead.
+func (*PeValue) Descriptor() ([]byte, []int) {
+	return file_dtd_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *PeValue) GetValue() isPeValue_Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *PeValue) GetAttLiteral() *AttLiteral {
+	if x != nil {
+		if x, ok := x.Value.(*PeValue_AttLiteral); ok {
+			return x.AttLiteral
+		}
+	}
+	return nil
+}
+
+func (x *PeValue) GetExtId() *ExtId {
+	if x != nil {
+		if x, ok := x.Value.(*PeValue_ExtId); ok {
+			return x.ExtId
+		}
+	}
+	return nil
+}
+
+type isPeValue_Value interface {
+	isPeValue_Value()
+}
+
+type PeValue_AttLiteral struct {
+	AttLiteral *AttLiteral `protobuf:"bytes,1,opt,name=att_literal,json=attLiteral,proto3,oneof"`
+}
+
+type PeValue_ExtId struct {
+	ExtId *ExtId `protobuf:"bytes,2,opt,name=ext_id,json=extId,proto3,oneof"`
+}
+
+func (*PeValue_AttLiteral) isPeValue_Value() {}
+
+func (*PeValue_ExtId) isPeValue_Value() {}
+
 type EntityValue struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Value:
@@ -1984,7 +2064,7 @@ type EntityValue struct {
 
 func (x *EntityValue) Reset() {
 	*x = EntityValue{}
-	mi := &file_dtd_proto_msgTypes[23]
+	mi := &file_dtd_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1996,7 +2076,7 @@ func (x *EntityValue) String() string {
 func (*EntityValue) ProtoMessage() {}
 
 func (x *EntityValue) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[23]
+	mi := &file_dtd_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2009,7 +2089,7 @@ func (x *EntityValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityValue.ProtoReflect.Descriptor instead.
 func (*EntityValue) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{23}
+	return file_dtd_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *EntityValue) GetValue() isEntityValue_Value {
@@ -2067,7 +2147,7 @@ type NotationDecl struct {
 
 func (x *NotationDecl) Reset() {
 	*x = NotationDecl{}
-	mi := &file_dtd_proto_msgTypes[24]
+	mi := &file_dtd_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2079,7 +2159,7 @@ func (x *NotationDecl) String() string {
 func (*NotationDecl) ProtoMessage() {}
 
 func (x *NotationDecl) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[24]
+	mi := &file_dtd_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2092,7 +2172,7 @@ func (x *NotationDecl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotationDecl.ProtoReflect.Descriptor instead.
 func (*NotationDecl) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{24}
+	return file_dtd_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *NotationDecl) GetS() string {
@@ -2150,7 +2230,7 @@ type NotationId struct {
 
 func (x *NotationId) Reset() {
 	*x = NotationId{}
-	mi := &file_dtd_proto_msgTypes[25]
+	mi := &file_dtd_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2162,7 +2242,7 @@ func (x *NotationId) String() string {
 func (*NotationId) ProtoMessage() {}
 
 func (x *NotationId) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[25]
+	mi := &file_dtd_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2175,7 +2255,7 @@ func (x *NotationId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotationId.ProtoReflect.Descriptor instead.
 func (*NotationId) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{25}
+	return file_dtd_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *NotationId) GetValue() isNotationId_Value {
@@ -2229,7 +2309,7 @@ type Pereference struct {
 
 func (x *Pereference) Reset() {
 	*x = Pereference{}
-	mi := &file_dtd_proto_msgTypes[26]
+	mi := &file_dtd_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2241,7 +2321,7 @@ func (x *Pereference) String() string {
 func (*Pereference) ProtoMessage() {}
 
 func (x *Pereference) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[26]
+	mi := &file_dtd_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2254,7 +2334,7 @@ func (x *Pereference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pereference.ProtoReflect.Descriptor instead.
 func (*Pereference) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{26}
+	return file_dtd_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Pereference) GetName() string {
@@ -2281,7 +2361,7 @@ type Comment struct {
 
 func (x *Comment) Reset() {
 	*x = Comment{}
-	mi := &file_dtd_proto_msgTypes[27]
+	mi := &file_dtd_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2293,7 +2373,7 @@ func (x *Comment) String() string {
 func (*Comment) ProtoMessage() {}
 
 func (x *Comment) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[27]
+	mi := &file_dtd_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2306,7 +2386,7 @@ func (x *Comment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Comment.ProtoReflect.Descriptor instead.
 func (*Comment) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{27}
+	return file_dtd_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *Comment) GetCommentText() string {
@@ -2326,7 +2406,7 @@ func (x *Comment) GetHyphenMinusHyphenMinusGreaterThanSignKeyword() *HyphenMinus
 type Pi struct {
 	state                              protoimpl.MessageState              `protogen:"open.v1"`
 	Name                               string                              `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	PiText                             string                              `protobuf:"bytes,2,opt,name=pi_text,json=piText,proto3" json:"pi_text,omitempty"`
+	Seq1                               *Pi_Seq1                            `protobuf:"bytes,2,opt,name=seq1,proto3" json:"seq1,omitempty"`
 	QuestionMarkGreaterThanSignKeyword *QuestionMarkGreaterThanSignKeyword `protobuf:"bytes,3,opt,name=question_mark_greater_than_sign_keyword,json=questionMarkGreaterThanSignKeyword,proto3" json:"question_mark_greater_than_sign_keyword,omitempty"`
 	unknownFields                      protoimpl.UnknownFields
 	sizeCache                          protoimpl.SizeCache
@@ -2334,7 +2414,7 @@ type Pi struct {
 
 func (x *Pi) Reset() {
 	*x = Pi{}
-	mi := &file_dtd_proto_msgTypes[28]
+	mi := &file_dtd_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2346,7 +2426,7 @@ func (x *Pi) String() string {
 func (*Pi) ProtoMessage() {}
 
 func (x *Pi) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[28]
+	mi := &file_dtd_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2359,7 +2439,7 @@ func (x *Pi) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pi.ProtoReflect.Descriptor instead.
 func (*Pi) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{28}
+	return file_dtd_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Pi) GetName() string {
@@ -2369,11 +2449,11 @@ func (x *Pi) GetName() string {
 	return ""
 }
 
-func (x *Pi) GetPiText() string {
+func (x *Pi) GetSeq1() *Pi_Seq1 {
 	if x != nil {
-		return x.PiText
+		return x.Seq1
 	}
-	return ""
+	return nil
 }
 
 func (x *Pi) GetQuestionMarkGreaterThanSignKeyword() *QuestionMarkGreaterThanSignKeyword {
@@ -2396,7 +2476,7 @@ type SystemLiteral struct {
 
 func (x *SystemLiteral) Reset() {
 	*x = SystemLiteral{}
-	mi := &file_dtd_proto_msgTypes[29]
+	mi := &file_dtd_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2408,7 +2488,7 @@ func (x *SystemLiteral) String() string {
 func (*SystemLiteral) ProtoMessage() {}
 
 func (x *SystemLiteral) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[29]
+	mi := &file_dtd_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2421,7 +2501,7 @@ func (x *SystemLiteral) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemLiteral.ProtoReflect.Descriptor instead.
 func (*SystemLiteral) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{29}
+	return file_dtd_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SystemLiteral) GetValue() isSystemLiteral_Value {
@@ -2478,7 +2558,7 @@ type PubidLiteral struct {
 
 func (x *PubidLiteral) Reset() {
 	*x = PubidLiteral{}
-	mi := &file_dtd_proto_msgTypes[30]
+	mi := &file_dtd_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2490,7 +2570,7 @@ func (x *PubidLiteral) String() string {
 func (*PubidLiteral) ProtoMessage() {}
 
 func (x *PubidLiteral) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[30]
+	mi := &file_dtd_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2503,7 +2583,7 @@ func (x *PubidLiteral) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PubidLiteral.ProtoReflect.Descriptor instead.
 func (*PubidLiteral) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{30}
+	return file_dtd_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *PubidLiteral) GetValue() isPubidLiteral_Value {
@@ -2560,7 +2640,7 @@ type AttLiteral struct {
 
 func (x *AttLiteral) Reset() {
 	*x = AttLiteral{}
-	mi := &file_dtd_proto_msgTypes[31]
+	mi := &file_dtd_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2572,7 +2652,7 @@ func (x *AttLiteral) String() string {
 func (*AttLiteral) ProtoMessage() {}
 
 func (x *AttLiteral) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[31]
+	mi := &file_dtd_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2585,7 +2665,7 @@ func (x *AttLiteral) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttLiteral.ProtoReflect.Descriptor instead.
 func (*AttLiteral) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{31}
+	return file_dtd_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AttLiteral) GetValue() isAttLiteral_Value {
@@ -2638,7 +2718,7 @@ type OptS struct {
 
 func (x *OptS) Reset() {
 	*x = OptS{}
-	mi := &file_dtd_proto_msgTypes[32]
+	mi := &file_dtd_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2650,7 +2730,7 @@ func (x *OptS) String() string {
 func (*OptS) ProtoMessage() {}
 
 func (x *OptS) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[32]
+	mi := &file_dtd_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2663,7 +2743,7 @@ func (x *OptS) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptS.ProtoReflect.Descriptor instead.
 func (*OptS) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{32}
+	return file_dtd_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *OptS) GetS() string {
@@ -2681,7 +2761,7 @@ type AnyKeyword struct {
 
 func (x *AnyKeyword) Reset() {
 	*x = AnyKeyword{}
-	mi := &file_dtd_proto_msgTypes[33]
+	mi := &file_dtd_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2693,7 +2773,7 @@ func (x *AnyKeyword) String() string {
 func (*AnyKeyword) ProtoMessage() {}
 
 func (x *AnyKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[33]
+	mi := &file_dtd_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2706,7 +2786,7 @@ func (x *AnyKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnyKeyword.ProtoReflect.Descriptor instead.
 func (*AnyKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{33}
+	return file_dtd_proto_rawDescGZIP(), []int{34}
 }
 
 type ApostropheKeyword struct {
@@ -2717,7 +2797,7 @@ type ApostropheKeyword struct {
 
 func (x *ApostropheKeyword) Reset() {
 	*x = ApostropheKeyword{}
-	mi := &file_dtd_proto_msgTypes[34]
+	mi := &file_dtd_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2729,7 +2809,7 @@ func (x *ApostropheKeyword) String() string {
 func (*ApostropheKeyword) ProtoMessage() {}
 
 func (x *ApostropheKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[34]
+	mi := &file_dtd_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2742,7 +2822,7 @@ func (x *ApostropheKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApostropheKeyword.ProtoReflect.Descriptor instead.
 func (*ApostropheKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{34}
+	return file_dtd_proto_rawDescGZIP(), []int{35}
 }
 
 type AsteriskKeyword struct {
@@ -2753,7 +2833,7 @@ type AsteriskKeyword struct {
 
 func (x *AsteriskKeyword) Reset() {
 	*x = AsteriskKeyword{}
-	mi := &file_dtd_proto_msgTypes[35]
+	mi := &file_dtd_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2765,7 +2845,7 @@ func (x *AsteriskKeyword) String() string {
 func (*AsteriskKeyword) ProtoMessage() {}
 
 func (x *AsteriskKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[35]
+	mi := &file_dtd_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2778,7 +2858,7 @@ func (x *AsteriskKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsteriskKeyword.ProtoReflect.Descriptor instead.
 func (*AsteriskKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{35}
+	return file_dtd_proto_rawDescGZIP(), []int{36}
 }
 
 type CdataKeyword struct {
@@ -2789,7 +2869,7 @@ type CdataKeyword struct {
 
 func (x *CdataKeyword) Reset() {
 	*x = CdataKeyword{}
-	mi := &file_dtd_proto_msgTypes[36]
+	mi := &file_dtd_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2801,7 +2881,7 @@ func (x *CdataKeyword) String() string {
 func (*CdataKeyword) ProtoMessage() {}
 
 func (x *CdataKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[36]
+	mi := &file_dtd_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2814,7 +2894,7 @@ func (x *CdataKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CdataKeyword.ProtoReflect.Descriptor instead.
 func (*CdataKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{36}
+	return file_dtd_proto_rawDescGZIP(), []int{37}
 }
 
 type CommaKeyword struct {
@@ -2825,7 +2905,7 @@ type CommaKeyword struct {
 
 func (x *CommaKeyword) Reset() {
 	*x = CommaKeyword{}
-	mi := &file_dtd_proto_msgTypes[37]
+	mi := &file_dtd_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2837,7 +2917,7 @@ func (x *CommaKeyword) String() string {
 func (*CommaKeyword) ProtoMessage() {}
 
 func (x *CommaKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[37]
+	mi := &file_dtd_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2850,7 +2930,7 @@ func (x *CommaKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommaKeyword.ProtoReflect.Descriptor instead.
 func (*CommaKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{37}
+	return file_dtd_proto_rawDescGZIP(), []int{38}
 }
 
 type EmptyKeyword struct {
@@ -2861,7 +2941,7 @@ type EmptyKeyword struct {
 
 func (x *EmptyKeyword) Reset() {
 	*x = EmptyKeyword{}
-	mi := &file_dtd_proto_msgTypes[38]
+	mi := &file_dtd_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2873,7 +2953,7 @@ func (x *EmptyKeyword) String() string {
 func (*EmptyKeyword) ProtoMessage() {}
 
 func (x *EmptyKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[38]
+	mi := &file_dtd_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2886,7 +2966,7 @@ func (x *EmptyKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmptyKeyword.ProtoReflect.Descriptor instead.
 func (*EmptyKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{38}
+	return file_dtd_proto_rawDescGZIP(), []int{39}
 }
 
 type EntitiesKeyword struct {
@@ -2897,7 +2977,7 @@ type EntitiesKeyword struct {
 
 func (x *EntitiesKeyword) Reset() {
 	*x = EntitiesKeyword{}
-	mi := &file_dtd_proto_msgTypes[39]
+	mi := &file_dtd_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2909,7 +2989,7 @@ func (x *EntitiesKeyword) String() string {
 func (*EntitiesKeyword) ProtoMessage() {}
 
 func (x *EntitiesKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[39]
+	mi := &file_dtd_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2922,7 +3002,7 @@ func (x *EntitiesKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntitiesKeyword.ProtoReflect.Descriptor instead.
 func (*EntitiesKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{39}
+	return file_dtd_proto_rawDescGZIP(), []int{40}
 }
 
 type EntityKeyword struct {
@@ -2933,7 +3013,7 @@ type EntityKeyword struct {
 
 func (x *EntityKeyword) Reset() {
 	*x = EntityKeyword{}
-	mi := &file_dtd_proto_msgTypes[40]
+	mi := &file_dtd_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2945,7 +3025,7 @@ func (x *EntityKeyword) String() string {
 func (*EntityKeyword) ProtoMessage() {}
 
 func (x *EntityKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[40]
+	mi := &file_dtd_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2958,7 +3038,7 @@ func (x *EntityKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityKeyword.ProtoReflect.Descriptor instead.
 func (*EntityKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{40}
+	return file_dtd_proto_rawDescGZIP(), []int{41}
 }
 
 type GreaterThanSignKeyword struct {
@@ -2969,7 +3049,7 @@ type GreaterThanSignKeyword struct {
 
 func (x *GreaterThanSignKeyword) Reset() {
 	*x = GreaterThanSignKeyword{}
-	mi := &file_dtd_proto_msgTypes[41]
+	mi := &file_dtd_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2981,7 +3061,7 @@ func (x *GreaterThanSignKeyword) String() string {
 func (*GreaterThanSignKeyword) ProtoMessage() {}
 
 func (x *GreaterThanSignKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[41]
+	mi := &file_dtd_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2994,7 +3074,7 @@ func (x *GreaterThanSignKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GreaterThanSignKeyword.ProtoReflect.Descriptor instead.
 func (*GreaterThanSignKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{41}
+	return file_dtd_proto_rawDescGZIP(), []int{42}
 }
 
 type HyphenMinusHyphenMinusGreaterThanSignKeyword struct {
@@ -3005,7 +3085,7 @@ type HyphenMinusHyphenMinusGreaterThanSignKeyword struct {
 
 func (x *HyphenMinusHyphenMinusGreaterThanSignKeyword) Reset() {
 	*x = HyphenMinusHyphenMinusGreaterThanSignKeyword{}
-	mi := &file_dtd_proto_msgTypes[42]
+	mi := &file_dtd_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3017,7 +3097,7 @@ func (x *HyphenMinusHyphenMinusGreaterThanSignKeyword) String() string {
 func (*HyphenMinusHyphenMinusGreaterThanSignKeyword) ProtoMessage() {}
 
 func (x *HyphenMinusHyphenMinusGreaterThanSignKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[42]
+	mi := &file_dtd_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3030,7 +3110,7 @@ func (x *HyphenMinusHyphenMinusGreaterThanSignKeyword) ProtoReflect() protorefle
 
 // Deprecated: Use HyphenMinusHyphenMinusGreaterThanSignKeyword.ProtoReflect.Descriptor instead.
 func (*HyphenMinusHyphenMinusGreaterThanSignKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{42}
+	return file_dtd_proto_rawDescGZIP(), []int{43}
 }
 
 type IdKeyword struct {
@@ -3041,7 +3121,7 @@ type IdKeyword struct {
 
 func (x *IdKeyword) Reset() {
 	*x = IdKeyword{}
-	mi := &file_dtd_proto_msgTypes[43]
+	mi := &file_dtd_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3053,7 +3133,7 @@ func (x *IdKeyword) String() string {
 func (*IdKeyword) ProtoMessage() {}
 
 func (x *IdKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[43]
+	mi := &file_dtd_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3066,7 +3146,7 @@ func (x *IdKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IdKeyword.ProtoReflect.Descriptor instead.
 func (*IdKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{43}
+	return file_dtd_proto_rawDescGZIP(), []int{44}
 }
 
 type IdrefKeyword struct {
@@ -3077,7 +3157,7 @@ type IdrefKeyword struct {
 
 func (x *IdrefKeyword) Reset() {
 	*x = IdrefKeyword{}
-	mi := &file_dtd_proto_msgTypes[44]
+	mi := &file_dtd_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3089,7 +3169,7 @@ func (x *IdrefKeyword) String() string {
 func (*IdrefKeyword) ProtoMessage() {}
 
 func (x *IdrefKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[44]
+	mi := &file_dtd_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3102,7 +3182,7 @@ func (x *IdrefKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IdrefKeyword.ProtoReflect.Descriptor instead.
 func (*IdrefKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{44}
+	return file_dtd_proto_rawDescGZIP(), []int{45}
 }
 
 type IdrefsKeyword struct {
@@ -3113,7 +3193,7 @@ type IdrefsKeyword struct {
 
 func (x *IdrefsKeyword) Reset() {
 	*x = IdrefsKeyword{}
-	mi := &file_dtd_proto_msgTypes[45]
+	mi := &file_dtd_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3125,7 +3205,7 @@ func (x *IdrefsKeyword) String() string {
 func (*IdrefsKeyword) ProtoMessage() {}
 
 func (x *IdrefsKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[45]
+	mi := &file_dtd_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3138,7 +3218,7 @@ func (x *IdrefsKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IdrefsKeyword.ProtoReflect.Descriptor instead.
 func (*IdrefsKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{45}
+	return file_dtd_proto_rawDescGZIP(), []int{46}
 }
 
 type LeftParenthesisKeyword struct {
@@ -3149,7 +3229,7 @@ type LeftParenthesisKeyword struct {
 
 func (x *LeftParenthesisKeyword) Reset() {
 	*x = LeftParenthesisKeyword{}
-	mi := &file_dtd_proto_msgTypes[46]
+	mi := &file_dtd_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3161,7 +3241,7 @@ func (x *LeftParenthesisKeyword) String() string {
 func (*LeftParenthesisKeyword) ProtoMessage() {}
 
 func (x *LeftParenthesisKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[46]
+	mi := &file_dtd_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3174,7 +3254,7 @@ func (x *LeftParenthesisKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeftParenthesisKeyword.ProtoReflect.Descriptor instead.
 func (*LeftParenthesisKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{46}
+	return file_dtd_proto_rawDescGZIP(), []int{47}
 }
 
 type NdataKeyword struct {
@@ -3185,7 +3265,7 @@ type NdataKeyword struct {
 
 func (x *NdataKeyword) Reset() {
 	*x = NdataKeyword{}
-	mi := &file_dtd_proto_msgTypes[47]
+	mi := &file_dtd_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3197,7 +3277,7 @@ func (x *NdataKeyword) String() string {
 func (*NdataKeyword) ProtoMessage() {}
 
 func (x *NdataKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[47]
+	mi := &file_dtd_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3210,7 +3290,7 @@ func (x *NdataKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NdataKeyword.ProtoReflect.Descriptor instead.
 func (*NdataKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{47}
+	return file_dtd_proto_rawDescGZIP(), []int{48}
 }
 
 type NmtokenKeyword struct {
@@ -3221,7 +3301,7 @@ type NmtokenKeyword struct {
 
 func (x *NmtokenKeyword) Reset() {
 	*x = NmtokenKeyword{}
-	mi := &file_dtd_proto_msgTypes[48]
+	mi := &file_dtd_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3233,7 +3313,7 @@ func (x *NmtokenKeyword) String() string {
 func (*NmtokenKeyword) ProtoMessage() {}
 
 func (x *NmtokenKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[48]
+	mi := &file_dtd_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3246,7 +3326,7 @@ func (x *NmtokenKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NmtokenKeyword.ProtoReflect.Descriptor instead.
 func (*NmtokenKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{48}
+	return file_dtd_proto_rawDescGZIP(), []int{49}
 }
 
 type NmtokensKeyword struct {
@@ -3257,7 +3337,7 @@ type NmtokensKeyword struct {
 
 func (x *NmtokensKeyword) Reset() {
 	*x = NmtokensKeyword{}
-	mi := &file_dtd_proto_msgTypes[49]
+	mi := &file_dtd_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3269,7 +3349,7 @@ func (x *NmtokensKeyword) String() string {
 func (*NmtokensKeyword) ProtoMessage() {}
 
 func (x *NmtokensKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[49]
+	mi := &file_dtd_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3282,7 +3362,7 @@ func (x *NmtokensKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NmtokensKeyword.ProtoReflect.Descriptor instead.
 func (*NmtokensKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{49}
+	return file_dtd_proto_rawDescGZIP(), []int{50}
 }
 
 type NumberSignImpliedKeyword struct {
@@ -3293,7 +3373,7 @@ type NumberSignImpliedKeyword struct {
 
 func (x *NumberSignImpliedKeyword) Reset() {
 	*x = NumberSignImpliedKeyword{}
-	mi := &file_dtd_proto_msgTypes[50]
+	mi := &file_dtd_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3305,7 +3385,7 @@ func (x *NumberSignImpliedKeyword) String() string {
 func (*NumberSignImpliedKeyword) ProtoMessage() {}
 
 func (x *NumberSignImpliedKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[50]
+	mi := &file_dtd_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3318,7 +3398,7 @@ func (x *NumberSignImpliedKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NumberSignImpliedKeyword.ProtoReflect.Descriptor instead.
 func (*NumberSignImpliedKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{50}
+	return file_dtd_proto_rawDescGZIP(), []int{51}
 }
 
 type NumberSignPcdataKeyword struct {
@@ -3329,7 +3409,7 @@ type NumberSignPcdataKeyword struct {
 
 func (x *NumberSignPcdataKeyword) Reset() {
 	*x = NumberSignPcdataKeyword{}
-	mi := &file_dtd_proto_msgTypes[51]
+	mi := &file_dtd_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +3421,7 @@ func (x *NumberSignPcdataKeyword) String() string {
 func (*NumberSignPcdataKeyword) ProtoMessage() {}
 
 func (x *NumberSignPcdataKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[51]
+	mi := &file_dtd_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +3434,7 @@ func (x *NumberSignPcdataKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NumberSignPcdataKeyword.ProtoReflect.Descriptor instead.
 func (*NumberSignPcdataKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{51}
+	return file_dtd_proto_rawDescGZIP(), []int{52}
 }
 
 type NumberSignRequiredKeyword struct {
@@ -3365,7 +3445,7 @@ type NumberSignRequiredKeyword struct {
 
 func (x *NumberSignRequiredKeyword) Reset() {
 	*x = NumberSignRequiredKeyword{}
-	mi := &file_dtd_proto_msgTypes[52]
+	mi := &file_dtd_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3377,7 +3457,7 @@ func (x *NumberSignRequiredKeyword) String() string {
 func (*NumberSignRequiredKeyword) ProtoMessage() {}
 
 func (x *NumberSignRequiredKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[52]
+	mi := &file_dtd_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3390,7 +3470,7 @@ func (x *NumberSignRequiredKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NumberSignRequiredKeyword.ProtoReflect.Descriptor instead.
 func (*NumberSignRequiredKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{52}
+	return file_dtd_proto_rawDescGZIP(), []int{53}
 }
 
 type PlusSignKeyword struct {
@@ -3401,7 +3481,7 @@ type PlusSignKeyword struct {
 
 func (x *PlusSignKeyword) Reset() {
 	*x = PlusSignKeyword{}
-	mi := &file_dtd_proto_msgTypes[53]
+	mi := &file_dtd_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3413,7 +3493,7 @@ func (x *PlusSignKeyword) String() string {
 func (*PlusSignKeyword) ProtoMessage() {}
 
 func (x *PlusSignKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[53]
+	mi := &file_dtd_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3426,7 +3506,7 @@ func (x *PlusSignKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlusSignKeyword.ProtoReflect.Descriptor instead.
 func (*PlusSignKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{53}
+	return file_dtd_proto_rawDescGZIP(), []int{54}
 }
 
 type QuestionMarkGreaterThanSignKeyword struct {
@@ -3437,7 +3517,7 @@ type QuestionMarkGreaterThanSignKeyword struct {
 
 func (x *QuestionMarkGreaterThanSignKeyword) Reset() {
 	*x = QuestionMarkGreaterThanSignKeyword{}
-	mi := &file_dtd_proto_msgTypes[54]
+	mi := &file_dtd_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3449,7 +3529,7 @@ func (x *QuestionMarkGreaterThanSignKeyword) String() string {
 func (*QuestionMarkGreaterThanSignKeyword) ProtoMessage() {}
 
 func (x *QuestionMarkGreaterThanSignKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[54]
+	mi := &file_dtd_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3462,7 +3542,7 @@ func (x *QuestionMarkGreaterThanSignKeyword) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use QuestionMarkGreaterThanSignKeyword.ProtoReflect.Descriptor instead.
 func (*QuestionMarkGreaterThanSignKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{54}
+	return file_dtd_proto_rawDescGZIP(), []int{55}
 }
 
 type QuestionMarkKeyword struct {
@@ -3473,7 +3553,7 @@ type QuestionMarkKeyword struct {
 
 func (x *QuestionMarkKeyword) Reset() {
 	*x = QuestionMarkKeyword{}
-	mi := &file_dtd_proto_msgTypes[55]
+	mi := &file_dtd_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3485,7 +3565,7 @@ func (x *QuestionMarkKeyword) String() string {
 func (*QuestionMarkKeyword) ProtoMessage() {}
 
 func (x *QuestionMarkKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[55]
+	mi := &file_dtd_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3498,7 +3578,7 @@ func (x *QuestionMarkKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionMarkKeyword.ProtoReflect.Descriptor instead.
 func (*QuestionMarkKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{55}
+	return file_dtd_proto_rawDescGZIP(), []int{56}
 }
 
 type QuotationMarkKeyword struct {
@@ -3509,7 +3589,7 @@ type QuotationMarkKeyword struct {
 
 func (x *QuotationMarkKeyword) Reset() {
 	*x = QuotationMarkKeyword{}
-	mi := &file_dtd_proto_msgTypes[56]
+	mi := &file_dtd_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3521,7 +3601,7 @@ func (x *QuotationMarkKeyword) String() string {
 func (*QuotationMarkKeyword) ProtoMessage() {}
 
 func (x *QuotationMarkKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[56]
+	mi := &file_dtd_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3534,7 +3614,7 @@ func (x *QuotationMarkKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuotationMarkKeyword.ProtoReflect.Descriptor instead.
 func (*QuotationMarkKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{56}
+	return file_dtd_proto_rawDescGZIP(), []int{57}
 }
 
 type RightParenthesisKeyword struct {
@@ -3545,7 +3625,7 @@ type RightParenthesisKeyword struct {
 
 func (x *RightParenthesisKeyword) Reset() {
 	*x = RightParenthesisKeyword{}
-	mi := &file_dtd_proto_msgTypes[57]
+	mi := &file_dtd_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3557,7 +3637,7 @@ func (x *RightParenthesisKeyword) String() string {
 func (*RightParenthesisKeyword) ProtoMessage() {}
 
 func (x *RightParenthesisKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[57]
+	mi := &file_dtd_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3570,7 +3650,7 @@ func (x *RightParenthesisKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RightParenthesisKeyword.ProtoReflect.Descriptor instead.
 func (*RightParenthesisKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{57}
+	return file_dtd_proto_rawDescGZIP(), []int{58}
 }
 
 type RightSquareBracketKeyword struct {
@@ -3581,7 +3661,7 @@ type RightSquareBracketKeyword struct {
 
 func (x *RightSquareBracketKeyword) Reset() {
 	*x = RightSquareBracketKeyword{}
-	mi := &file_dtd_proto_msgTypes[58]
+	mi := &file_dtd_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3593,7 +3673,7 @@ func (x *RightSquareBracketKeyword) String() string {
 func (*RightSquareBracketKeyword) ProtoMessage() {}
 
 func (x *RightSquareBracketKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[58]
+	mi := &file_dtd_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3606,7 +3686,7 @@ func (x *RightSquareBracketKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RightSquareBracketKeyword.ProtoReflect.Descriptor instead.
 func (*RightSquareBracketKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{58}
+	return file_dtd_proto_rawDescGZIP(), []int{59}
 }
 
 type SemicolonKeyword struct {
@@ -3617,7 +3697,7 @@ type SemicolonKeyword struct {
 
 func (x *SemicolonKeyword) Reset() {
 	*x = SemicolonKeyword{}
-	mi := &file_dtd_proto_msgTypes[59]
+	mi := &file_dtd_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3629,7 +3709,7 @@ func (x *SemicolonKeyword) String() string {
 func (*SemicolonKeyword) ProtoMessage() {}
 
 func (x *SemicolonKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[59]
+	mi := &file_dtd_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3642,7 +3722,7 @@ func (x *SemicolonKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SemicolonKeyword.ProtoReflect.Descriptor instead.
 func (*SemicolonKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{59}
+	return file_dtd_proto_rawDescGZIP(), []int{60}
 }
 
 type VerticalLineKeyword struct {
@@ -3653,7 +3733,7 @@ type VerticalLineKeyword struct {
 
 func (x *VerticalLineKeyword) Reset() {
 	*x = VerticalLineKeyword{}
-	mi := &file_dtd_proto_msgTypes[60]
+	mi := &file_dtd_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3665,7 +3745,7 @@ func (x *VerticalLineKeyword) String() string {
 func (*VerticalLineKeyword) ProtoMessage() {}
 
 func (x *VerticalLineKeyword) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[60]
+	mi := &file_dtd_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3678,7 +3758,7 @@ func (x *VerticalLineKeyword) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerticalLineKeyword.ProtoReflect.Descriptor instead.
 func (*VerticalLineKeyword) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{60}
+	return file_dtd_proto_rawDescGZIP(), []int{61}
 }
 
 type ExternalId_Seq1 struct {
@@ -3691,7 +3771,7 @@ type ExternalId_Seq1 struct {
 
 func (x *ExternalId_Seq1) Reset() {
 	*x = ExternalId_Seq1{}
-	mi := &file_dtd_proto_msgTypes[61]
+	mi := &file_dtd_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3703,7 +3783,7 @@ func (x *ExternalId_Seq1) String() string {
 func (*ExternalId_Seq1) ProtoMessage() {}
 
 func (x *ExternalId_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[61]
+	mi := &file_dtd_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3743,7 +3823,7 @@ type ExtId_System struct {
 
 func (x *ExtId_System) Reset() {
 	*x = ExtId_System{}
-	mi := &file_dtd_proto_msgTypes[62]
+	mi := &file_dtd_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3755,7 +3835,7 @@ func (x *ExtId_System) String() string {
 func (*ExtId_System) ProtoMessage() {}
 
 func (x *ExtId_System) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[62]
+	mi := &file_dtd_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3797,7 +3877,7 @@ type ExtId_Public struct {
 
 func (x *ExtId_Public) Reset() {
 	*x = ExtId_Public{}
-	mi := &file_dtd_proto_msgTypes[63]
+	mi := &file_dtd_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3809,7 +3889,7 @@ func (x *ExtId_Public) String() string {
 func (*ExtId_Public) ProtoMessage() {}
 
 func (x *ExtId_Public) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[63]
+	mi := &file_dtd_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3863,7 +3943,7 @@ type InternalSubset_LeftSquareBracket struct {
 
 func (x *InternalSubset_LeftSquareBracket) Reset() {
 	*x = InternalSubset_LeftSquareBracket{}
-	mi := &file_dtd_proto_msgTypes[64]
+	mi := &file_dtd_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3875,7 +3955,7 @@ func (x *InternalSubset_LeftSquareBracket) String() string {
 func (*InternalSubset_LeftSquareBracket) ProtoMessage() {}
 
 func (x *InternalSubset_LeftSquareBracket) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[64]
+	mi := &file_dtd_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3905,31 +3985,33 @@ func (x *InternalSubset_LeftSquareBracket) GetRightSquareBracketKeyword() *Right
 	return nil
 }
 
-type Mixed_Seq1 struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	OptS                *OptS                  `protobuf:"bytes,1,opt,name=opt_s,json=optS,proto3" json:"opt_s,omitempty"`
-	VerticalLineKeyword *VerticalLineKeyword   `protobuf:"bytes,2,opt,name=vertical_line_keyword,json=verticalLineKeyword,proto3" json:"vertical_line_keyword,omitempty"`
-	OptS_2              *OptS                  `protobuf:"bytes,3,opt,name=opt_s_2,json=optS2,proto3" json:"opt_s_2,omitempty"`
-	Name                string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+type Mixed_LeftParenthesis struct {
+	state                   protoimpl.MessageState        `protogen:"open.v1"`
+	OptS                    *OptS                         `protobuf:"bytes,1,opt,name=opt_s,json=optS,proto3" json:"opt_s,omitempty"`
+	NumberSignPcdataKeyword *NumberSignPcdataKeyword      `protobuf:"bytes,2,opt,name=number_sign_pcdata_keyword,json=numberSignPcdataKeyword,proto3" json:"number_sign_pcdata_keyword,omitempty"`
+	Seq1                    []*Mixed_LeftParenthesis_Seq1 `protobuf:"bytes,3,rep,name=seq1,proto3" json:"seq1,omitempty"`
+	OptS_2                  *OptS                         `protobuf:"bytes,4,opt,name=opt_s_2,json=optS2,proto3" json:"opt_s_2,omitempty"`
+	RightParenthesisKeyword *RightParenthesisKeyword      `protobuf:"bytes,5,opt,name=right_parenthesis_keyword,json=rightParenthesisKeyword,proto3" json:"right_parenthesis_keyword,omitempty"`
+	AsteriskKeyword         *AsteriskKeyword              `protobuf:"bytes,6,opt,name=asterisk_keyword,json=asteriskKeyword,proto3" json:"asterisk_keyword,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
-func (x *Mixed_Seq1) Reset() {
-	*x = Mixed_Seq1{}
-	mi := &file_dtd_proto_msgTypes[65]
+func (x *Mixed_LeftParenthesis) Reset() {
+	*x = Mixed_LeftParenthesis{}
+	mi := &file_dtd_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Mixed_Seq1) String() string {
+func (x *Mixed_LeftParenthesis) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Mixed_Seq1) ProtoMessage() {}
+func (*Mixed_LeftParenthesis) ProtoMessage() {}
 
-func (x *Mixed_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[65]
+func (x *Mixed_LeftParenthesis) ProtoReflect() protoreflect.Message {
+	mi := &file_dtd_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3940,33 +4022,183 @@ func (x *Mixed_Seq1) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Mixed_Seq1.ProtoReflect.Descriptor instead.
-func (*Mixed_Seq1) Descriptor() ([]byte, []int) {
+// Deprecated: Use Mixed_LeftParenthesis.ProtoReflect.Descriptor instead.
+func (*Mixed_LeftParenthesis) Descriptor() ([]byte, []int) {
 	return file_dtd_proto_rawDescGZIP(), []int{8, 0}
 }
 
-func (x *Mixed_Seq1) GetOptS() *OptS {
+func (x *Mixed_LeftParenthesis) GetOptS() *OptS {
 	if x != nil {
 		return x.OptS
 	}
 	return nil
 }
 
-func (x *Mixed_Seq1) GetVerticalLineKeyword() *VerticalLineKeyword {
+func (x *Mixed_LeftParenthesis) GetNumberSignPcdataKeyword() *NumberSignPcdataKeyword {
 	if x != nil {
-		return x.VerticalLineKeyword
+		return x.NumberSignPcdataKeyword
 	}
 	return nil
 }
 
-func (x *Mixed_Seq1) GetOptS_2() *OptS {
+func (x *Mixed_LeftParenthesis) GetSeq1() []*Mixed_LeftParenthesis_Seq1 {
+	if x != nil {
+		return x.Seq1
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis) GetOptS_2() *OptS {
 	if x != nil {
 		return x.OptS_2
 	}
 	return nil
 }
 
-func (x *Mixed_Seq1) GetName() string {
+func (x *Mixed_LeftParenthesis) GetRightParenthesisKeyword() *RightParenthesisKeyword {
+	if x != nil {
+		return x.RightParenthesisKeyword
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis) GetAsteriskKeyword() *AsteriskKeyword {
+	if x != nil {
+		return x.AsteriskKeyword
+	}
+	return nil
+}
+
+type Mixed_LeftParenthesis2 struct {
+	state                   protoimpl.MessageState   `protogen:"open.v1"`
+	OptS                    *OptS                    `protobuf:"bytes,1,opt,name=opt_s,json=optS,proto3" json:"opt_s,omitempty"`
+	NumberSignPcdataKeyword *NumberSignPcdataKeyword `protobuf:"bytes,2,opt,name=number_sign_pcdata_keyword,json=numberSignPcdataKeyword,proto3" json:"number_sign_pcdata_keyword,omitempty"`
+	OptS_2                  *OptS                    `protobuf:"bytes,3,opt,name=opt_s_2,json=optS2,proto3" json:"opt_s_2,omitempty"`
+	RightParenthesisKeyword *RightParenthesisKeyword `protobuf:"bytes,4,opt,name=right_parenthesis_keyword,json=rightParenthesisKeyword,proto3" json:"right_parenthesis_keyword,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *Mixed_LeftParenthesis2) Reset() {
+	*x = Mixed_LeftParenthesis2{}
+	mi := &file_dtd_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Mixed_LeftParenthesis2) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mixed_LeftParenthesis2) ProtoMessage() {}
+
+func (x *Mixed_LeftParenthesis2) ProtoReflect() protoreflect.Message {
+	mi := &file_dtd_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mixed_LeftParenthesis2.ProtoReflect.Descriptor instead.
+func (*Mixed_LeftParenthesis2) Descriptor() ([]byte, []int) {
+	return file_dtd_proto_rawDescGZIP(), []int{8, 1}
+}
+
+func (x *Mixed_LeftParenthesis2) GetOptS() *OptS {
+	if x != nil {
+		return x.OptS
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis2) GetNumberSignPcdataKeyword() *NumberSignPcdataKeyword {
+	if x != nil {
+		return x.NumberSignPcdataKeyword
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis2) GetOptS_2() *OptS {
+	if x != nil {
+		return x.OptS_2
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis2) GetRightParenthesisKeyword() *RightParenthesisKeyword {
+	if x != nil {
+		return x.RightParenthesisKeyword
+	}
+	return nil
+}
+
+type Mixed_LeftParenthesis_Seq1 struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	OptS                *OptS                  `protobuf:"bytes,1,opt,name=opt_s,json=optS,proto3" json:"opt_s,omitempty"`
+	VerticalLineKeyword *VerticalLineKeyword   `protobuf:"bytes,2,opt,name=vertical_line_keyword,json=verticalLineKeyword,proto3" json:"vertical_line_keyword,omitempty"`
+	OptS_2              *OptS                  `protobuf:"bytes,3,opt,name=opt_s_2,json=optS2,proto3" json:"opt_s_2,omitempty"`
+	Name                string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) Reset() {
+	*x = Mixed_LeftParenthesis_Seq1{}
+	mi := &file_dtd_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mixed_LeftParenthesis_Seq1) ProtoMessage() {}
+
+func (x *Mixed_LeftParenthesis_Seq1) ProtoReflect() protoreflect.Message {
+	mi := &file_dtd_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mixed_LeftParenthesis_Seq1.ProtoReflect.Descriptor instead.
+func (*Mixed_LeftParenthesis_Seq1) Descriptor() ([]byte, []int) {
+	return file_dtd_proto_rawDescGZIP(), []int{8, 0, 0}
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) GetOptS() *OptS {
+	if x != nil {
+		return x.OptS
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) GetVerticalLineKeyword() *VerticalLineKeyword {
+	if x != nil {
+		return x.VerticalLineKeyword
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) GetOptS_2() *OptS {
+	if x != nil {
+		return x.OptS_2
+	}
+	return nil
+}
+
+func (x *Mixed_LeftParenthesis_Seq1) GetName() string {
 	if x != nil {
 		return x.Name
 	}
@@ -3986,7 +4218,7 @@ type Children_Alt1 struct {
 
 func (x *Children_Alt1) Reset() {
 	*x = Children_Alt1{}
-	mi := &file_dtd_proto_msgTypes[66]
+	mi := &file_dtd_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3998,7 +4230,7 @@ func (x *Children_Alt1) String() string {
 func (*Children_Alt1) ProtoMessage() {}
 
 func (x *Children_Alt1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[66]
+	mi := &file_dtd_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4067,7 +4299,7 @@ type Choice_Seq1 struct {
 
 func (x *Choice_Seq1) Reset() {
 	*x = Choice_Seq1{}
-	mi := &file_dtd_proto_msgTypes[67]
+	mi := &file_dtd_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4079,7 +4311,7 @@ func (x *Choice_Seq1) String() string {
 func (*Choice_Seq1) ProtoMessage() {}
 
 func (x *Choice_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[67]
+	mi := &file_dtd_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4135,7 +4367,7 @@ type Seq_Seq1 struct {
 
 func (x *Seq_Seq1) Reset() {
 	*x = Seq_Seq1{}
-	mi := &file_dtd_proto_msgTypes[68]
+	mi := &file_dtd_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4147,7 +4379,7 @@ func (x *Seq_Seq1) String() string {
 func (*Seq_Seq1) ProtoMessage() {}
 
 func (x *Seq_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[68]
+	mi := &file_dtd_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4205,7 +4437,7 @@ type Cp_Alt1 struct {
 
 func (x *Cp_Alt1) Reset() {
 	*x = Cp_Alt1{}
-	mi := &file_dtd_proto_msgTypes[69]
+	mi := &file_dtd_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4217,7 +4449,7 @@ func (x *Cp_Alt1) String() string {
 func (*Cp_Alt1) ProtoMessage() {}
 
 func (x *Cp_Alt1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[69]
+	mi := &file_dtd_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4301,7 +4533,7 @@ type NotationType_Seq1 struct {
 
 func (x *NotationType_Seq1) Reset() {
 	*x = NotationType_Seq1{}
-	mi := &file_dtd_proto_msgTypes[70]
+	mi := &file_dtd_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4313,7 +4545,7 @@ func (x *NotationType_Seq1) String() string {
 func (*NotationType_Seq1) ProtoMessage() {}
 
 func (x *NotationType_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[70]
+	mi := &file_dtd_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4369,7 +4601,7 @@ type Enumeration_Seq1 struct {
 
 func (x *Enumeration_Seq1) Reset() {
 	*x = Enumeration_Seq1{}
-	mi := &file_dtd_proto_msgTypes[71]
+	mi := &file_dtd_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4381,7 +4613,7 @@ func (x *Enumeration_Seq1) String() string {
 func (*Enumeration_Seq1) ProtoMessage() {}
 
 func (x *Enumeration_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[71]
+	mi := &file_dtd_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4434,7 +4666,7 @@ type FixedDefault_NumberSignFixed struct {
 
 func (x *FixedDefault_NumberSignFixed) Reset() {
 	*x = FixedDefault_NumberSignFixed{}
-	mi := &file_dtd_proto_msgTypes[72]
+	mi := &file_dtd_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4446,7 +4678,7 @@ func (x *FixedDefault_NumberSignFixed) String() string {
 func (*FixedDefault_NumberSignFixed) ProtoMessage() {}
 
 func (x *FixedDefault_NumberSignFixed) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[72]
+	mi := &file_dtd_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4474,14 +4706,14 @@ type EntityKind_PercentSign struct {
 	S             string                 `protobuf:"bytes,1,opt,name=s,proto3" json:"s,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	S_2           string                 `protobuf:"bytes,3,opt,name=s_2,json=s2,proto3" json:"s_2,omitempty"`
-	EntityValue   *EntityValue           `protobuf:"bytes,4,opt,name=entity_value,json=entityValue,proto3" json:"entity_value,omitempty"`
+	PeValue       *PeValue               `protobuf:"bytes,4,opt,name=pe_value,json=peValue,proto3" json:"pe_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EntityKind_PercentSign) Reset() {
 	*x = EntityKind_PercentSign{}
-	mi := &file_dtd_proto_msgTypes[73]
+	mi := &file_dtd_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4493,7 +4725,7 @@ func (x *EntityKind_PercentSign) String() string {
 func (*EntityKind_PercentSign) ProtoMessage() {}
 
 func (x *EntityKind_PercentSign) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[73]
+	mi := &file_dtd_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4530,9 +4762,9 @@ func (x *EntityKind_PercentSign) GetS_2() string {
 	return ""
 }
 
-func (x *EntityKind_PercentSign) GetEntityValue() *EntityValue {
+func (x *EntityKind_PercentSign) GetPeValue() *PeValue {
 	if x != nil {
-		return x.EntityValue
+		return x.PeValue
 	}
 	return nil
 }
@@ -4548,7 +4780,7 @@ type EntityKind_Seq1 struct {
 
 func (x *EntityKind_Seq1) Reset() {
 	*x = EntityKind_Seq1{}
-	mi := &file_dtd_proto_msgTypes[74]
+	mi := &file_dtd_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4560,7 +4792,7 @@ func (x *EntityKind_Seq1) String() string {
 func (*EntityKind_Seq1) ProtoMessage() {}
 
 func (x *EntityKind_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[74]
+	mi := &file_dtd_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4607,7 +4839,7 @@ type EntityValue_Seq1 struct {
 
 func (x *EntityValue_Seq1) Reset() {
 	*x = EntityValue_Seq1{}
-	mi := &file_dtd_proto_msgTypes[75]
+	mi := &file_dtd_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4619,7 +4851,7 @@ func (x *EntityValue_Seq1) String() string {
 func (*EntityValue_Seq1) ProtoMessage() {}
 
 func (x *EntityValue_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[75]
+	mi := &file_dtd_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4632,7 +4864,7 @@ func (x *EntityValue_Seq1) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityValue_Seq1.ProtoReflect.Descriptor instead.
 func (*EntityValue_Seq1) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{23, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{24, 0}
 }
 
 func (x *EntityValue_Seq1) GetExtId() *ExtId {
@@ -4661,7 +4893,7 @@ type EntityValue_Seq1_Seq1 struct {
 
 func (x *EntityValue_Seq1_Seq1) Reset() {
 	*x = EntityValue_Seq1_Seq1{}
-	mi := &file_dtd_proto_msgTypes[76]
+	mi := &file_dtd_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4673,7 +4905,7 @@ func (x *EntityValue_Seq1_Seq1) String() string {
 func (*EntityValue_Seq1_Seq1) ProtoMessage() {}
 
 func (x *EntityValue_Seq1_Seq1) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[76]
+	mi := &file_dtd_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4686,7 +4918,7 @@ func (x *EntityValue_Seq1_Seq1) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityValue_Seq1_Seq1.ProtoReflect.Descriptor instead.
 func (*EntityValue_Seq1_Seq1) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{23, 0, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{24, 0, 0}
 }
 
 func (x *EntityValue_Seq1_Seq1) GetS() string {
@@ -4727,7 +4959,7 @@ type NotationId_Public struct {
 
 func (x *NotationId_Public) Reset() {
 	*x = NotationId_Public{}
-	mi := &file_dtd_proto_msgTypes[77]
+	mi := &file_dtd_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4739,7 +4971,7 @@ func (x *NotationId_Public) String() string {
 func (*NotationId_Public) ProtoMessage() {}
 
 func (x *NotationId_Public) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[77]
+	mi := &file_dtd_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4752,7 +4984,7 @@ func (x *NotationId_Public) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotationId_Public.ProtoReflect.Descriptor instead.
 func (*NotationId_Public) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{25, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{26, 0}
 }
 
 func (x *NotationId_Public) GetS() string {
@@ -4769,6 +5001,58 @@ func (x *NotationId_Public) GetPubidLiteral() *PubidLiteral {
 	return nil
 }
 
+type Pi_Seq1 struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	S             string                 `protobuf:"bytes,1,opt,name=s,proto3" json:"s,omitempty"`
+	PiText        string                 `protobuf:"bytes,2,opt,name=pi_text,json=piText,proto3" json:"pi_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Pi_Seq1) Reset() {
+	*x = Pi_Seq1{}
+	mi := &file_dtd_proto_msgTypes[81]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Pi_Seq1) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Pi_Seq1) ProtoMessage() {}
+
+func (x *Pi_Seq1) ProtoReflect() protoreflect.Message {
+	mi := &file_dtd_proto_msgTypes[81]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Pi_Seq1.ProtoReflect.Descriptor instead.
+func (*Pi_Seq1) Descriptor() ([]byte, []int) {
+	return file_dtd_proto_rawDescGZIP(), []int{29, 0}
+}
+
+func (x *Pi_Seq1) GetS() string {
+	if x != nil {
+		return x.S
+	}
+	return ""
+}
+
+func (x *Pi_Seq1) GetPiText() string {
+	if x != nil {
+		return x.PiText
+	}
+	return ""
+}
+
 type SystemLiteral_QuotationMark struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	LitDq                string                 `protobuf:"bytes,1,opt,name=lit_dq,json=litDq,proto3" json:"lit_dq,omitempty"`
@@ -4779,7 +5063,7 @@ type SystemLiteral_QuotationMark struct {
 
 func (x *SystemLiteral_QuotationMark) Reset() {
 	*x = SystemLiteral_QuotationMark{}
-	mi := &file_dtd_proto_msgTypes[78]
+	mi := &file_dtd_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4791,7 +5075,7 @@ func (x *SystemLiteral_QuotationMark) String() string {
 func (*SystemLiteral_QuotationMark) ProtoMessage() {}
 
 func (x *SystemLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[78]
+	mi := &file_dtd_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4804,7 +5088,7 @@ func (x *SystemLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemLiteral_QuotationMark.ProtoReflect.Descriptor instead.
 func (*SystemLiteral_QuotationMark) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{29, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{30, 0}
 }
 
 func (x *SystemLiteral_QuotationMark) GetLitDq() string {
@@ -4831,7 +5115,7 @@ type SystemLiteral_Apostrophe struct {
 
 func (x *SystemLiteral_Apostrophe) Reset() {
 	*x = SystemLiteral_Apostrophe{}
-	mi := &file_dtd_proto_msgTypes[79]
+	mi := &file_dtd_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4843,7 +5127,7 @@ func (x *SystemLiteral_Apostrophe) String() string {
 func (*SystemLiteral_Apostrophe) ProtoMessage() {}
 
 func (x *SystemLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[79]
+	mi := &file_dtd_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4856,7 +5140,7 @@ func (x *SystemLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemLiteral_Apostrophe.ProtoReflect.Descriptor instead.
 func (*SystemLiteral_Apostrophe) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{29, 1}
+	return file_dtd_proto_rawDescGZIP(), []int{30, 1}
 }
 
 func (x *SystemLiteral_Apostrophe) GetLitSq() string {
@@ -4883,7 +5167,7 @@ type PubidLiteral_QuotationMark struct {
 
 func (x *PubidLiteral_QuotationMark) Reset() {
 	*x = PubidLiteral_QuotationMark{}
-	mi := &file_dtd_proto_msgTypes[80]
+	mi := &file_dtd_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4895,7 +5179,7 @@ func (x *PubidLiteral_QuotationMark) String() string {
 func (*PubidLiteral_QuotationMark) ProtoMessage() {}
 
 func (x *PubidLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[80]
+	mi := &file_dtd_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4908,7 +5192,7 @@ func (x *PubidLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PubidLiteral_QuotationMark.ProtoReflect.Descriptor instead.
 func (*PubidLiteral_QuotationMark) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{30, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{31, 0}
 }
 
 func (x *PubidLiteral_QuotationMark) GetLitDq() string {
@@ -4935,7 +5219,7 @@ type PubidLiteral_Apostrophe struct {
 
 func (x *PubidLiteral_Apostrophe) Reset() {
 	*x = PubidLiteral_Apostrophe{}
-	mi := &file_dtd_proto_msgTypes[81]
+	mi := &file_dtd_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4947,7 +5231,7 @@ func (x *PubidLiteral_Apostrophe) String() string {
 func (*PubidLiteral_Apostrophe) ProtoMessage() {}
 
 func (x *PubidLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[81]
+	mi := &file_dtd_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4960,7 +5244,7 @@ func (x *PubidLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PubidLiteral_Apostrophe.ProtoReflect.Descriptor instead.
 func (*PubidLiteral_Apostrophe) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{30, 1}
+	return file_dtd_proto_rawDescGZIP(), []int{31, 1}
 }
 
 func (x *PubidLiteral_Apostrophe) GetLitSq() string {
@@ -4987,7 +5271,7 @@ type AttLiteral_QuotationMark struct {
 
 func (x *AttLiteral_QuotationMark) Reset() {
 	*x = AttLiteral_QuotationMark{}
-	mi := &file_dtd_proto_msgTypes[82]
+	mi := &file_dtd_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4999,7 +5283,7 @@ func (x *AttLiteral_QuotationMark) String() string {
 func (*AttLiteral_QuotationMark) ProtoMessage() {}
 
 func (x *AttLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[82]
+	mi := &file_dtd_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5012,7 +5296,7 @@ func (x *AttLiteral_QuotationMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttLiteral_QuotationMark.ProtoReflect.Descriptor instead.
 func (*AttLiteral_QuotationMark) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{31, 0}
+	return file_dtd_proto_rawDescGZIP(), []int{32, 0}
 }
 
 func (x *AttLiteral_QuotationMark) GetLitDq() string {
@@ -5039,7 +5323,7 @@ type AttLiteral_Apostrophe struct {
 
 func (x *AttLiteral_Apostrophe) Reset() {
 	*x = AttLiteral_Apostrophe{}
-	mi := &file_dtd_proto_msgTypes[83]
+	mi := &file_dtd_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5051,7 +5335,7 @@ func (x *AttLiteral_Apostrophe) String() string {
 func (*AttLiteral_Apostrophe) ProtoMessage() {}
 
 func (x *AttLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
-	mi := &file_dtd_proto_msgTypes[83]
+	mi := &file_dtd_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5064,7 +5348,7 @@ func (x *AttLiteral_Apostrophe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttLiteral_Apostrophe.ProtoReflect.Descriptor instead.
 func (*AttLiteral_Apostrophe) Descriptor() ([]byte, []int) {
-	return file_dtd_proto_rawDescGZIP(), []int{31, 1}
+	return file_dtd_proto_rawDescGZIP(), []int{32, 1}
 }
 
 func (x *AttLiteral_Apostrophe) GetLitSq() string {
@@ -5149,11 +5433,14 @@ const file_dtd_proto_rawDesc = "" +
 	"\x05mixed\x18\x03 \x01(\v2\n" +
 	".dtd.MixedH\x00R\x05mixed\x12+\n" +
 	"\bchildren\x18\x04 \x01(\v2\r.dtd.ChildrenH\x00R\bchildrenB\a\n" +
-	"\x05value\"\x93\x04\n" +
-	"\x05Mixed\x12\x1e\n" +
+	"\x05value\"\xe2\a\n" +
+	"\x05Mixed\x12G\n" +
+	"\x10left_parenthesis\x18\x01 \x01(\v2\x1a.dtd.Mixed.LeftParenthesisH\x00R\x0fleftParenthesis\x12J\n" +
+	"\x11left_parenthesis2\x18\x02 \x01(\v2\x1b.dtd.Mixed.LeftParenthesis2H\x00R\x10leftParenthesis2\x1a\xad\x04\n" +
+	"\x0fLeftParenthesis\x12\x1e\n" +
 	"\x05opt_s\x18\x01 \x01(\v2\t.dtd.OptSR\x04optS\x12Y\n" +
-	"\x1anumber_sign_pcdata_keyword\x18\x02 \x01(\v2\x1c.dtd.NumberSignPcdataKeywordR\x17numberSignPcdataKeyword\x12#\n" +
-	"\x04seq1\x18\x03 \x03(\v2\x0f.dtd.Mixed.Seq1R\x04seq1\x12!\n" +
+	"\x1anumber_sign_pcdata_keyword\x18\x02 \x01(\v2\x1c.dtd.NumberSignPcdataKeywordR\x17numberSignPcdataKeyword\x123\n" +
+	"\x04seq1\x18\x03 \x03(\v2\x1f.dtd.Mixed.LeftParenthesis.Seq1R\x04seq1\x12!\n" +
 	"\aopt_s_2\x18\x04 \x01(\v2\t.dtd.OptSR\x05optS2\x12X\n" +
 	"\x19right_parenthesis_keyword\x18\x05 \x01(\v2\x1c.dtd.RightParenthesisKeywordR\x17rightParenthesisKeyword\x12?\n" +
 	"\x10asterisk_keyword\x18\x06 \x01(\v2\x14.dtd.AsteriskKeywordR\x0fasteriskKeyword\x1a\xab\x01\n" +
@@ -5161,7 +5448,13 @@ const file_dtd_proto_rawDesc = "" +
 	"\x05opt_s\x18\x01 \x01(\v2\t.dtd.OptSR\x04optS\x12L\n" +
 	"\x15vertical_line_keyword\x18\x02 \x01(\v2\x18.dtd.VerticalLineKeywordR\x13verticalLineKeyword\x12!\n" +
 	"\aopt_s_2\x18\x03 \x01(\v2\t.dtd.OptSR\x05optS2\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\"\xa4\x01\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x1a\x8a\x02\n" +
+	"\x10LeftParenthesis2\x12\x1e\n" +
+	"\x05opt_s\x18\x01 \x01(\v2\t.dtd.OptSR\x04optS\x12Y\n" +
+	"\x1anumber_sign_pcdata_keyword\x18\x02 \x01(\v2\x1c.dtd.NumberSignPcdataKeywordR\x17numberSignPcdataKeyword\x12!\n" +
+	"\aopt_s_2\x18\x03 \x01(\v2\t.dtd.OptSR\x05optS2\x12X\n" +
+	"\x19right_parenthesis_keyword\x18\x04 \x01(\v2\x1c.dtd.RightParenthesisKeywordR\x17rightParenthesisKeywordB\a\n" +
+	"\x05value\"\xa4\x01\n" +
 	"\bChildren\x12&\n" +
 	"\x04alt1\x18\x01 \x01(\v2\x12.dtd.Children.Alt1R\x04alt1\x12\x1a\n" +
 	"\x03occ\x18\x02 \x01(\v2\b.dtd.OccR\x03occ\x1aT\n" +
@@ -5272,20 +5565,26 @@ const file_dtd_proto_rawDesc = "" +
 	"\ventity_kind\x18\x02 \x01(\v2\x0f.dtd.EntityKindR\n" +
 	"entityKind\x12\x1e\n" +
 	"\x05opt_s\x18\x03 \x01(\v2\t.dtd.OptSR\x04optS\x12V\n" +
-	"\x19greater_than_sign_keyword\x18\x04 \x01(\v2\x1b.dtd.GreaterThanSignKeywordR\x16greaterThanSignKeyword\"\xd9\x02\n" +
+	"\x19greater_than_sign_keyword\x18\x04 \x01(\v2\x1b.dtd.GreaterThanSignKeywordR\x16greaterThanSignKeyword\"\xcd\x02\n" +
 	"\n" +
 	"EntityKind\x12@\n" +
 	"\fpercent_sign\x18\x01 \x01(\v2\x1b.dtd.EntityKind.PercentSignH\x00R\vpercentSign\x12*\n" +
-	"\x04seq1\x18\x02 \x01(\v2\x14.dtd.EntityKind.Seq1H\x00R\x04seq1\x1au\n" +
+	"\x04seq1\x18\x02 \x01(\v2\x14.dtd.EntityKind.Seq1H\x00R\x04seq1\x1ai\n" +
 	"\vPercentSign\x12\f\n" +
 	"\x01s\x18\x01 \x01(\tR\x01s\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0f\n" +
-	"\x03s_2\x18\x03 \x01(\tR\x02s2\x123\n" +
-	"\fentity_value\x18\x04 \x01(\v2\x10.dtd.EntityValueR\ventityValue\x1a]\n" +
+	"\x03s_2\x18\x03 \x01(\tR\x02s2\x12'\n" +
+	"\bpe_value\x18\x04 \x01(\v2\f.dtd.PeValueR\apeValue\x1a]\n" +
 	"\x04Seq1\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\f\n" +
 	"\x01s\x18\x02 \x01(\tR\x01s\x123\n" +
 	"\fentity_value\x18\x03 \x01(\v2\x10.dtd.EntityValueR\ventityValueB\a\n" +
+	"\x05value\"k\n" +
+	"\aPeValue\x122\n" +
+	"\vatt_literal\x18\x01 \x01(\v2\x0f.dtd.AttLiteralH\x00R\n" +
+	"attLiteral\x12#\n" +
+	"\x06ext_id\x18\x02 \x01(\v2\n" +
+	".dtd.ExtIdH\x00R\x05extIdB\a\n" +
 	"\x05value\"\xc6\x02\n" +
 	"\vEntityValue\x122\n" +
 	"\vatt_literal\x18\x01 \x01(\v2\x0f.dtd.AttLiteralH\x00R\n" +
@@ -5323,11 +5622,14 @@ const file_dtd_proto_rawDesc = "" +
 	"\x11semicolon_keyword\x18\x02 \x01(\v2\x15.dtd.SemicolonKeywordR\x10semicolonKeyword\"\xcb\x01\n" +
 	"\aComment\x12!\n" +
 	"\fcomment_text\x18\x01 \x01(\tR\vcommentText\x12\x9c\x01\n" +
-	"3hyphen_minus_hyphen_minus_greater_than_sign_keyword\x18\x02 \x01(\v21.dtd.HyphenMinusHyphenMinusGreaterThanSignKeywordR,hyphenMinusHyphenMinusGreaterThanSignKeyword\"\xaf\x01\n" +
+	"3hyphen_minus_hyphen_minus_greater_than_sign_keyword\x18\x02 \x01(\v21.dtd.HyphenMinusHyphenMinusGreaterThanSignKeywordR,hyphenMinusHyphenMinusGreaterThanSignKeyword\"\xe7\x01\n" +
 	"\x02Pi\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x17\n" +
-	"\api_text\x18\x02 \x01(\tR\x06piText\x12|\n" +
-	"'question_mark_greater_than_sign_keyword\x18\x03 \x01(\v2'.dtd.QuestionMarkGreaterThanSignKeywordR\"questionMarkGreaterThanSignKeyword\"\x89\x03\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\x04seq1\x18\x02 \x01(\v2\f.dtd.Pi.Seq1R\x04seq1\x12|\n" +
+	"'question_mark_greater_than_sign_keyword\x18\x03 \x01(\v2'.dtd.QuestionMarkGreaterThanSignKeywordR\"questionMarkGreaterThanSignKeyword\x1a-\n" +
+	"\x04Seq1\x12\f\n" +
+	"\x01s\x18\x01 \x01(\tR\x01s\x12\x17\n" +
+	"\api_text\x18\x02 \x01(\tR\x06piText\"\x89\x03\n" +
 	"\rSystemLiteral\x12I\n" +
 	"\x0equotation_mark\x18\x01 \x01(\v2 .dtd.SystemLiteral.QuotationMarkH\x00R\rquotationMark\x12?\n" +
 	"\n" +
@@ -5412,7 +5714,7 @@ func file_dtd_proto_rawDescGZIP() []byte {
 	return file_dtd_proto_rawDescData
 }
 
-var file_dtd_proto_msgTypes = make([]protoimpl.MessageInfo, 84)
+var file_dtd_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_dtd_proto_goTypes = []any{
 	(*Doctype)(nil),                // 0: dtd.Doctype
 	(*ExternalId)(nil),             // 1: dtd.ExternalId
@@ -5437,210 +5739,223 @@ var file_dtd_proto_goTypes = []any{
 	(*FixedDefault)(nil),           // 20: dtd.FixedDefault
 	(*EntityDecl)(nil),             // 21: dtd.EntityDecl
 	(*EntityKind)(nil),             // 22: dtd.EntityKind
-	(*EntityValue)(nil),            // 23: dtd.EntityValue
-	(*NotationDecl)(nil),           // 24: dtd.NotationDecl
-	(*NotationId)(nil),             // 25: dtd.NotationId
-	(*Pereference)(nil),            // 26: dtd.Pereference
-	(*Comment)(nil),                // 27: dtd.Comment
-	(*Pi)(nil),                     // 28: dtd.Pi
-	(*SystemLiteral)(nil),          // 29: dtd.SystemLiteral
-	(*PubidLiteral)(nil),           // 30: dtd.PubidLiteral
-	(*AttLiteral)(nil),             // 31: dtd.AttLiteral
-	(*OptS)(nil),                   // 32: dtd.OptS
-	(*AnyKeyword)(nil),             // 33: dtd.AnyKeyword
-	(*ApostropheKeyword)(nil),      // 34: dtd.ApostropheKeyword
-	(*AsteriskKeyword)(nil),        // 35: dtd.AsteriskKeyword
-	(*CdataKeyword)(nil),           // 36: dtd.CdataKeyword
-	(*CommaKeyword)(nil),           // 37: dtd.CommaKeyword
-	(*EmptyKeyword)(nil),           // 38: dtd.EmptyKeyword
-	(*EntitiesKeyword)(nil),        // 39: dtd.EntitiesKeyword
-	(*EntityKeyword)(nil),          // 40: dtd.EntityKeyword
-	(*GreaterThanSignKeyword)(nil), // 41: dtd.GreaterThanSignKeyword
-	(*HyphenMinusHyphenMinusGreaterThanSignKeyword)(nil), // 42: dtd.HyphenMinusHyphenMinusGreaterThanSignKeyword
-	(*IdKeyword)(nil),                          // 43: dtd.IdKeyword
-	(*IdrefKeyword)(nil),                       // 44: dtd.IdrefKeyword
-	(*IdrefsKeyword)(nil),                      // 45: dtd.IdrefsKeyword
-	(*LeftParenthesisKeyword)(nil),             // 46: dtd.LeftParenthesisKeyword
-	(*NdataKeyword)(nil),                       // 47: dtd.NdataKeyword
-	(*NmtokenKeyword)(nil),                     // 48: dtd.NmtokenKeyword
-	(*NmtokensKeyword)(nil),                    // 49: dtd.NmtokensKeyword
-	(*NumberSignImpliedKeyword)(nil),           // 50: dtd.NumberSignImpliedKeyword
-	(*NumberSignPcdataKeyword)(nil),            // 51: dtd.NumberSignPcdataKeyword
-	(*NumberSignRequiredKeyword)(nil),          // 52: dtd.NumberSignRequiredKeyword
-	(*PlusSignKeyword)(nil),                    // 53: dtd.PlusSignKeyword
-	(*QuestionMarkGreaterThanSignKeyword)(nil), // 54: dtd.QuestionMarkGreaterThanSignKeyword
-	(*QuestionMarkKeyword)(nil),                // 55: dtd.QuestionMarkKeyword
-	(*QuotationMarkKeyword)(nil),               // 56: dtd.QuotationMarkKeyword
-	(*RightParenthesisKeyword)(nil),            // 57: dtd.RightParenthesisKeyword
-	(*RightSquareBracketKeyword)(nil),          // 58: dtd.RightSquareBracketKeyword
-	(*SemicolonKeyword)(nil),                   // 59: dtd.SemicolonKeyword
-	(*VerticalLineKeyword)(nil),                // 60: dtd.VerticalLineKeyword
-	(*ExternalId_Seq1)(nil),                    // 61: dtd.ExternalId.Seq1
-	(*ExtId_System)(nil),                       // 62: dtd.ExtId.System
-	(*ExtId_Public)(nil),                       // 63: dtd.ExtId.Public
-	(*InternalSubset_LeftSquareBracket)(nil),   // 64: dtd.InternalSubset.LeftSquareBracket
-	(*Mixed_Seq1)(nil),                         // 65: dtd.Mixed.Seq1
-	(*Children_Alt1)(nil),                      // 66: dtd.Children.Alt1
-	(*Choice_Seq1)(nil),                        // 67: dtd.Choice.Seq1
-	(*Seq_Seq1)(nil),                           // 68: dtd.Seq.Seq1
-	(*Cp_Alt1)(nil),                            // 69: dtd.Cp.Alt1
-	(*NotationType_Seq1)(nil),                  // 70: dtd.NotationType.Seq1
-	(*Enumeration_Seq1)(nil),                   // 71: dtd.Enumeration.Seq1
-	(*FixedDefault_NumberSignFixed)(nil),       // 72: dtd.FixedDefault.NumberSignFixed
-	(*EntityKind_PercentSign)(nil),             // 73: dtd.EntityKind.PercentSign
-	(*EntityKind_Seq1)(nil),                    // 74: dtd.EntityKind.Seq1
-	(*EntityValue_Seq1)(nil),                   // 75: dtd.EntityValue.Seq1
-	(*EntityValue_Seq1_Seq1)(nil),              // 76: dtd.EntityValue.Seq1.Seq1
-	(*NotationId_Public)(nil),                  // 77: dtd.NotationId.Public
-	(*SystemLiteral_QuotationMark)(nil),        // 78: dtd.SystemLiteral.QuotationMark
-	(*SystemLiteral_Apostrophe)(nil),           // 79: dtd.SystemLiteral.Apostrophe
-	(*PubidLiteral_QuotationMark)(nil),         // 80: dtd.PubidLiteral.QuotationMark
-	(*PubidLiteral_Apostrophe)(nil),            // 81: dtd.PubidLiteral.Apostrophe
-	(*AttLiteral_QuotationMark)(nil),           // 82: dtd.AttLiteral.QuotationMark
-	(*AttLiteral_Apostrophe)(nil),              // 83: dtd.AttLiteral.Apostrophe
+	(*PeValue)(nil),                // 23: dtd.PeValue
+	(*EntityValue)(nil),            // 24: dtd.EntityValue
+	(*NotationDecl)(nil),           // 25: dtd.NotationDecl
+	(*NotationId)(nil),             // 26: dtd.NotationId
+	(*Pereference)(nil),            // 27: dtd.Pereference
+	(*Comment)(nil),                // 28: dtd.Comment
+	(*Pi)(nil),                     // 29: dtd.Pi
+	(*SystemLiteral)(nil),          // 30: dtd.SystemLiteral
+	(*PubidLiteral)(nil),           // 31: dtd.PubidLiteral
+	(*AttLiteral)(nil),             // 32: dtd.AttLiteral
+	(*OptS)(nil),                   // 33: dtd.OptS
+	(*AnyKeyword)(nil),             // 34: dtd.AnyKeyword
+	(*ApostropheKeyword)(nil),      // 35: dtd.ApostropheKeyword
+	(*AsteriskKeyword)(nil),        // 36: dtd.AsteriskKeyword
+	(*CdataKeyword)(nil),           // 37: dtd.CdataKeyword
+	(*CommaKeyword)(nil),           // 38: dtd.CommaKeyword
+	(*EmptyKeyword)(nil),           // 39: dtd.EmptyKeyword
+	(*EntitiesKeyword)(nil),        // 40: dtd.EntitiesKeyword
+	(*EntityKeyword)(nil),          // 41: dtd.EntityKeyword
+	(*GreaterThanSignKeyword)(nil), // 42: dtd.GreaterThanSignKeyword
+	(*HyphenMinusHyphenMinusGreaterThanSignKeyword)(nil), // 43: dtd.HyphenMinusHyphenMinusGreaterThanSignKeyword
+	(*IdKeyword)(nil),                          // 44: dtd.IdKeyword
+	(*IdrefKeyword)(nil),                       // 45: dtd.IdrefKeyword
+	(*IdrefsKeyword)(nil),                      // 46: dtd.IdrefsKeyword
+	(*LeftParenthesisKeyword)(nil),             // 47: dtd.LeftParenthesisKeyword
+	(*NdataKeyword)(nil),                       // 48: dtd.NdataKeyword
+	(*NmtokenKeyword)(nil),                     // 49: dtd.NmtokenKeyword
+	(*NmtokensKeyword)(nil),                    // 50: dtd.NmtokensKeyword
+	(*NumberSignImpliedKeyword)(nil),           // 51: dtd.NumberSignImpliedKeyword
+	(*NumberSignPcdataKeyword)(nil),            // 52: dtd.NumberSignPcdataKeyword
+	(*NumberSignRequiredKeyword)(nil),          // 53: dtd.NumberSignRequiredKeyword
+	(*PlusSignKeyword)(nil),                    // 54: dtd.PlusSignKeyword
+	(*QuestionMarkGreaterThanSignKeyword)(nil), // 55: dtd.QuestionMarkGreaterThanSignKeyword
+	(*QuestionMarkKeyword)(nil),                // 56: dtd.QuestionMarkKeyword
+	(*QuotationMarkKeyword)(nil),               // 57: dtd.QuotationMarkKeyword
+	(*RightParenthesisKeyword)(nil),            // 58: dtd.RightParenthesisKeyword
+	(*RightSquareBracketKeyword)(nil),          // 59: dtd.RightSquareBracketKeyword
+	(*SemicolonKeyword)(nil),                   // 60: dtd.SemicolonKeyword
+	(*VerticalLineKeyword)(nil),                // 61: dtd.VerticalLineKeyword
+	(*ExternalId_Seq1)(nil),                    // 62: dtd.ExternalId.Seq1
+	(*ExtId_System)(nil),                       // 63: dtd.ExtId.System
+	(*ExtId_Public)(nil),                       // 64: dtd.ExtId.Public
+	(*InternalSubset_LeftSquareBracket)(nil),   // 65: dtd.InternalSubset.LeftSquareBracket
+	(*Mixed_LeftParenthesis)(nil),              // 66: dtd.Mixed.LeftParenthesis
+	(*Mixed_LeftParenthesis2)(nil),             // 67: dtd.Mixed.LeftParenthesis2
+	(*Mixed_LeftParenthesis_Seq1)(nil),         // 68: dtd.Mixed.LeftParenthesis.Seq1
+	(*Children_Alt1)(nil),                      // 69: dtd.Children.Alt1
+	(*Choice_Seq1)(nil),                        // 70: dtd.Choice.Seq1
+	(*Seq_Seq1)(nil),                           // 71: dtd.Seq.Seq1
+	(*Cp_Alt1)(nil),                            // 72: dtd.Cp.Alt1
+	(*NotationType_Seq1)(nil),                  // 73: dtd.NotationType.Seq1
+	(*Enumeration_Seq1)(nil),                   // 74: dtd.Enumeration.Seq1
+	(*FixedDefault_NumberSignFixed)(nil),       // 75: dtd.FixedDefault.NumberSignFixed
+	(*EntityKind_PercentSign)(nil),             // 76: dtd.EntityKind.PercentSign
+	(*EntityKind_Seq1)(nil),                    // 77: dtd.EntityKind.Seq1
+	(*EntityValue_Seq1)(nil),                   // 78: dtd.EntityValue.Seq1
+	(*EntityValue_Seq1_Seq1)(nil),              // 79: dtd.EntityValue.Seq1.Seq1
+	(*NotationId_Public)(nil),                  // 80: dtd.NotationId.Public
+	(*Pi_Seq1)(nil),                            // 81: dtd.Pi.Seq1
+	(*SystemLiteral_QuotationMark)(nil),        // 82: dtd.SystemLiteral.QuotationMark
+	(*SystemLiteral_Apostrophe)(nil),           // 83: dtd.SystemLiteral.Apostrophe
+	(*PubidLiteral_QuotationMark)(nil),         // 84: dtd.PubidLiteral.QuotationMark
+	(*PubidLiteral_Apostrophe)(nil),            // 85: dtd.PubidLiteral.Apostrophe
+	(*AttLiteral_QuotationMark)(nil),           // 86: dtd.AttLiteral.QuotationMark
+	(*AttLiteral_Apostrophe)(nil),              // 87: dtd.AttLiteral.Apostrophe
 }
 var file_dtd_proto_depIdxs = []int32{
-	32,  // 0: dtd.Doctype.opt_s:type_name -> dtd.OptS
+	33,  // 0: dtd.Doctype.opt_s:type_name -> dtd.OptS
 	1,   // 1: dtd.Doctype.external_id:type_name -> dtd.ExternalId
-	32,  // 2: dtd.Doctype.opt_s_2:type_name -> dtd.OptS
+	33,  // 2: dtd.Doctype.opt_s_2:type_name -> dtd.OptS
 	3,   // 3: dtd.Doctype.internal_subset:type_name -> dtd.InternalSubset
-	32,  // 4: dtd.Doctype.opt_s_3:type_name -> dtd.OptS
-	61,  // 5: dtd.ExternalId.seq1:type_name -> dtd.ExternalId.Seq1
-	62,  // 6: dtd.ExtId.system:type_name -> dtd.ExtId.System
-	63,  // 7: dtd.ExtId.public:type_name -> dtd.ExtId.Public
-	64,  // 8: dtd.InternalSubset.left_square_bracket:type_name -> dtd.InternalSubset.LeftSquareBracket
+	33,  // 4: dtd.Doctype.opt_s_3:type_name -> dtd.OptS
+	62,  // 5: dtd.ExternalId.seq1:type_name -> dtd.ExternalId.Seq1
+	63,  // 6: dtd.ExtId.system:type_name -> dtd.ExtId.System
+	64,  // 7: dtd.ExtId.public:type_name -> dtd.ExtId.Public
+	65,  // 8: dtd.InternalSubset.left_square_bracket:type_name -> dtd.InternalSubset.LeftSquareBracket
 	5,   // 9: dtd.Decls.markupdecl:type_name -> dtd.Markupdecl
 	6,   // 10: dtd.Markupdecl.element_decl:type_name -> dtd.ElementDecl
 	14,  // 11: dtd.Markupdecl.attlist_decl:type_name -> dtd.AttlistDecl
 	21,  // 12: dtd.Markupdecl.entity_decl:type_name -> dtd.EntityDecl
-	24,  // 13: dtd.Markupdecl.notation_decl:type_name -> dtd.NotationDecl
-	26,  // 14: dtd.Markupdecl.pereference:type_name -> dtd.Pereference
-	27,  // 15: dtd.Markupdecl.comment:type_name -> dtd.Comment
-	28,  // 16: dtd.Markupdecl.pi:type_name -> dtd.Pi
+	25,  // 13: dtd.Markupdecl.notation_decl:type_name -> dtd.NotationDecl
+	27,  // 14: dtd.Markupdecl.pereference:type_name -> dtd.Pereference
+	28,  // 15: dtd.Markupdecl.comment:type_name -> dtd.Comment
+	29,  // 16: dtd.Markupdecl.pi:type_name -> dtd.Pi
 	7,   // 17: dtd.ElementDecl.contentspec:type_name -> dtd.Contentspec
-	32,  // 18: dtd.ElementDecl.opt_s:type_name -> dtd.OptS
-	41,  // 19: dtd.ElementDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
-	38,  // 20: dtd.Contentspec.empty_keyword:type_name -> dtd.EmptyKeyword
-	33,  // 21: dtd.Contentspec.any_keyword:type_name -> dtd.AnyKeyword
+	33,  // 18: dtd.ElementDecl.opt_s:type_name -> dtd.OptS
+	42,  // 19: dtd.ElementDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
+	39,  // 20: dtd.Contentspec.empty_keyword:type_name -> dtd.EmptyKeyword
+	34,  // 21: dtd.Contentspec.any_keyword:type_name -> dtd.AnyKeyword
 	8,   // 22: dtd.Contentspec.mixed:type_name -> dtd.Mixed
 	9,   // 23: dtd.Contentspec.children:type_name -> dtd.Children
-	32,  // 24: dtd.Mixed.opt_s:type_name -> dtd.OptS
-	51,  // 25: dtd.Mixed.number_sign_pcdata_keyword:type_name -> dtd.NumberSignPcdataKeyword
-	65,  // 26: dtd.Mixed.seq1:type_name -> dtd.Mixed.Seq1
-	32,  // 27: dtd.Mixed.opt_s_2:type_name -> dtd.OptS
-	57,  // 28: dtd.Mixed.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
-	35,  // 29: dtd.Mixed.asterisk_keyword:type_name -> dtd.AsteriskKeyword
-	66,  // 30: dtd.Children.alt1:type_name -> dtd.Children.Alt1
-	13,  // 31: dtd.Children.occ:type_name -> dtd.Occ
-	32,  // 32: dtd.Choice.opt_s:type_name -> dtd.OptS
-	12,  // 33: dtd.Choice.cp:type_name -> dtd.Cp
-	67,  // 34: dtd.Choice.seq1:type_name -> dtd.Choice.Seq1
-	32,  // 35: dtd.Choice.opt_s_2:type_name -> dtd.OptS
-	57,  // 36: dtd.Choice.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
-	32,  // 37: dtd.Seq.opt_s:type_name -> dtd.OptS
-	12,  // 38: dtd.Seq.cp:type_name -> dtd.Cp
-	68,  // 39: dtd.Seq.seq1:type_name -> dtd.Seq.Seq1
-	32,  // 40: dtd.Seq.opt_s_2:type_name -> dtd.OptS
-	57,  // 41: dtd.Seq.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
-	69,  // 42: dtd.Cp.alt1:type_name -> dtd.Cp.Alt1
-	13,  // 43: dtd.Cp.occ:type_name -> dtd.Occ
-	55,  // 44: dtd.Occ.question_mark_keyword:type_name -> dtd.QuestionMarkKeyword
-	35,  // 45: dtd.Occ.asterisk_keyword:type_name -> dtd.AsteriskKeyword
-	53,  // 46: dtd.Occ.plus_sign_keyword:type_name -> dtd.PlusSignKeyword
-	15,  // 47: dtd.AttlistDecl.att_def:type_name -> dtd.AttDef
-	32,  // 48: dtd.AttlistDecl.opt_s:type_name -> dtd.OptS
-	41,  // 49: dtd.AttlistDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
-	16,  // 50: dtd.AttDef.att_type:type_name -> dtd.AttType
-	19,  // 51: dtd.AttDef.default_decl:type_name -> dtd.DefaultDecl
-	36,  // 52: dtd.AttType.cdata_keyword:type_name -> dtd.CdataKeyword
-	45,  // 53: dtd.AttType.idrefs_keyword:type_name -> dtd.IdrefsKeyword
-	44,  // 54: dtd.AttType.idref_keyword:type_name -> dtd.IdrefKeyword
-	43,  // 55: dtd.AttType.id_keyword:type_name -> dtd.IdKeyword
-	39,  // 56: dtd.AttType.entities_keyword:type_name -> dtd.EntitiesKeyword
-	40,  // 57: dtd.AttType.entity_keyword:type_name -> dtd.EntityKeyword
-	49,  // 58: dtd.AttType.nmtokens_keyword:type_name -> dtd.NmtokensKeyword
-	48,  // 59: dtd.AttType.nmtoken_keyword:type_name -> dtd.NmtokenKeyword
-	17,  // 60: dtd.AttType.notation_type:type_name -> dtd.NotationType
-	18,  // 61: dtd.AttType.enumeration:type_name -> dtd.Enumeration
-	46,  // 62: dtd.NotationType.left_parenthesis_keyword:type_name -> dtd.LeftParenthesisKeyword
-	32,  // 63: dtd.NotationType.opt_s:type_name -> dtd.OptS
-	70,  // 64: dtd.NotationType.seq1:type_name -> dtd.NotationType.Seq1
-	32,  // 65: dtd.NotationType.opt_s_2:type_name -> dtd.OptS
-	57,  // 66: dtd.NotationType.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
-	32,  // 67: dtd.Enumeration.opt_s:type_name -> dtd.OptS
-	71,  // 68: dtd.Enumeration.seq1:type_name -> dtd.Enumeration.Seq1
-	32,  // 69: dtd.Enumeration.opt_s_2:type_name -> dtd.OptS
-	57,  // 70: dtd.Enumeration.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
-	52,  // 71: dtd.DefaultDecl.number_sign_required_keyword:type_name -> dtd.NumberSignRequiredKeyword
-	50,  // 72: dtd.DefaultDecl.number_sign_implied_keyword:type_name -> dtd.NumberSignImpliedKeyword
-	20,  // 73: dtd.DefaultDecl.fixed_default:type_name -> dtd.FixedDefault
-	72,  // 74: dtd.FixedDefault.number_sign_fixed:type_name -> dtd.FixedDefault.NumberSignFixed
-	31,  // 75: dtd.FixedDefault.att_literal:type_name -> dtd.AttLiteral
-	22,  // 76: dtd.EntityDecl.entity_kind:type_name -> dtd.EntityKind
-	32,  // 77: dtd.EntityDecl.opt_s:type_name -> dtd.OptS
-	41,  // 78: dtd.EntityDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
-	73,  // 79: dtd.EntityKind.percent_sign:type_name -> dtd.EntityKind.PercentSign
-	74,  // 80: dtd.EntityKind.seq1:type_name -> dtd.EntityKind.Seq1
-	31,  // 81: dtd.EntityValue.att_literal:type_name -> dtd.AttLiteral
-	75,  // 82: dtd.EntityValue.seq1:type_name -> dtd.EntityValue.Seq1
-	25,  // 83: dtd.NotationDecl.notation_id:type_name -> dtd.NotationId
-	32,  // 84: dtd.NotationDecl.opt_s:type_name -> dtd.OptS
-	41,  // 85: dtd.NotationDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
-	2,   // 86: dtd.NotationId.ext_id:type_name -> dtd.ExtId
-	77,  // 87: dtd.NotationId.public:type_name -> dtd.NotationId.Public
-	59,  // 88: dtd.Pereference.semicolon_keyword:type_name -> dtd.SemicolonKeyword
-	42,  // 89: dtd.Comment.hyphen_minus_hyphen_minus_greater_than_sign_keyword:type_name -> dtd.HyphenMinusHyphenMinusGreaterThanSignKeyword
-	54,  // 90: dtd.Pi.question_mark_greater_than_sign_keyword:type_name -> dtd.QuestionMarkGreaterThanSignKeyword
-	78,  // 91: dtd.SystemLiteral.quotation_mark:type_name -> dtd.SystemLiteral.QuotationMark
-	79,  // 92: dtd.SystemLiteral.apostrophe:type_name -> dtd.SystemLiteral.Apostrophe
-	80,  // 93: dtd.PubidLiteral.quotation_mark:type_name -> dtd.PubidLiteral.QuotationMark
-	81,  // 94: dtd.PubidLiteral.apostrophe:type_name -> dtd.PubidLiteral.Apostrophe
-	82,  // 95: dtd.AttLiteral.quotation_mark:type_name -> dtd.AttLiteral.QuotationMark
-	83,  // 96: dtd.AttLiteral.apostrophe:type_name -> dtd.AttLiteral.Apostrophe
-	2,   // 97: dtd.ExternalId.Seq1.ext_id:type_name -> dtd.ExtId
-	29,  // 98: dtd.ExtId.System.system_literal:type_name -> dtd.SystemLiteral
-	30,  // 99: dtd.ExtId.Public.pubid_literal:type_name -> dtd.PubidLiteral
-	29,  // 100: dtd.ExtId.Public.system_literal:type_name -> dtd.SystemLiteral
-	4,   // 101: dtd.InternalSubset.LeftSquareBracket.decls:type_name -> dtd.Decls
-	58,  // 102: dtd.InternalSubset.LeftSquareBracket.right_square_bracket_keyword:type_name -> dtd.RightSquareBracketKeyword
-	32,  // 103: dtd.Mixed.Seq1.opt_s:type_name -> dtd.OptS
-	60,  // 104: dtd.Mixed.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
-	32,  // 105: dtd.Mixed.Seq1.opt_s_2:type_name -> dtd.OptS
-	10,  // 106: dtd.Children.Alt1.choice:type_name -> dtd.Choice
-	11,  // 107: dtd.Children.Alt1.seq:type_name -> dtd.Seq
-	32,  // 108: dtd.Choice.Seq1.opt_s:type_name -> dtd.OptS
-	60,  // 109: dtd.Choice.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
-	32,  // 110: dtd.Choice.Seq1.opt_s_2:type_name -> dtd.OptS
-	12,  // 111: dtd.Choice.Seq1.cp:type_name -> dtd.Cp
-	32,  // 112: dtd.Seq.Seq1.opt_s:type_name -> dtd.OptS
-	37,  // 113: dtd.Seq.Seq1.comma_keyword:type_name -> dtd.CommaKeyword
-	32,  // 114: dtd.Seq.Seq1.opt_s_2:type_name -> dtd.OptS
-	12,  // 115: dtd.Seq.Seq1.cp:type_name -> dtd.Cp
-	10,  // 116: dtd.Cp.Alt1.choice:type_name -> dtd.Choice
-	11,  // 117: dtd.Cp.Alt1.seq:type_name -> dtd.Seq
-	32,  // 118: dtd.NotationType.Seq1.opt_s:type_name -> dtd.OptS
-	60,  // 119: dtd.NotationType.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
-	32,  // 120: dtd.NotationType.Seq1.opt_s_2:type_name -> dtd.OptS
-	32,  // 121: dtd.Enumeration.Seq1.opt_s:type_name -> dtd.OptS
-	60,  // 122: dtd.Enumeration.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
-	32,  // 123: dtd.Enumeration.Seq1.opt_s_2:type_name -> dtd.OptS
-	23,  // 124: dtd.EntityKind.PercentSign.entity_value:type_name -> dtd.EntityValue
-	23,  // 125: dtd.EntityKind.Seq1.entity_value:type_name -> dtd.EntityValue
-	2,   // 126: dtd.EntityValue.Seq1.ext_id:type_name -> dtd.ExtId
-	76,  // 127: dtd.EntityValue.Seq1.seq1:type_name -> dtd.EntityValue.Seq1.Seq1
-	47,  // 128: dtd.EntityValue.Seq1.Seq1.ndata_keyword:type_name -> dtd.NdataKeyword
-	30,  // 129: dtd.NotationId.Public.pubid_literal:type_name -> dtd.PubidLiteral
-	56,  // 130: dtd.SystemLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
-	34,  // 131: dtd.SystemLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
-	56,  // 132: dtd.PubidLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
-	34,  // 133: dtd.PubidLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
-	56,  // 134: dtd.AttLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
-	34,  // 135: dtd.AttLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
-	136, // [136:136] is the sub-list for method output_type
-	136, // [136:136] is the sub-list for method input_type
-	136, // [136:136] is the sub-list for extension type_name
-	136, // [136:136] is the sub-list for extension extendee
-	0,   // [0:136] is the sub-list for field type_name
+	66,  // 24: dtd.Mixed.left_parenthesis:type_name -> dtd.Mixed.LeftParenthesis
+	67,  // 25: dtd.Mixed.left_parenthesis2:type_name -> dtd.Mixed.LeftParenthesis2
+	69,  // 26: dtd.Children.alt1:type_name -> dtd.Children.Alt1
+	13,  // 27: dtd.Children.occ:type_name -> dtd.Occ
+	33,  // 28: dtd.Choice.opt_s:type_name -> dtd.OptS
+	12,  // 29: dtd.Choice.cp:type_name -> dtd.Cp
+	70,  // 30: dtd.Choice.seq1:type_name -> dtd.Choice.Seq1
+	33,  // 31: dtd.Choice.opt_s_2:type_name -> dtd.OptS
+	58,  // 32: dtd.Choice.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	33,  // 33: dtd.Seq.opt_s:type_name -> dtd.OptS
+	12,  // 34: dtd.Seq.cp:type_name -> dtd.Cp
+	71,  // 35: dtd.Seq.seq1:type_name -> dtd.Seq.Seq1
+	33,  // 36: dtd.Seq.opt_s_2:type_name -> dtd.OptS
+	58,  // 37: dtd.Seq.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	72,  // 38: dtd.Cp.alt1:type_name -> dtd.Cp.Alt1
+	13,  // 39: dtd.Cp.occ:type_name -> dtd.Occ
+	56,  // 40: dtd.Occ.question_mark_keyword:type_name -> dtd.QuestionMarkKeyword
+	36,  // 41: dtd.Occ.asterisk_keyword:type_name -> dtd.AsteriskKeyword
+	54,  // 42: dtd.Occ.plus_sign_keyword:type_name -> dtd.PlusSignKeyword
+	15,  // 43: dtd.AttlistDecl.att_def:type_name -> dtd.AttDef
+	33,  // 44: dtd.AttlistDecl.opt_s:type_name -> dtd.OptS
+	42,  // 45: dtd.AttlistDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
+	16,  // 46: dtd.AttDef.att_type:type_name -> dtd.AttType
+	19,  // 47: dtd.AttDef.default_decl:type_name -> dtd.DefaultDecl
+	37,  // 48: dtd.AttType.cdata_keyword:type_name -> dtd.CdataKeyword
+	46,  // 49: dtd.AttType.idrefs_keyword:type_name -> dtd.IdrefsKeyword
+	45,  // 50: dtd.AttType.idref_keyword:type_name -> dtd.IdrefKeyword
+	44,  // 51: dtd.AttType.id_keyword:type_name -> dtd.IdKeyword
+	40,  // 52: dtd.AttType.entities_keyword:type_name -> dtd.EntitiesKeyword
+	41,  // 53: dtd.AttType.entity_keyword:type_name -> dtd.EntityKeyword
+	50,  // 54: dtd.AttType.nmtokens_keyword:type_name -> dtd.NmtokensKeyword
+	49,  // 55: dtd.AttType.nmtoken_keyword:type_name -> dtd.NmtokenKeyword
+	17,  // 56: dtd.AttType.notation_type:type_name -> dtd.NotationType
+	18,  // 57: dtd.AttType.enumeration:type_name -> dtd.Enumeration
+	47,  // 58: dtd.NotationType.left_parenthesis_keyword:type_name -> dtd.LeftParenthesisKeyword
+	33,  // 59: dtd.NotationType.opt_s:type_name -> dtd.OptS
+	73,  // 60: dtd.NotationType.seq1:type_name -> dtd.NotationType.Seq1
+	33,  // 61: dtd.NotationType.opt_s_2:type_name -> dtd.OptS
+	58,  // 62: dtd.NotationType.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	33,  // 63: dtd.Enumeration.opt_s:type_name -> dtd.OptS
+	74,  // 64: dtd.Enumeration.seq1:type_name -> dtd.Enumeration.Seq1
+	33,  // 65: dtd.Enumeration.opt_s_2:type_name -> dtd.OptS
+	58,  // 66: dtd.Enumeration.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	53,  // 67: dtd.DefaultDecl.number_sign_required_keyword:type_name -> dtd.NumberSignRequiredKeyword
+	51,  // 68: dtd.DefaultDecl.number_sign_implied_keyword:type_name -> dtd.NumberSignImpliedKeyword
+	20,  // 69: dtd.DefaultDecl.fixed_default:type_name -> dtd.FixedDefault
+	75,  // 70: dtd.FixedDefault.number_sign_fixed:type_name -> dtd.FixedDefault.NumberSignFixed
+	32,  // 71: dtd.FixedDefault.att_literal:type_name -> dtd.AttLiteral
+	22,  // 72: dtd.EntityDecl.entity_kind:type_name -> dtd.EntityKind
+	33,  // 73: dtd.EntityDecl.opt_s:type_name -> dtd.OptS
+	42,  // 74: dtd.EntityDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
+	76,  // 75: dtd.EntityKind.percent_sign:type_name -> dtd.EntityKind.PercentSign
+	77,  // 76: dtd.EntityKind.seq1:type_name -> dtd.EntityKind.Seq1
+	32,  // 77: dtd.PeValue.att_literal:type_name -> dtd.AttLiteral
+	2,   // 78: dtd.PeValue.ext_id:type_name -> dtd.ExtId
+	32,  // 79: dtd.EntityValue.att_literal:type_name -> dtd.AttLiteral
+	78,  // 80: dtd.EntityValue.seq1:type_name -> dtd.EntityValue.Seq1
+	26,  // 81: dtd.NotationDecl.notation_id:type_name -> dtd.NotationId
+	33,  // 82: dtd.NotationDecl.opt_s:type_name -> dtd.OptS
+	42,  // 83: dtd.NotationDecl.greater_than_sign_keyword:type_name -> dtd.GreaterThanSignKeyword
+	2,   // 84: dtd.NotationId.ext_id:type_name -> dtd.ExtId
+	80,  // 85: dtd.NotationId.public:type_name -> dtd.NotationId.Public
+	60,  // 86: dtd.Pereference.semicolon_keyword:type_name -> dtd.SemicolonKeyword
+	43,  // 87: dtd.Comment.hyphen_minus_hyphen_minus_greater_than_sign_keyword:type_name -> dtd.HyphenMinusHyphenMinusGreaterThanSignKeyword
+	81,  // 88: dtd.Pi.seq1:type_name -> dtd.Pi.Seq1
+	55,  // 89: dtd.Pi.question_mark_greater_than_sign_keyword:type_name -> dtd.QuestionMarkGreaterThanSignKeyword
+	82,  // 90: dtd.SystemLiteral.quotation_mark:type_name -> dtd.SystemLiteral.QuotationMark
+	83,  // 91: dtd.SystemLiteral.apostrophe:type_name -> dtd.SystemLiteral.Apostrophe
+	84,  // 92: dtd.PubidLiteral.quotation_mark:type_name -> dtd.PubidLiteral.QuotationMark
+	85,  // 93: dtd.PubidLiteral.apostrophe:type_name -> dtd.PubidLiteral.Apostrophe
+	86,  // 94: dtd.AttLiteral.quotation_mark:type_name -> dtd.AttLiteral.QuotationMark
+	87,  // 95: dtd.AttLiteral.apostrophe:type_name -> dtd.AttLiteral.Apostrophe
+	2,   // 96: dtd.ExternalId.Seq1.ext_id:type_name -> dtd.ExtId
+	30,  // 97: dtd.ExtId.System.system_literal:type_name -> dtd.SystemLiteral
+	31,  // 98: dtd.ExtId.Public.pubid_literal:type_name -> dtd.PubidLiteral
+	30,  // 99: dtd.ExtId.Public.system_literal:type_name -> dtd.SystemLiteral
+	4,   // 100: dtd.InternalSubset.LeftSquareBracket.decls:type_name -> dtd.Decls
+	59,  // 101: dtd.InternalSubset.LeftSquareBracket.right_square_bracket_keyword:type_name -> dtd.RightSquareBracketKeyword
+	33,  // 102: dtd.Mixed.LeftParenthesis.opt_s:type_name -> dtd.OptS
+	52,  // 103: dtd.Mixed.LeftParenthesis.number_sign_pcdata_keyword:type_name -> dtd.NumberSignPcdataKeyword
+	68,  // 104: dtd.Mixed.LeftParenthesis.seq1:type_name -> dtd.Mixed.LeftParenthesis.Seq1
+	33,  // 105: dtd.Mixed.LeftParenthesis.opt_s_2:type_name -> dtd.OptS
+	58,  // 106: dtd.Mixed.LeftParenthesis.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	36,  // 107: dtd.Mixed.LeftParenthesis.asterisk_keyword:type_name -> dtd.AsteriskKeyword
+	33,  // 108: dtd.Mixed.LeftParenthesis2.opt_s:type_name -> dtd.OptS
+	52,  // 109: dtd.Mixed.LeftParenthesis2.number_sign_pcdata_keyword:type_name -> dtd.NumberSignPcdataKeyword
+	33,  // 110: dtd.Mixed.LeftParenthesis2.opt_s_2:type_name -> dtd.OptS
+	58,  // 111: dtd.Mixed.LeftParenthesis2.right_parenthesis_keyword:type_name -> dtd.RightParenthesisKeyword
+	33,  // 112: dtd.Mixed.LeftParenthesis.Seq1.opt_s:type_name -> dtd.OptS
+	61,  // 113: dtd.Mixed.LeftParenthesis.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
+	33,  // 114: dtd.Mixed.LeftParenthesis.Seq1.opt_s_2:type_name -> dtd.OptS
+	10,  // 115: dtd.Children.Alt1.choice:type_name -> dtd.Choice
+	11,  // 116: dtd.Children.Alt1.seq:type_name -> dtd.Seq
+	33,  // 117: dtd.Choice.Seq1.opt_s:type_name -> dtd.OptS
+	61,  // 118: dtd.Choice.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
+	33,  // 119: dtd.Choice.Seq1.opt_s_2:type_name -> dtd.OptS
+	12,  // 120: dtd.Choice.Seq1.cp:type_name -> dtd.Cp
+	33,  // 121: dtd.Seq.Seq1.opt_s:type_name -> dtd.OptS
+	38,  // 122: dtd.Seq.Seq1.comma_keyword:type_name -> dtd.CommaKeyword
+	33,  // 123: dtd.Seq.Seq1.opt_s_2:type_name -> dtd.OptS
+	12,  // 124: dtd.Seq.Seq1.cp:type_name -> dtd.Cp
+	10,  // 125: dtd.Cp.Alt1.choice:type_name -> dtd.Choice
+	11,  // 126: dtd.Cp.Alt1.seq:type_name -> dtd.Seq
+	33,  // 127: dtd.NotationType.Seq1.opt_s:type_name -> dtd.OptS
+	61,  // 128: dtd.NotationType.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
+	33,  // 129: dtd.NotationType.Seq1.opt_s_2:type_name -> dtd.OptS
+	33,  // 130: dtd.Enumeration.Seq1.opt_s:type_name -> dtd.OptS
+	61,  // 131: dtd.Enumeration.Seq1.vertical_line_keyword:type_name -> dtd.VerticalLineKeyword
+	33,  // 132: dtd.Enumeration.Seq1.opt_s_2:type_name -> dtd.OptS
+	23,  // 133: dtd.EntityKind.PercentSign.pe_value:type_name -> dtd.PeValue
+	24,  // 134: dtd.EntityKind.Seq1.entity_value:type_name -> dtd.EntityValue
+	2,   // 135: dtd.EntityValue.Seq1.ext_id:type_name -> dtd.ExtId
+	79,  // 136: dtd.EntityValue.Seq1.seq1:type_name -> dtd.EntityValue.Seq1.Seq1
+	48,  // 137: dtd.EntityValue.Seq1.Seq1.ndata_keyword:type_name -> dtd.NdataKeyword
+	31,  // 138: dtd.NotationId.Public.pubid_literal:type_name -> dtd.PubidLiteral
+	57,  // 139: dtd.SystemLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
+	35,  // 140: dtd.SystemLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
+	57,  // 141: dtd.PubidLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
+	35,  // 142: dtd.PubidLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
+	57,  // 143: dtd.AttLiteral.QuotationMark.quotation_mark_keyword:type_name -> dtd.QuotationMarkKeyword
+	35,  // 144: dtd.AttLiteral.Apostrophe.apostrophe_keyword:type_name -> dtd.ApostropheKeyword
+	145, // [145:145] is the sub-list for method output_type
+	145, // [145:145] is the sub-list for method input_type
+	145, // [145:145] is the sub-list for extension type_name
+	145, // [145:145] is the sub-list for extension extendee
+	0,   // [0:145] is the sub-list for field type_name
 }
 
 func init() { file_dtd_proto_init() }
@@ -5667,6 +5982,10 @@ func file_dtd_proto_init() {
 		(*Contentspec_AnyKeyword)(nil),
 		(*Contentspec_Mixed)(nil),
 		(*Contentspec_Children)(nil),
+	}
+	file_dtd_proto_msgTypes[8].OneofWrappers = []any{
+		(*Mixed_LeftParenthesis_)(nil),
+		(*Mixed_LeftParenthesis2_)(nil),
 	}
 	file_dtd_proto_msgTypes[13].OneofWrappers = []any{
 		(*Occ_QuestionMarkKeyword)(nil),
@@ -5695,30 +6014,34 @@ func file_dtd_proto_init() {
 		(*EntityKind_Seq1_)(nil),
 	}
 	file_dtd_proto_msgTypes[23].OneofWrappers = []any{
+		(*PeValue_AttLiteral)(nil),
+		(*PeValue_ExtId)(nil),
+	}
+	file_dtd_proto_msgTypes[24].OneofWrappers = []any{
 		(*EntityValue_AttLiteral)(nil),
 		(*EntityValue_Seq1_)(nil),
 	}
-	file_dtd_proto_msgTypes[25].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[26].OneofWrappers = []any{
 		(*NotationId_ExtId)(nil),
 		(*NotationId_Public_)(nil),
 	}
-	file_dtd_proto_msgTypes[29].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[30].OneofWrappers = []any{
 		(*SystemLiteral_QuotationMark_)(nil),
 		(*SystemLiteral_Apostrophe_)(nil),
 	}
-	file_dtd_proto_msgTypes[30].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[31].OneofWrappers = []any{
 		(*PubidLiteral_QuotationMark_)(nil),
 		(*PubidLiteral_Apostrophe_)(nil),
 	}
-	file_dtd_proto_msgTypes[31].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[32].OneofWrappers = []any{
 		(*AttLiteral_QuotationMark_)(nil),
 		(*AttLiteral_Apostrophe_)(nil),
 	}
-	file_dtd_proto_msgTypes[66].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[69].OneofWrappers = []any{
 		(*Children_Alt1_Choice)(nil),
 		(*Children_Alt1_Seq)(nil),
 	}
-	file_dtd_proto_msgTypes[69].OneofWrappers = []any{
+	file_dtd_proto_msgTypes[72].OneofWrappers = []any{
 		(*Cp_Alt1_Name)(nil),
 		(*Cp_Alt1_Choice)(nil),
 		(*Cp_Alt1_Seq)(nil),
@@ -5729,7 +6052,7 @@ func file_dtd_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dtd_proto_rawDesc), len(file_dtd_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   84,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

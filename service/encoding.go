@@ -3,6 +3,7 @@ package service
 import (
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
@@ -47,10 +48,15 @@ func firstIllegalChar(s string, is11 bool) int {
 	if is11 {
 		char = xmlpb.Lexical["Char11Literal"]
 	}
-	for i, r := range s {
+	for i := 0; i < len(s); {
+		r, sz := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && sz == 1 { // invalid UTF-8 / surrogate byte
+			return i
+		}
 		if !char.Contains(r) {
 			return i
 		}
+		i += sz
 	}
 	return -1
 }

@@ -31,10 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# Test corpora — fetched/organized on demand via `go run ./testing fetch`.
-# Sources and generated valid/invalid/not-wf folders are not committed.
-/testing/conformance_test/
-/testing/xml/*/
-/testing/docx/*/
-/testing/xlsx/*/
-/testing/rss/*/
+# Test corpora — fetched/organized on demand via `go run ./testing`.
+# Not committed.
+/testing/corpus/

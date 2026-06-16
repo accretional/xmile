@@ -55,7 +55,7 @@ miscs        = { Misc } ;
 Misc         = Comment | PI | S ;
 
 Comment      = "<!--" , comment_text , "-->" ;
-PI           = "<?" , Name , pi_text , "?>" ;
+PI           = "<?" , Name , [ S , pi_text ] , "?>" ;
 
 element      = EmptyElemTag | ( STag , content , ETag ) ;
 STag         = "<" , Name , attributes , optS , ">" ;

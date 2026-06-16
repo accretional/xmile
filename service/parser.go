@@ -73,10 +73,12 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 	src = normalizeEncoding(src)
 	src = decodeDeclaredEncoding(src)
 	is11 := detectVersion(src)
-	src = normalizeLineEnds(src, is11)
+	// Check character legality before line-end normalization, which []rune-
+	// decodes and would replace illegal bytes with U+FFFD.
 	if off := firstIllegalChar(src, is11); off >= 0 {
 		return nil, &WFError{Msg: "illegal XML character", Offset: int32(off)}
 	}
+	src = normalizeLineEnds(src, is11)
 	cst, err := p.ParseCST(src)
 	if err != nil {
 		return nil, &WFError{Msg: err.Error()}
@@ -91,8 +93,14 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 	if err := checkPubid(dtdRoot); err != nil {
 		return nil, err
 	}
+	if err := checkDTDPI(dtdRoot); err != nil {
+		return nil, err
+	}
 	info := buildDTDInfo(dtdRoot)
 	if err := checkDTDRefs(dtdRoot, info, is11); err != nil {
+		return nil, err
+	}
+	if err := checkDeclOrder(dtdRoot); err != nil {
 		return nil, err
 	}
 	if err := p.checkEntities(cst.GetRoot(), info, is11); err != nil {

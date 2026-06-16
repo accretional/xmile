@@ -100,8 +100,26 @@ func buildDTDInfo(dtdRoot *pb.ASTNode) *dtdInfo {
 // recursion, and well-formed replacement text for entities used in content.
 func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error {
 	contentRefs := map[string]bool{}
-	if err := walkEnt(root, info, false, contentRefs); err != nil {
+	attrRefs := map[string]bool{}
+	if err := walkEnt(root, info, false, contentRefs, attrRefs); err != nil {
 		return err
+	}
+	// An entity referenced in an attribute value must expand to a valid
+	// attribute value: no '<', and every '&' a well-formed reference.
+	for name := range attrRefs {
+		if info.general[name].external {
+			continue
+		}
+		expanded, err := info.expandValue(name, map[string]bool{})
+		if err != nil {
+			return err
+		}
+		if strings.ContainsRune(expanded, '<') {
+			return &WFError{Msg: "entity " + name + " contains '<' but is referenced in an attribute value"}
+		}
+		if err := validateValueRefs(expanded, false); err != nil {
+			return &WFError{Msg: "entity " + name + " expansion is not a valid attribute value"}
+		}
 	}
 	decl := ""
 	if is11 {
@@ -126,7 +144,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error
 	return nil
 }
 
-func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs map[string]bool) error {
+func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs map[string]bool) error {
 	if n == nil {
 		return nil
 	}
@@ -152,7 +170,9 @@ func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs map[string]b
 			case inAttr && info.externalInChain(name, map[string]bool{}):
 				return &WFError{Msg: "external entity reference in attribute value", Offset: n.GetLocation().GetOffset()}
 			case !ent.external:
-				if !inAttr {
+				if inAttr {
+					attrRefs[name] = true
+				} else {
 					contentRefs[name] = true
 				}
 				// Transitively validate the replacement text: no recursion,
@@ -167,7 +187,7 @@ func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs map[string]b
 		}
 	}
 	for _, c := range n.GetChildren() {
-		if err := walkEnt(c, info, inAttr, contentRefs); err != nil {
+		if err := walkEnt(c, info, inAttr, contentRefs, attrRefs); err != nil {
 			return err
 		}
 	}
@@ -206,12 +226,22 @@ func checkDTDRefs(dtdRoot *pb.ASTNode, info *dtdInfo, is11 bool) error {
 		return nil
 	}
 	for _, ed := range descendants(dtdRoot, "entityDecl") {
-		if err := checkValueCharRefs(litValue(ed), is11); err != nil {
+		val, internal := internalValue(ed)
+		if !internal {
+			continue
+		}
+		if err := validateValueRefs(val, true); err != nil {
+			return err
+		}
+		if err := checkValueCharRefs(val, is11); err != nil {
 			return err
 		}
 	}
 	for _, dd := range descendants(dtdRoot, "defaultDecl") {
 		val := litValue(dd)
+		if err := validateValueRefs(val, false); err != nil {
+			return err
+		}
 		if err := checkValueCharRefs(val, is11); err != nil {
 			return err
 		}
@@ -235,6 +265,123 @@ func checkDTDRefs(dtdRoot *pb.ASTNode, info *dtdInfo, is11 bool) error {
 		}
 	}
 	return nil
+}
+
+// checkDeclOrder rejects a general-entity reference in an ATTLIST default
+// value whose entity is declared later in the internal subset (defaults are
+// processed in declaration order, so the entity must already be declared).
+func checkDeclOrder(dtdRoot *pb.ASTNode) error {
+	if dtdRoot == nil {
+		return nil
+	}
+	declared := map[string]bool{}
+	var rec func(n *pb.ASTNode) error
+	rec = func(n *pb.ASTNode) error {
+		switch n.GetKind() {
+		case "entityDecl":
+			ek := firstDescendant(n, "entityKind")
+			if ek != nil && firstLeaf(ek) != "%" {
+				if nm := firstDescendant(ek, "Name"); nm != nil {
+					declared[nm.GetValue()] = true
+				}
+			}
+			return nil
+		case "attlistDecl":
+			for _, dd := range descendants(n, "defaultDecl") {
+				for _, r := range entityRefsIn(litValue(dd)) {
+					if !builtinEntities[r] && !declared[r] {
+						return &WFError{Msg: "entity " + r + " referenced in attribute default before its declaration"}
+					}
+				}
+			}
+			return nil
+		}
+		for _, c := range n.GetChildren() {
+			if err := rec(c); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return rec(dtdRoot)
+}
+
+// internalValue returns an entity's internal replacement literal (the
+// attLiteral text), or ok=false for an external (SYSTEM/PUBLIC) entity whose
+// literal is a system/public identifier, not a value to validate.
+func internalValue(ed *pb.ASTNode) (string, bool) {
+	if al := firstDescendant(ed, "attLiteral"); al != nil {
+		return litValue(al), true
+	}
+	return "", false
+}
+
+// validateValueRefs enforces reference syntax inside a literal value: every
+// '&' must begin a well-formed character or general-entity reference. When
+// peForbidden is set (entity values, not attribute defaults), a
+// parameter-entity reference ('%name;') in the internal subset is rejected.
+func validateValueRefs(s string, peForbidden bool) error {
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '&':
+			if !validRefAt(s, i) {
+				return &WFError{Msg: "malformed reference in entity value"}
+			}
+		case '%':
+			// In an internal entity value, '%' is only valid as a parameter-
+			// entity reference, which is itself forbidden there — so any '%'
+			// is not well-formed.
+			if peForbidden {
+				return &WFError{Msg: "'%' in internal entity value"}
+			}
+		}
+	}
+	return nil
+}
+
+func validRefAt(s string, i int) bool {
+	j := i + 1
+	if j >= len(s) {
+		return false
+	}
+	if s[j] == '#' {
+		j++
+		if j < len(s) && (s[j] == 'x' || s[j] == 'X') {
+			j++
+			start := j
+			for j < len(s) && isHexByte(s[j]) {
+				j++
+			}
+			return j > start && j < len(s) && s[j] == ';'
+		}
+		start := j
+		for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+			j++
+		}
+		return j > start && j < len(s) && s[j] == ';'
+	}
+	if !isNameStartByte(s[j]) {
+		return false
+	}
+	j++
+	for j < len(s) && isNameByte(s[j]) {
+		j++
+	}
+	return j < len(s) && s[j] == ';'
+}
+
+func isNameStartByte(b byte) bool {
+	switch {
+	case b >= 'a' && b <= 'z', b >= 'A' && b <= 'Z':
+		return true
+	case b == '_' || b == ':' || b >= 0x80:
+		return true
+	}
+	return false
+}
+
+func isHexByte(b byte) bool {
+	return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
 }
 
 // litValue returns the literal text (litDq/litSq) within n.

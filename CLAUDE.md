@@ -91,5 +91,6 @@ XmlService.Parse(bytes) → Document   (cmd/xmlserve serves it; cmd/xmlparse is 
 | `cmd/xmlparse/` | CLI: file/stdin → AST (or `-cst`) |
 | `cmd/xmlserve/` | gRPC server |
 | `cmd/conformance/` | W3C conformance report |
-| `testing/` | corpora + corpus harness (`go run ./testing`) |
+| `testing/` | corpora (gitignored, fetched on demand) |
+| `testing/xml-parse/` | corpus harness (`go run ./testing/xml-parse`) |
 | `docs/decisions/` | ADRs |

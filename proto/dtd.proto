@@ -113,26 +113,44 @@ message Contentspec {
 }
 
 message Mixed {
-  OptS opt_s = 1;
+  oneof value {
+    LeftParenthesis left_parenthesis = 1;
 
-  NumberSignPcdataKeyword number_sign_pcdata_keyword = 2;
+    LeftParenthesis2 left_parenthesis2 = 2;
+  }
 
-  repeated Seq1 seq1 = 3;
-
-  OptS opt_s_2 = 4;
-
-  RightParenthesisKeyword right_parenthesis_keyword = 5;
-
-  AsteriskKeyword asterisk_keyword = 6;
-
-  message Seq1 {
+  message LeftParenthesis {
     OptS opt_s = 1;
 
-    VerticalLineKeyword vertical_line_keyword = 2;
+    NumberSignPcdataKeyword number_sign_pcdata_keyword = 2;
+
+    repeated Seq1 seq1 = 3;
+
+    OptS opt_s_2 = 4;
+
+    RightParenthesisKeyword right_parenthesis_keyword = 5;
+
+    AsteriskKeyword asterisk_keyword = 6;
+
+    message Seq1 {
+      OptS opt_s = 1;
+
+      VerticalLineKeyword vertical_line_keyword = 2;
+
+      OptS opt_s_2 = 3;
+
+      string name = 4;
+    }
+  }
+
+  message LeftParenthesis2 {
+    OptS opt_s = 1;
+
+    NumberSignPcdataKeyword number_sign_pcdata_keyword = 2;
 
     OptS opt_s_2 = 3;
 
-    string name = 4;
+    RightParenthesisKeyword right_parenthesis_keyword = 4;
   }
 }
 
@@ -362,7 +380,7 @@ message EntityKind {
 
     string s_2 = 3;
 
-    EntityValue entity_value = 4;
+    PeValue pe_value = 4;
   }
 
   message Seq1 {
@@ -371,6 +389,14 @@ message EntityKind {
     string s = 2;
 
     EntityValue entity_value = 3;
+  }
+}
+
+message PeValue {
+  oneof value {
+    AttLiteral att_literal = 1;
+
+    ExtId ext_id = 2;
   }
 }
 
@@ -441,9 +467,15 @@ message Comment {
 message Pi {
   string name = 1;
 
-  string pi_text = 2;
+  Seq1 seq1 = 2;
 
   QuestionMarkGreaterThanSignKeyword question_mark_greater_than_sign_keyword = 3;
+
+  message Seq1 {
+    string s = 1;
+
+    string pi_text = 2;
+  }
 }
 
 message SystemLiteral {

@@ -29,7 +29,8 @@ markupdecl     = elementDecl | attlistDecl | entityDecl | notationDecl
 
 elementDecl    = "<!ELEMENT" , S , Name , S , contentspec , optS , ">" ;
 contentspec    = "EMPTY" | "ANY" | mixed | children ;
-mixed          = "(" , optS , "#PCDATA" , { optS , "|" , optS , Name } , optS , ")" , [ "*" ] ;
+mixed          = "(" , optS , "#PCDATA" , { optS , "|" , optS , Name } , optS , ")" , "*"
+               | "(" , optS , "#PCDATA" , optS , ")" ;
 children       = ( choice | seq ) , [ occ ] ;
 choice         = "(" , optS , cp , { optS , "|" , optS , cp } , optS , ")" ;
 seq            = "(" , optS , cp , { optS , "," , optS , cp } , optS , ")" ;
@@ -46,8 +47,9 @@ defaultDecl    = "#REQUIRED" | "#IMPLIED" | fixedDefault ;
 fixedDefault   = [ "#FIXED" , S ] , attLiteral ;
 
 entityDecl     = "<!ENTITY" , S , entityKind , optS , ">" ;
-entityKind     = "%" , S , Name , S , entityValue
+entityKind     = "%" , S , Name , S , peValue
                | Name , S , entityValue ;
+peValue        = attLiteral | extID ;
 entityValue    = attLiteral | extID , [ S , "NDATA" , S , Name ] ;
 
 notationDecl   = "<!NOTATION" , S , Name , S , notationID , optS , ">" ;
@@ -56,7 +58,7 @@ notationID     = extID | "PUBLIC" , S , PubidLiteral ;
 PEReference    = "%" , Name , ";" ;
 
 Comment        = "<!--" , comment_text , "-->" ;
-PI             = "<?" , Name , pi_text , "?>" ;
+PI             = "<?" , Name , [ S , pi_text ] , "?>" ;
 
 SystemLiteral  = '"' , litDq , '"' | "'" , litSq , "'" ;
 PubidLiteral   = '"' , litDq , '"' | "'" , litSq , "'" ;

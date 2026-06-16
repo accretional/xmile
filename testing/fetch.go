@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/xml"
 	"fmt"
@@ -12,24 +11,14 @@ import (
 	"time"
 )
 
-const xmlconfRoot = "testing/conformance_test/xmlconf"
-
-// xmlManifests are the W3C suite leaf manifests with <TEST> entries
-// (ASCII/UTF-8 collections).
+// xmlManifests are the W3C suite leaf manifests with <TEST> entries, plus the
+// XML 1.1 collection.
 var xmlManifests = []string{
 	"xmltest/xmltest.xml",
 	"sun/sun-valid.xml", "sun/sun-invalid.xml", "sun/sun-not-wf.xml",
 	"oasis/oasis.xml",
 	"ibm/ibm_oasis_valid.xml", "ibm/ibm_oasis_invalid.xml", "ibm/ibm_oasis_not-wf.xml",
-}
-
-// ooxmlSources maps a format to the vendored source dirs and extension.
-var ooxmlSources = map[string]struct {
-	dirs []string
-	ext  string
-}{
-	"docx": {[]string{"testing/docx/poi", "testing/docx/python-docx"}, ".docx"},
-	"xlsx": {[]string{"testing/xlsx/poi", "testing/xlsx/xlsxwriter"}, ".xlsx"},
+	"eduni/xml-1.1/xml11.xml",
 }
 
 type tcGroup struct {
@@ -46,36 +35,38 @@ type tcTest struct {
 	Version   string `xml:"VERSION,attr"`
 	Namespace string `xml:"NAMESPACE,attr"`
 	Rec       string `xml:"RECOMMENDATION,attr"`
+	Edition   string `xml:"EDITION,attr"`
 }
 
-// fetchCorpus (re)builds the testing/<format>/<verdict>/ folders from the
-// vendored sources: the W3C conformance suite (classified by its manifests)
-// and the OOXML reference files.
+// fetchCorpus builds testing/corpus/<format>/<verdict>/ by downloading the
+// W3C XML conformance suite (classified by its manifests into xml/<verdict>/),
+// the OOXML reference files, and real-world RSS feeds — all organized by file
+// type. Idempotent: a corpus already present is left in place.
 func fetchCorpus() error {
 	for _, f := range formats {
 		for _, v := range verdictDirs {
-			dir := filepath.Join(testingDir, f.name, v)
-			os.RemoveAll(dir)
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
-			}
+			os.MkdirAll(filepath.Join(testingDir, f.name, v), 0o755)
 		}
 	}
 
-	if _, err := os.Stat(xmlconfRoot); err != nil {
-		fmt.Printf("note: W3C suite not at %s — skipping XML corpus\n", xmlconfRoot)
+	if xmlCorpusPresent() {
+		fmt.Println("xml:  corpus already present")
+	} else if root, err := downloadXMLConf(); err != nil {
+		fmt.Println("xml: ", err)
 	} else {
-		n := classifyXML()
-		fmt.Printf("xml:  %d files organized into valid/invalid/not-wf\n", n)
+		n := classifyXML(root)
+		os.RemoveAll(filepath.Dir(root))
+		fmt.Printf("xml:  %d test files -> xml/<verdict>/\n", n)
 	}
 
-	for format, src := range ooxmlSources {
-		n := copyOOXML(format, src.dirs, src.ext)
-		fmt.Printf("%s: %d files copied into valid/\n", format, n)
-	}
-
+	downloadOOXML()
 	fetchRSS()
 	return nil
+}
+
+func xmlCorpusPresent() bool {
+	e, _ := os.ReadDir(filepath.Join(testingDir, "xml", "not-wf"))
+	return len(e) > 0
 }
 
 const rssRepo = "plenaryapp/awesome-rss-feeds"
@@ -159,26 +150,26 @@ func referenceWellFormed(b []byte) bool {
 	}
 }
 
-// classifyXML copies each conformance test file into the folder named by its
-// TYPE (valid / invalid / not-wf), filtered to the XML-1.0, no-external-
-// entity, namespace-safe subset this parser targets.
-func classifyXML() int {
+// classifyXML copies each conformance test file from the suite at root into
+// testing/corpus/xml/<verdict>/, filtered to the subset this parser targets
+// (XML 1.0 5th edition + 1.1; no namespaces or external entities).
+func classifyXML(root string) int {
 	count := 0
 	for _, m := range xmlManifests {
-		mp := filepath.Join(xmlconfRoot, m)
+		mp := filepath.Join(root, m)
 		data, err := os.ReadFile(mp)
 		if err != nil {
 			continue
 		}
-		var root tcGroup
+		var grp tcGroup
 		dec := xml.NewDecoder(bytes.NewReader(data))
 		dec.Strict = false
-		if dec.Decode(&root) != nil {
+		if dec.Decode(&grp) != nil {
 			continue
 		}
 		coll := strings.SplitN(m, "/", 2)[0]
 		var tests []resolvedT
-		collectT(&root, filepath.Dir(mp), &tests)
+		collectT(&grp, filepath.Dir(mp), &tests)
 		for _, rt := range tests {
 			verdict, skip := classifyTest(rt.t)
 			if skip {
@@ -198,11 +189,14 @@ func classifyXML() int {
 	return count
 }
 
+// classifyTest returns the verdict folder for a test, or skip=true for tests
+// outside this parser's scope: namespaces, external entities, 4th-edition-only
+// character tests, and "error"-type tests.
 func classifyTest(t tcTest) (verdict string, skip bool) {
-	if t.Version == "1.1" || strings.HasPrefix(t.Rec, "XML1.1") || strings.HasPrefix(t.Rec, "NS") {
+	if strings.HasPrefix(t.Rec, "NS") || t.Namespace == "no" {
 		return "", true
 	}
-	if t.Namespace == "no" {
+	if t.Edition != "" && !strings.Contains(" "+t.Edition+" ", " 5 ") {
 		return "", true
 	}
 	if t.Entities != "" && t.Entities != "none" {
@@ -212,7 +206,7 @@ func classifyTest(t tcTest) (verdict string, skip bool) {
 	case "valid", "invalid", "not-wf":
 		return t.Type, false
 	}
-	return "", true // "error" and anything unexpected
+	return "", true
 }
 
 type resolvedT struct {
@@ -231,56 +225,4 @@ func collectT(g *tcGroup, base string, out *[]resolvedT) {
 	for i := range g.Groups {
 		collectT(&g.Groups[i], b, out)
 	}
-}
-
-// copyOOXML flattens every container of the given extension from the source
-// dirs into testing/<format>/valid/ (these reference files are expected to
-// be well-formed).
-func copyOOXML(format string, srcDirs []string, ext string) int {
-	dst := filepath.Join(testingDir, format, "valid")
-	count := 0
-	for _, sd := range srcDirs {
-		_ = filepath.WalkDir(sd, func(p string, d os.DirEntry, err error) error {
-			if err != nil || d.IsDir() || !strings.EqualFold(filepath.Ext(p), ext) {
-				return nil
-			}
-			b, err := os.ReadFile(p)
-			if err != nil {
-				return nil
-			}
-			name := strings.ReplaceAll(strings.TrimPrefix(p, filepath.Join("testing", format)+string(os.PathSeparator)), string(os.PathSeparator), "_")
-			if os.WriteFile(filepath.Join(dst, name), b, 0o644) == nil {
-				count++
-			}
-			return nil
-		})
-	}
-	return count
-}
-
-// checkZip validates every XML part of a ZIP container against the folder's
-// expectation.
-func checkZip(path, want string) (bool, string) {
-	zr, err := zip.OpenReader(path)
-	if err != nil {
-		return false, "open zip: " + err.Error()
-	}
-	defer zr.Close()
-	for _, f := range zr.File {
-		ext := strings.ToLower(filepath.Ext(f.Name))
-		if ext != ".xml" && ext != ".rels" {
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			return false, f.Name + ": " + err.Error()
-		}
-		b, _ := io.ReadAll(rc)
-		rc.Close()
-		got, gerr := validate(string(b))
-		if !matchVerdict(want, got) {
-			return false, f.Name + ": " + describe(got, gerr)
-		}
-	}
-	return true, ""
 }

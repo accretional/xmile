@@ -96,6 +96,20 @@ func checkDupAttrs(tag *pb.ASTNode) error {
 	return nil
 }
 
+// checkDTDPI rejects a processing instruction inside the DTD whose target is
+// "xml" (e.g. a stray XML/text declaration in the internal subset).
+func checkDTDPI(dtdRoot *pb.ASTNode) error {
+	if dtdRoot == nil {
+		return nil
+	}
+	for _, pi := range descendants(dtdRoot, "PI") {
+		if t := firstDescendant(pi, "Name"); t != nil && strings.EqualFold(t.GetValue(), "xml") {
+			return &WFError{Msg: `processing instruction target may not be "xml"`}
+		}
+	}
+	return nil
+}
+
 // checkPubid enforces the PubidChar constraint on every public identifier
 // in a parsed DTD.
 func checkPubid(dtdRoot *pb.ASTNode) error {

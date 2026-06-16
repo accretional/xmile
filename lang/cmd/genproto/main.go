@@ -176,7 +176,7 @@ func writeProto(path string, fdp *descriptorpb.FileDescriptorProto) error {
 	return writeFile(path, protoSrc)
 }
 
-func writeFile(path, content string) error  { return writeBytes(path, []byte(content)) }
+func writeFile(path, content string) error { return writeBytes(path, []byte(content)) }
 func writeBytes(path string, b []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
