@@ -29,9 +29,9 @@ func (e *WFError) Error() string {
 // CST: tag-name equality, no duplicate attributes, PI target != "xml", and
 // no literal "]]>" in character data. (Single-root and structural
 // completeness are guaranteed by the grammar + EOF-complete parsing.)
-func checkWellFormed(root *pb.ASTNode) error { return walkWF(root) }
+func checkWellFormed(root *pb.ASTNode, is11 bool) error { return walkWF(root, is11) }
 
-func walkWF(n *pb.ASTNode) error {
+func walkWF(n *pb.ASTNode, is11 bool) error {
 	if n == nil {
 		return nil
 	}
@@ -61,13 +61,17 @@ func walkWF(n *pb.ASTNode) error {
 		}
 	case "CharRef":
 		// WFC: Legal Character — a character reference must denote a legal
-		// XML Char.
-		if !xmlpb.Lexical["Char"].Contains(charRefRune(n)) {
+		// character. XML 1.1 permits restricted control characters here.
+		class := xmlpb.Lexical["Char"]
+		if is11 {
+			class = xmlpb.Lexical["Char11Ref"]
+		}
+		if !class.Contains(charRefRune(n)) {
 			return &WFError{Msg: "character reference to an illegal character", Offset: n.GetLocation().GetOffset()}
 		}
 	}
 	for _, c := range n.GetChildren() {
-		if err := walkWF(c); err != nil {
+		if err := walkWF(c, is11); err != nil {
 			return err
 		}
 	}

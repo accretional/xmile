@@ -32,6 +32,7 @@ var manifests = []string{
 	"sun/sun-valid.xml", "sun/sun-invalid.xml", "sun/sun-not-wf.xml",
 	"oasis/oasis.xml",
 	"ibm/ibm_oasis_valid.xml", "ibm/ibm_oasis_invalid.xml", "ibm/ibm_oasis_not-wf.xml",
+	"eduni/xml-1.1/xml11.xml",
 }
 
 type tcGroup struct {
@@ -72,10 +73,7 @@ func collect(g *tcGroup, base, coll string, out *[]resolved) {
 
 // classify returns (expectParse, skip, reason).
 func classify(t tcTest) (bool, bool, string) {
-	if t.Version == "1.1" || strings.HasPrefix(t.Rec, "XML1.1") || strings.HasPrefix(t.Rec, "NS") {
-		return false, true, "xml1.1/ns"
-	}
-	if t.Namespace == "no" {
+	if strings.HasPrefix(t.Rec, "NS") || t.Namespace == "no" {
 		return false, true, "namespace"
 	}
 	if t.Edition != "" && !strings.Contains(" "+t.Edition+" ", " 5 ") {

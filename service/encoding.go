@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"unicode/utf16"
 
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
@@ -37,15 +38,93 @@ func decodeUTF16(b []byte, bigEndian bool) string {
 	return string(utf16.Decode(u))
 }
 
-// firstIllegalChar returns the byte offset of the first character outside
-// the legal XML Char set, or -1 if all are legal. The character set is the
-// generated "Char" lexical class — no character ranges live in Go.
-func firstIllegalChar(s string) int {
+// firstIllegalChar returns the byte offset of the first character that may
+// not appear literally, or -1 if all are legal. The set is version-specific
+// (XML 1.1 forbids the restricted control characters literally), read from
+// the generated lexical classes — no character ranges live in Go.
+func firstIllegalChar(s string, is11 bool) int {
 	char := xmlpb.Lexical["Char"]
+	if is11 {
+		char = xmlpb.Lexical["Char11Literal"]
+	}
 	for i, r := range s {
 		if !char.Contains(r) {
 			return i
 		}
 	}
 	return -1
+}
+
+// declPseudoAttr extracts a pseudo-attribute value (version / encoding /
+// standalone) from the XML declaration, which, if present, is at the start.
+func declPseudoAttr(s, name string) string {
+	if !strings.HasPrefix(s, "<?xml") {
+		return ""
+	}
+	end := strings.Index(s, "?>")
+	if end < 0 {
+		return ""
+	}
+	decl := s[len("<?xml"):end]
+	i := strings.Index(decl, name)
+	if i < 0 {
+		return ""
+	}
+	rest := decl[i+len(name):]
+	q := strings.IndexAny(rest, "\"'")
+	if q < 0 {
+		return ""
+	}
+	rest = rest[q+1:]
+	if e := strings.IndexAny(rest, "\"'"); e >= 0 {
+		return rest[:e]
+	}
+	return ""
+}
+
+// detectVersion reports whether the document declares version="1.1".
+func detectVersion(s string) bool { return declPseudoAttr(s, "version") == "1.1" }
+
+// decodeDeclaredEncoding transcodes the single-byte encodings xmile handles
+// directly (ISO-8859-1 / Latin-1) into UTF-8, based on the declaration. The
+// declaration itself is ASCII, so it is read before transcoding.
+func decodeDeclaredEncoding(s string) string {
+	switch strings.ToLower(declPseudoAttr(s, "encoding")) {
+	case "iso-8859-1", "latin-1", "latin1":
+		rs := make([]rune, len(s))
+		for i := 0; i < len(s); i++ {
+			rs[i] = rune(s[i])
+		}
+		return string(rs)
+	}
+	return s
+}
+
+// normalizeLineEnds applies XML line-end normalization: CR and CRLF become
+// LF; XML 1.1 additionally normalizes NEL (#x85), CR-NEL, and LINE SEPARATOR
+// (#x2028).
+func normalizeLineEnds(s string, is11 bool) string {
+	const nel = '\u0085'  // NEL
+	const lsep = '\u2028' // LINE SEPARATOR
+	if !strings.ContainsRune(s, '\r') &&
+		!(is11 && (strings.ContainsRune(s, nel) || strings.ContainsRune(s, lsep))) {
+		return s
+	}
+	rs := []rune(s)
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(rs); i++ {
+		switch r := rs[i]; {
+		case r == '\r':
+			b.WriteByte('\n')
+			if i+1 < len(rs) && (rs[i+1] == '\n' || (is11 && rs[i+1] == nel)) {
+				i++
+			}
+		case is11 && (r == nel || r == lsep):
+			b.WriteByte('\n')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }

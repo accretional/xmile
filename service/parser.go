@@ -71,14 +71,17 @@ func (p *Parser) ParseCST(src string) (*pb.ASTDescriptor, error) {
 // when src is not well-formed XML (a *WFError).
 func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 	src = normalizeEncoding(src)
-	if off := firstIllegalChar(src); off >= 0 {
+	src = decodeDeclaredEncoding(src)
+	is11 := detectVersion(src)
+	src = normalizeLineEnds(src, is11)
+	if off := firstIllegalChar(src, is11); off >= 0 {
 		return nil, &WFError{Msg: "illegal XML character", Offset: int32(off)}
 	}
 	cst, err := p.ParseCST(src)
 	if err != nil {
 		return nil, &WFError{Msg: err.Error()}
 	}
-	if err := checkWellFormed(cst.GetRoot()); err != nil {
+	if err := checkWellFormed(cst.GetRoot(), is11); err != nil {
 		return nil, err
 	}
 	dtdRoot, err := parseDTD(cst.GetRoot())
@@ -89,10 +92,10 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 		return nil, err
 	}
 	info := buildDTDInfo(dtdRoot)
-	if err := checkDTDRefs(dtdRoot, info); err != nil {
+	if err := checkDTDRefs(dtdRoot, info, is11); err != nil {
 		return nil, err
 	}
-	if err := p.checkEntities(cst.GetRoot(), info); err != nil {
+	if err := p.checkEntities(cst.GetRoot(), info, is11); err != nil {
 		return nil, err
 	}
 	return projectDocument(cst.GetRoot()), nil

@@ -12,9 +12,16 @@
 
 S            run     9 A D 20
 
-# Char is the legal XML 1.0 character set, used for the illegal-character
-# pre-check (not referenced by the grammar).
+# Char is the legal XML 1.0 character set (literal and reference), used for
+# the illegal-character pre-check (not referenced by the grammar).
 Char         run     9 A D 20-D7FF E000-FFFD 10000-10FFFF
+
+# XML 1.1 splits literal from referenced legality. Char11Literal is what may
+# appear literally (restricted control chars excluded; NEL #x85 allowed);
+# Char11Ref is what a character reference may denote (restricted chars are
+# allowed via references; only NUL is excluded).
+Char11Literal run    9 A D 20-7E 85 A0-D7FF E000-FFFD 10000-10FFFF
+Char11Ref     run    1-D7FF E000-FFFD 10000-10FFFF
 
 CharData     except  3C 26
 dqText       except  22 3C 26

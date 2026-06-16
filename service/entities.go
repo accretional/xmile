@@ -98,10 +98,14 @@ func buildDTDInfo(dtdRoot *pb.ASTNode) *dtdInfo {
 // document body: Entity Declared, Parsed Entity (no unparsed-entity
 // reference), No External Entity References in attribute values, no
 // recursion, and well-formed replacement text for entities used in content.
-func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo) error {
+func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error {
 	contentRefs := map[string]bool{}
 	if err := walkEnt(root, info, false, contentRefs); err != nil {
 		return err
+	}
+	decl := ""
+	if is11 {
+		decl = `<?xml version="1.1"?>`
 	}
 	// Replacement text of an internal entity referenced in content must
 	// expand to well-formed content. Expand it (char references become
@@ -115,7 +119,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo) error {
 		if err != nil {
 			return err
 		}
-		if _, perr := p.Parse("<xmilewrap>" + expanded + "</xmilewrap>"); perr != nil {
+		if _, perr := p.Parse(decl + "<xmilewrap>" + expanded + "</xmilewrap>"); perr != nil {
 			return &WFError{Msg: "entity " + name + " replacement is not well-formed: " + perr.Error()}
 		}
 	}
@@ -197,18 +201,18 @@ func (info *dtdInfo) externalInChain(name string, visiting map[string]bool) bool
 // character references in entity values must be legal, and entity
 // references in ATTLIST default values must resolve to declared, internal,
 // non-recursive entities.
-func checkDTDRefs(dtdRoot *pb.ASTNode, info *dtdInfo) error {
+func checkDTDRefs(dtdRoot *pb.ASTNode, info *dtdInfo, is11 bool) error {
 	if dtdRoot == nil {
 		return nil
 	}
 	for _, ed := range descendants(dtdRoot, "entityDecl") {
-		if err := checkValueCharRefs(litValue(ed)); err != nil {
+		if err := checkValueCharRefs(litValue(ed), is11); err != nil {
 			return err
 		}
 	}
 	for _, dd := range descendants(dtdRoot, "defaultDecl") {
 		val := litValue(dd)
-		if err := checkValueCharRefs(val); err != nil {
+		if err := checkValueCharRefs(val, is11); err != nil {
 			return err
 		}
 		for _, r := range entityRefsIn(val) {
@@ -247,7 +251,11 @@ func litValue(n *pb.ASTNode) string {
 // checkValueCharRefs validates every character reference embedded in literal
 // text (character references in entity/attribute values are resolved at
 // declaration, so an illegal value is fatal there).
-func checkValueCharRefs(s string) error {
+func checkValueCharRefs(s string, is11 bool) error {
+	class := xmlpb.Lexical["Char"]
+	if is11 {
+		class = xmlpb.Lexical["Char11Ref"]
+	}
 	for i := 0; i+1 < len(s); i++ {
 		if s[i] != '&' || s[i+1] != '#' {
 			continue
@@ -260,7 +268,7 @@ func checkValueCharRefs(s string) error {
 			break
 		}
 		for _, r := range charRefText(s[i : j+1]) {
-			if !xmlpb.Lexical["Char"].Contains(r) {
+			if !class.Contains(r) {
 				return &WFError{Msg: "character reference to an illegal character"}
 			}
 		}
@@ -318,7 +326,17 @@ func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, err
 				b.WriteByte('&')
 				continue
 			}
-			b.WriteString(charRefText(s[i : j+1]))
+			// A reference to a (restricted) control character denotes data,
+			// not literal markup; keep it as a reference so the well-formed
+			// reparse validates it per the document's version rather than
+			// treating it as a literal restricted character.
+			ref := s[i : j+1]
+			t := charRefText(ref)
+			if tr := []rune(t); len(tr) == 1 && isControlRune(tr[0]) {
+				b.WriteString(ref)
+			} else {
+				b.WriteString(t)
+			}
 			i = j
 			continue
 		}
@@ -422,6 +440,12 @@ func entityRefsIn(s string) []string {
 		}
 	}
 	return out
+}
+
+// isControlRune reports whether r is a control character that is restricted
+// in XML 1.1 (and illegal as a literal in XML 1.0).
+func isControlRune(r rune) bool {
+	return (r < 0x20 && r != 0x9 && r != 0xA && r != 0xD) || (r >= 0x7F && r <= 0x9F)
 }
 
 func isNameByte(b byte) bool {
