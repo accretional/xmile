@@ -9,10 +9,17 @@ import (
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
+// projector projects a CST into the AST, resolving declared general entities
+// (text-only) to their replacement text.
+type projector struct {
+	ents map[string]string // entity name -> resolved text
+}
+
 // projectDocument projects a well-formed CST into the xml.proto AST. It
 // references grammar rule names (the CST node kinds) but encodes no grammar
 // rules — those live in lang/xml.ebnf.
-func projectDocument(root *pb.ASTNode) *xmlpb.Document {
+func projectDocument(root *pb.ASTNode, info *dtdInfo) *xmlpb.Document {
+	pr := &projector{ents: resolvedTextEntities(info)}
 	doc := &xmlpb.Document{}
 	if prolog := directChild(root, "prolog"); prolog != nil {
 		doc.XmlDecl = projectXMLDecl(prolog)
@@ -20,12 +27,87 @@ func projectDocument(root *pb.ASTNode) *xmlpb.Document {
 		// TODO(dtd): parse the dtd_text span into doc.Doctype (dtd.Doctype).
 	}
 	if el := directChild(root, "element"); el != nil {
-		doc.Root = projectTag(el)
+		doc.Root = pr.tag(el)
 	}
 	if m := directChild(root, "miscs"); m != nil {
 		doc.EpilogMisc = projectMiscs(m)
 	}
 	return doc
+}
+
+// resolvedTextEntities returns each declared internal general entity whose
+// replacement is character data only (no element markup), resolved to text.
+func resolvedTextEntities(info *dtdInfo) map[string]string {
+	out := map[string]string{}
+	if info == nil {
+		return out
+	}
+	for name, ent := range info.general {
+		if ent.external {
+			continue
+		}
+		expanded, err := info.expandValue(name, map[string]bool{})
+		if err != nil {
+			continue
+		}
+		if text, ok := entityText(expanded); ok {
+			out[name] = text
+		}
+	}
+	return out
+}
+
+// entityText resolves predefined entities and character references in an
+// already-expanded replacement to literal text, reporting ok=false if it
+// contains element markup (a literal '<').
+func entityText(s string) (string, bool) {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == '<':
+			return "", false
+		case s[i] == '&':
+			if i+1 < len(s) && s[i+1] == '#' {
+				j := i + 2
+				for j < len(s) && s[j] != ';' {
+					j++
+				}
+				if j >= len(s) {
+					b.WriteByte('&')
+					continue
+				}
+				b.WriteString(charRefText(s[i : j+1]))
+				i = j
+				continue
+			}
+			j := i + 1
+			for j < len(s) && isNameByte(s[j]) {
+				j++
+			}
+			if j < len(s) && s[j] == ';' {
+				switch s[i+1 : j] {
+				case "amp":
+					b.WriteByte('&')
+				case "lt":
+					b.WriteByte('<')
+				case "gt":
+					b.WriteByte('>')
+				case "quot":
+					b.WriteByte('"')
+				case "apos":
+					b.WriteByte('\'')
+				default:
+					b.WriteString(s[i : j+1])
+				}
+				i = j
+				continue
+			}
+			b.WriteByte('&')
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String(), true
 }
 
 func projectXMLDecl(prolog *pb.ASTNode) *xmlpb.XmlDecl {
@@ -68,27 +150,27 @@ func projectMiscs(n *pb.ASTNode) []*xmlpb.Misc {
 	return out
 }
 
-func projectTag(el *pb.ASTNode) *xmlpb.Tag {
+func (pr *projector) tag(el *pb.ASTNode) *xmlpb.Tag {
 	if empty := directChild(el, "EmptyElemTag"); empty != nil {
-		return &xmlpb.Tag{Name: childName(empty), Attrs: projectAttrs(empty)}
+		return &xmlpb.Tag{Name: childName(empty), Attrs: pr.attrs(empty)}
 	}
 	stag := directChild(el, "STag")
-	tag := &xmlpb.Tag{Name: childName(stag), Attrs: projectAttrs(stag)}
+	tag := &xmlpb.Tag{Name: childName(stag), Attrs: pr.attrs(stag)}
 	if content := directChild(el, "content"); content != nil {
-		tag.Contents = projectContent(content)
+		tag.Contents = pr.content(content)
 	}
 	return tag
 }
 
-func projectAttrs(tag *pb.ASTNode) []*xmlpb.Attribute {
+func (pr *projector) attrs(tag *pb.ASTNode) []*xmlpb.Attribute {
 	var out []*xmlpb.Attribute
 	for _, a := range descendants(tag, "Attribute") {
-		out = append(out, &xmlpb.Attribute{Name: childName(a), Value: attrValue(a)})
+		out = append(out, &xmlpb.Attribute{Name: childName(a), Value: pr.attrValue(a)})
 	}
 	return out
 }
 
-func attrValue(a *pb.ASTNode) string {
+func (pr *projector) attrValue(a *pb.ASTNode) string {
 	av := directChild(a, "AttValue")
 	if av == nil {
 		return ""
@@ -108,7 +190,7 @@ func attrValue(a *pb.ASTNode) string {
 			b.WriteString(normalizeAttrWS(x.GetValue()))
 			return
 		case "Reference", "EntityRef", "CharRef":
-			b.WriteString(resolveRef(x))
+			b.WriteString(pr.resolveRef(x))
 			return
 		}
 		for _, c := range x.GetChildren() {
@@ -130,7 +212,7 @@ func normalizeAttrWS(s string) string {
 	}, s)
 }
 
-func projectContent(content *pb.ASTNode) []*xmlpb.ContentItem {
+func (pr *projector) content(content *pb.ASTNode) []*xmlpb.ContentItem {
 	var out []*xmlpb.ContentItem
 	var rec func(x *pb.ASTNode)
 	rec = func(x *pb.ASTNode) {
@@ -139,10 +221,10 @@ func projectContent(content *pb.ASTNode) []*xmlpb.ContentItem {
 			out = append(out, textItem(x.GetValue()))
 			return
 		case "Reference", "EntityRef", "CharRef":
-			out = append(out, textItem(resolveRef(x)))
+			out = append(out, textItem(pr.resolveRef(x)))
 			return
 		case "element":
-			out = append(out, &xmlpb.ContentItem{Item: &xmlpb.ContentItem_Child{Child: projectTag(x)}})
+			out = append(out, &xmlpb.ContentItem{Item: &xmlpb.ContentItem_Child{Child: pr.tag(x)}})
 			return
 		case "CDSect":
 			out = append(out, &xmlpb.ContentItem{Item: &xmlpb.ContentItem_Cdata{Cdata: tokenText(x, "cdata_text")}})
@@ -173,11 +255,11 @@ func projectPI(pi *pb.ASTNode) *xmlpb.PI {
 	return p
 }
 
-// resolveRef resolves an entity or character reference to its text. Without
-// a DTD, only the five predefined entities resolve; an unknown general
-// entity is left as its literal "&name;" (it remains a structurally
-// well-formed reference).
-func resolveRef(ref *pb.ASTNode) string {
+// resolveRef resolves an entity or character reference to its text: the five
+// predefined entities, then declared text-only general entities (resolved
+// during projection). A general entity whose replacement is markup, or one
+// that is undeclared, is left as its literal "&name;".
+func (pr *projector) resolveRef(ref *pb.ASTNode) string {
 	if er := firstDescendant(ref, "EntityRef"); er != nil {
 		name := ""
 		if n := firstDescendant(er, "Name"); n != nil {
@@ -194,6 +276,9 @@ func resolveRef(ref *pb.ASTNode) string {
 			return "\""
 		case "apos":
 			return "'"
+		}
+		if text, ok := pr.ents[name]; ok {
+			return text
 		}
 		return "&" + name + ";"
 	}

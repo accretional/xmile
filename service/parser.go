@@ -98,7 +98,7 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 	if err := p.checkEntities(cst.GetRoot(), info, is11); err != nil {
 		return nil, err
 	}
-	return projectDocument(cst.GetRoot()), nil
+	return projectDocument(cst.GetRoot(), info), nil
 }
 
 // DumpCST renders a CST for debugging.
