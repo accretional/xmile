@@ -19,7 +19,7 @@ own behavior.
 | `rssfetch.go` | HTTP / OPML helpers for reaching the RSS feeds |
 | `rss091.go` | fetches the RSS 0.91 set used by the schema compiler |
 | `progress/` | a small terminal progress bar |
-| `xml-parse/` | parser harness: runs the parser over the corpus and reports (`go run ./testing/xml-parse`) |
+| `xml-parse/` | full-corpus gate: runs the parser over the corpus (`go run ./testing/xml-parse`); the `xml/` corpus must be 100% (non-zero exit otherwise), real-world corpora are reported |
 | `schema-compile/` | DTD-as-schema harness: compiles `rss.dtd` and projects the RSS 0.91 corpus |
 | `corpus/` | the fetched corpus (gitignored; rebuilt on demand) |
 
@@ -48,59 +48,49 @@ corpus/
 | `rss0.91/` | the [RSS Advisory Board sample](https://www.rssboard.org/files/sample-rss-091.xml) and Wayback-archived 0.91 feeds | genuine RSS 0.91, for the schema compiler |
 
 The W3C subset is filtered at fetch time to what this parser targets: XML 1.0
-5th edition and 1.1, no namespaces, no external entities. See the scope notes
-below.
+5th edition and 1.1, Namespaces in XML, no external entities. See the scope
+notes below.
 
 ## Scope filters
 
 Some W3C tests are outside what this parser implements and are skipped at fetch
 time (in `classifyTest`/`classifyXML`), so nothing is skipped at test time:
 
-- **Namespaces** — out of scope (`NAMESPACE="no"` / `RECOMMENDATION` starting
-  `NS`).
 - **External entities and the external DTD subset** — out of scope
   (`ENTITIES` other than `none`).
 - **4th-edition-only name-character tests** — we target 5th edition
   (`EDITION` without `5`).
-- **`invalid` tests with no internal DTD subset** — see below.
-- **`invalid` tests whose DTD uses parameter entities** — we do not expand
-  parameter entities, so we cannot read the declarations they contribute and
-  cannot soundly validate the document. Validating without expanding them would
-  risk wrongly rejecting a valid document (a declaration could be hidden in an
-  unexpanded PE), so these are out of the validity scope.
+- **`NAMESPACE="no"` tests** — written for a *non-namespace* processor. We apply
+  namespaces integrally, so these are out of scope. (The namespace-recommendation
+  tests themselves are kept — see below.)
+- **`invalid` tests with an external subset** — we do not load external subsets,
+  so such a test would come back `CANNOT_VALIDATE` rather than `INVALID`.
 
-### Why we drop `invalid` tests that have no DTD
+What we used to drop but now keep: the no-DTD `invalid` tests, and the
+parameter-entity tests.
 
-48 of the suite's `invalid` documents have no document type declaration at all
-(most are the OASIS `o-pNNpassM` production tests; a few are edition
-character-range tests). We do not validate them and instead skip them. The
-reason is that these are not invalid because of anything *in* the document —
-they are invalid only under a parser running in mandatory-validating mode.
+### Validity is now mode-aware (so the no-DTD tests are kept)
 
-The suite's own `testcases.dtd` defines the `TYPE` values:
+48 of the suite's `invalid` documents have no DTD at all (mostly OASIS
+`o-pNNpassM` production tests). The suite's own `testcases.dtd` says:
 
 > Each test has a TYPE:
 > - All parsers must accept "valid" testcases.
 > - **Nonvalidating parsers must also accept "invalid" testcases, but
 >   validating ones must reject them.**
 
-So `TYPE='invalid'` means "reject iff you are validating." For these 48 the
-*only* reason to reject is the absence of a DTD. XML 1.0 §2.8 defines validity
-as having "an associated document type declaration **and** [complying] with the
-constraints expressed in it"; with no DTD the first clause already fails. The
-reference validating parser shows this directly — same well-formed file, two
-modes:
+So `TYPE='invalid'` means "reject iff you are validating", and the reference
+parser shows it on a no-DTD document directly:
 
 ```
 xmllint --noout         p44pass1.xml   ->  accepted (well-formed)
 xmllint --valid --noout p44pass1.xml   ->  validity error : Validation failed: no DTD found !
 ```
 
-xmile is **not** a mandatory-validating parser, and cannot be: our own `valid/`
-corpus is overwhelmingly DTD-less real-world XML (xlsx, docx, RSS) that we must
-accept. We validate a document **against its DTD when it has one**; a document
-with no DTD is reported as well-formed, never invalid. Honoring the suite's
-verdict for these 48 would mean flipping every DTD-less document to invalid, so
-they fall outside our validity scope the same way namespaces and external
-entities do. The remaining `invalid` tests — those with an internal subset and
-a real constraint to break — are kept and must be rejected as invalid.
+Our parser now has both modes (`ParseRequest.validate`; ADR 0006). The harness
+checks the `xml/` corpus in **validating** mode, where a no-DTD document is
+correctly `INVALID` (nothing declares its elements) and an internal-subset
+document is validated for real — so these tests are kept, not filtered. The
+real-world corpora (DTD-less xlsx/docx/RSS) are checked **non-validating**, where
+they are simply well-formed. Parameter-entity tests are kept too: internal
+parameter entities are expanded before validating.

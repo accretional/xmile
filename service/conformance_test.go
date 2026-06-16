@@ -1,98 +1,100 @@
 package service
 
-import (
-	"os"
-	"path/filepath"
-	"sort"
-	"testing"
+import "testing"
+
+// conformance_test.go is the service's self-contained gate. It carries its own
+// XML samples so `go test ./service` needs nothing fetched; the full W3C corpus
+// is a separate concern, run over the fetched corpus by `go run ./testing/xml-parse`
+// (which test.sh invokes) — see testing/README.md.
+//
+// Each sample is checked in validating mode against its expected verdict, and in
+// non-validating mode against the looser contract: a not-wf document is rejected
+// in both modes, while a well-formed one (valid or merely DTD-invalid) is always
+// accepted when not validating.
+
+type verdictKind int
+
+const (
+	vValid   verdictKind = iota // well-formed and (validating) DTD-valid
+	vInvalid                    // well-formed but DTD-invalid
+	vNotWF                      // not well-formed (or not namespace-well-formed)
 )
 
-// conformance_test.go gates the parser against the organized corpus under
-// testing/corpus/xml/<verdict>/ (built by `go run ./testing`):
-//
-//   - every valid/ document MUST parse with no error (well-formed and valid),
-//   - every invalid/ document MUST be rejected with a *ValidityError
-//     (well-formed but in breach of its DTD),
-//   - not-wf/ documents MUST be rejected, at or above minRejectRate.
-//
-// The corpus is already the applicable subset (XML 1.0 5th edition + 1.1; no
-// namespaces, external entities, or — for invalid/ — documents with no DTD to
-// validate against), filtered at fetch time, so every file is a real test.
-
-const corpusXML = "../testing/corpus/xml"
-
-// minRejectRate ratchets not-wf rejection. Raise it as the grammar improves.
-const minRejectRate = 0.99
-
-func xmlFiles(dir string) []string {
-	m, _ := filepath.Glob(filepath.Join(dir, "*.xml"))
-	sort.Strings(m)
-	return m
+func (v verdictKind) String() string {
+	switch v {
+	case vValid:
+		return "valid"
+	case vInvalid:
+		return "invalid"
+	default:
+		return "not-wf"
+	}
 }
 
-func TestCorpusWellFormed(t *testing.T) {
+// classify maps a Parse error to the verdict it represents.
+func classify(err error) verdictKind {
+	switch err.(type) {
+	case nil:
+		return vValid
+	case *ValidityError:
+		return vInvalid
+	default: // *WFError, *CannotValidateError
+		return vNotWF
+	}
+}
+
+var conformanceCases = []struct {
+	name string
+	xml  string
+	want verdictKind // the verdict in validating mode
+}{
+	// --- well-formed and valid ---
+	{"element content", `<!DOCTYPE doc [<!ELEMENT doc (a)><!ELEMENT a EMPTY>]><doc><a/></doc>`, vValid},
+	{"occurrences", `<!DOCTYPE doc [<!ELEMENT doc (a*,b?)><!ELEMENT a EMPTY><!ELEMENT b EMPTY>]><doc><a/><a/><b/></doc>`, vValid},
+	{"mixed + ID", `<!DOCTYPE doc [<!ELEMENT doc (#PCDATA)><!ATTLIST doc id ID #IMPLIED>]><doc id="x">hi</doc>`, vValid},
+	{"enumeration default", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ATTLIST doc k (a|b) "a">]><doc/>`, vValid},
+	{"general entity to element", `<!DOCTYPE doc [<!ELEMENT doc (a)><!ELEMENT a EMPTY><!ENTITY e "<a/>">]><doc>&e;</doc>`, vValid},
+	{"parameter entity builds decl", `<!DOCTYPE doc [<!ENTITY % p "<!ELEMENT doc EMPTY>">%p;]><doc/>`, vValid},
+	{"default namespace", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ATTLIST doc xmlns CDATA #IMPLIED>]><doc xmlns="urn:x"/>`, vValid},
+	{"prefixed namespace", `<!DOCTYPE p:doc [<!ELEMENT p:doc EMPTY><!ATTLIST p:doc xmlns:p CDATA #IMPLIED>]><p:doc xmlns:p="urn:x"/>`, vValid},
+
+	// --- well-formed but DTD-invalid ---
+	{"undeclared child", `<!DOCTYPE doc [<!ELEMENT doc (a)><!ELEMENT a EMPTY>]><doc><b/></doc>`, vInvalid},
+	{"char data in element content", `<!DOCTYPE doc [<!ELEMENT doc (a)><!ELEMENT a EMPTY>]><doc>x<a/></doc>`, vInvalid},
+	{"missing required attribute", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ATTLIST doc id ID #REQUIRED>]><doc/>`, vInvalid},
+	{"fixed attribute mismatch", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ATTLIST doc k CDATA #FIXED "yes">]><doc k="no"/>`, vInvalid},
+	{"wrong root element", `<!DOCTYPE doc [<!ELEMENT doc EMPTY>]><other/>`, vInvalid},
+	{"no DTD to validate against", `<doc/>`, vInvalid},
+	{"colon in ID value", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ATTLIST doc id ID #IMPLIED>]><doc id="a:b"/>`, vInvalid},
+
+	// --- not well-formed (XML 1.0) ---
+	{"mismatched tags", `<doc></dox>`, vNotWF},
+	{"undeclared entity", `<doc>&e;</doc>`, vNotWF},
+	{"duplicate attribute", `<doc a="1" a="2"/>`, vNotWF},
+
+	// --- not namespace-well-formed (integral) ---
+	{"multi-colon QName", `<a:b:c/>`, vNotWF},
+	{"undeclared element prefix", `<n:doc/>`, vNotWF},
+	{"declaring the xmlns prefix", `<doc xmlns:xmlns="urn:x"/>`, vNotWF},
+	{"colon in entity name", `<!DOCTYPE doc [<!ELEMENT doc EMPTY><!ENTITY a:b "x">]><doc/>`, vNotWF},
+	{"colon in PI target", `<?a:b data?><doc/>`, vNotWF},
+}
+
+func TestConformance(t *testing.T) {
 	p, err := Default()
 	if err != nil {
 		t.Fatalf("parser init: %v", err)
 	}
-	notwf := xmlFiles(filepath.Join(corpusXML, "not-wf"))
-	if len(notwf) == 0 {
-		t.Skip("corpus not present — run: go run ./testing")
-	}
-
-	// valid/ documents must parse with no error.
-	var acceptFail int
-	for _, f := range xmlFiles(filepath.Join(corpusXML, "valid")) {
-		data, _ := os.ReadFile(f)
-		if _, perr := p.Parse(string(data)); perr != nil {
-			acceptFail++
-			if acceptFail <= 25 {
-				t.Errorf("valid/%s wrongly rejected: %v", filepath.Base(f), perr)
-			}
+	for _, c := range conformanceCases {
+		if _, verr := p.Parse(c.xml, true); classify(verr) != c.want {
+			t.Errorf("%s: validating => %s, want %s (%v)", c.name, classify(verr), c.want, verr)
 		}
-	}
-
-	// invalid/ documents must be rejected specifically as DTD-invalid (a
-	// *ValidityError), not merely not-well-formed.
-	invalid := xmlFiles(filepath.Join(corpusXML, "invalid"))
-	var invalidRejected, miscategorized int
-	for _, f := range invalid {
-		data, _ := os.ReadFile(f)
-		_, perr := p.Parse(string(data))
-		switch perr.(type) {
-		case *ValidityError:
-			invalidRejected++
-		case nil:
-			if miscategorized < 25 {
-				t.Errorf("invalid/%s wrongly accepted as valid", filepath.Base(f))
-			}
-			miscategorized++
-		default: // *WFError
-			if miscategorized < 25 {
-				t.Errorf("invalid/%s rejected as not-wf, want invalid: %v", filepath.Base(f), perr)
-			}
-			miscategorized++
+		_, nverr := p.Parse(c.xml, false)
+		switch {
+		case c.want == vNotWF && nverr == nil:
+			t.Errorf("%s: non-validating accepted a not-well-formed document", c.name)
+		case c.want != vNotWF && nverr != nil:
+			t.Errorf("%s: non-validating rejected a well-formed document: %v", c.name, nverr)
 		}
-	}
-
-	// not-wf documents must be rejected.
-	var rejected int
-	for _, f := range notwf {
-		data, _ := os.ReadFile(f)
-		if _, perr := p.Parse(string(data)); perr != nil {
-			rejected++
-		}
-	}
-	rate := float64(rejected) / float64(len(notwf))
-	t.Logf("valid accept-failures=%d; invalid rejected %d/%d (miscategorized %d); not-wf rejected %d/%d (%.2f%%)",
-		acceptFail, invalidRejected, len(invalid), miscategorized, rejected, len(notwf), 100*rate)
-	if acceptFail > 0 {
-		t.Errorf("%d valid documents wrongly rejected (must be 0)", acceptFail)
-	}
-	if miscategorized > 0 {
-		t.Errorf("%d invalid documents not rejected as DTD-invalid (must be 0)", miscategorized)
-	}
-	if rate < minRejectRate {
-		t.Errorf("not-wf rejection %.2f%% < required %.2f%%", 100*rate, 100*minRejectRate)
 	}
 }

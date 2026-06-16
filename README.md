@@ -24,20 +24,21 @@ All work goes through these. They are idempotent and chained (each runs the one 
 
 ## How it works
 
-The structural grammar lives in `lang/*.ebnf` and the lexical layer in `lang/*.lex`. genproto compiles both into `proto/`. The runtime parser in `service/` carries no grammar of its own. It drives gluon with the generated lexical table, runs the well-formedness walk, parses the inline DTD and enforces the entity well-formedness constraints, projects the tree into the hand-written AST (`proto/xml.proto`) with general entities expanded, and finally validates the document against its DTD. Design notes are in `docs/decisions`.
+The structural grammar lives in `lang/*.ebnf` and the lexical layer in `lang/*.lex`. genproto compiles both into `proto/`. The runtime parser in `service/` carries no grammar of its own. It drives gluon with the generated lexical table, runs the well-formedness walk, parses the inline DTD and enforces the entity constraints, projects the tree into the hand-written AST (`proto/xml.proto`) with general entities expanded and attribute values normalized, resolves namespaces, and — when asked to validate — checks the document against its DTD. Design notes are in `docs/decisions`.
 
 ## XML Parsing
 ### Done
 
 - **Well-formedness parsing for XML 1.0 (5th edition) and 1.1**: version dispatch, restricted characters, Latin-1 and line-end handling, references, CDATA, comments, PIs, the inline DTD (internal subset), and the entity well-formedness constraints.
-- **DTD validity** against an internal subset: element content models (EMPTY / ANY / mixed / children, with full occurrence matching), attribute types and defaults (ID/IDREF(S), ENTITY/ENTITIES, NMTOKEN(S), enumerations, NOTATION, #REQUIRED/#FIXED), ID uniqueness and IDREF resolution, and the DTD-level constraints. A well-formed-but-invalid document is reported over gRPC as `FAILED_PRECONDITION`. See `docs/decisions/0005-dtd-validity.md`.
-- **AST and service**: parses to the homogeneous `proto/xml.proto` tree with general entities expanded, exposed over gRPC.
-- **Conformance covers 100% of the applicable W3C subset**. Every valid document parses, every invalid document is rejected as DTD-invalid, and every not-wf document is rejected (277 valid, 46 invalid, 814 not-wf). OOXML parts also parse (986 xlsx, 45 docx).
+- **Namespaces**, applied integrally (not a separate mode): QName resolution, prefix scoping, the namespace constraints (prefix declared, attribute uniqueness after expansion, reserved `xml`/`xmlns`, no colon in PI/entity/notation names), and resolved `namespace` bindings on every element and attribute. See `docs/decisions/0006-modes-verdict-and-namespaces.md`.
+- **DTD validity** (validating mode): element content models (EMPTY / ANY / mixed / children, with full occurrence matching), attribute types and defaults (ID/IDREF(S), ENTITY/ENTITIES, NMTOKEN(S), enumerations, NOTATION, #REQUIRED/#FIXED), ID uniqueness and IDREF resolution, the DTD-level constraints, and internal parameter-entity expansion. See `docs/decisions/0005-dtd-validity.md`.
+- **Two parser modes**: `validate=false` checks only well-formedness; `validate=true` requires a DTD and full validity (a document with no readable DTD is then invalid). The service returns a `ParseResponse` oneof — the `Document`, or a `ParseError{verdict, reason}` with verdict `NOT_WELL_FORMED` / `INVALID` / `CANNOT_VALIDATE`.
+- **AST and service**: parses to the homogeneous `proto/xml.proto` tree (general entities expanded, attribute values type-normalized, namespaces resolved), exposed over gRPC.
+- **Conformance covers 100% of the applicable W3C subset**, including the namespace tests: 289 valid, 114 invalid, 838 not-wf, all classified correctly. OOXML parts also parse (986 xlsx, 44 docx).
 
 ### To do
 
-- **External entities, the external DTD subset, and parameter entities**, currently out of scope. Validity runs only against an internal subset with no parameter entities; a document that relies on external or parameter-entity declarations is reported as well-formed, never invalid.
-- Namespaces, currently out of scope.
+- **External entities and the external DTD subset**, currently out of scope. A document that depends on external or external-parameter-entity declarations is reported `CANNOT_VALIDATE` when validating, never wrongly invalid. (Internal parameter entities *are* expanded.)
 
 ## Schema compiling
 

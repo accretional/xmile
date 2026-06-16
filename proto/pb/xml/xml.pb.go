@@ -170,9 +170,10 @@ func (x *XmlDecl) GetStandalone() string {
 // Tag is an element node. Homogeneous across all element types.
 type Tag struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Attrs         []*Attribute           `protobuf:"bytes,2,rep,name=attrs,proto3" json:"attrs,omitempty"`
-	Contents      []*ContentItem         `protobuf:"bytes,3,rep,name=contents,proto3" json:"contents,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // the QName as written, e.g. "n:a" or "a"
+	Namespace     *Namespace             `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Attrs         []*Attribute           `protobuf:"bytes,3,rep,name=attrs,proto3" json:"attrs,omitempty"`
+	Contents      []*ContentItem         `protobuf:"bytes,4,rep,name=contents,proto3" json:"contents,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -214,6 +215,13 @@ func (x *Tag) GetName() string {
 	return ""
 }
 
+func (x *Tag) GetNamespace() *Namespace {
+	if x != nil {
+		return x.Namespace
+	}
+	return nil
+}
+
 func (x *Tag) GetAttrs() []*Attribute {
 	if x != nil {
 		return x.Attrs
@@ -235,6 +243,7 @@ type Attribute struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Namespace     *Namespace             `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -281,6 +290,13 @@ func (x *Attribute) GetValue() string {
 		return x.Value
 	}
 	return ""
+}
+
+func (x *Attribute) GetNamespace() *Namespace {
+	if x != nil {
+		return x.Namespace
+	}
+	return nil
 }
 
 // ContentItem is one item in an element's content. References (entity /
@@ -416,6 +432,66 @@ func (*ContentItem_Comment) isContentItem_Item() {}
 
 func (*ContentItem_Pi) isContentItem_Item() {}
 
+type Namespace struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NamespaceUri  string                 `protobuf:"bytes,3,opt,name=namespace_uri,json=namespaceUri,proto3" json:"namespace_uri,omitempty"`
+	LocalName     string                 `protobuf:"bytes,4,opt,name=local_name,json=localName,proto3" json:"local_name,omitempty"`
+	Prefix        string                 `protobuf:"bytes,5,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Namespace) Reset() {
+	*x = Namespace{}
+	mi := &file_xml_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Namespace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Namespace) ProtoMessage() {}
+
+func (x *Namespace) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Namespace.ProtoReflect.Descriptor instead.
+func (*Namespace) Descriptor() ([]byte, []int) {
+	return file_xml_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Namespace) GetNamespaceUri() string {
+	if x != nil {
+		return x.NamespaceUri
+	}
+	return ""
+}
+
+func (x *Namespace) GetLocalName() string {
+	if x != nil {
+		return x.LocalName
+	}
+	return ""
+}
+
+func (x *Namespace) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
+}
+
 // PI is a processing instruction: <?target data?> (target != "xml").
 type PI struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -427,7 +503,7 @@ type PI struct {
 
 func (x *PI) Reset() {
 	*x = PI{}
-	mi := &file_xml_proto_msgTypes[5]
+	mi := &file_xml_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +515,7 @@ func (x *PI) String() string {
 func (*PI) ProtoMessage() {}
 
 func (x *PI) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_proto_msgTypes[5]
+	mi := &file_xml_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +528,7 @@ func (x *PI) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PI.ProtoReflect.Descriptor instead.
 func (*PI) Descriptor() ([]byte, []int) {
-	return file_xml_proto_rawDescGZIP(), []int{5}
+	return file_xml_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PI) GetTarget() string {
@@ -484,7 +560,7 @@ type Misc struct {
 
 func (x *Misc) Reset() {
 	*x = Misc{}
-	mi := &file_xml_proto_msgTypes[6]
+	mi := &file_xml_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -496,7 +572,7 @@ func (x *Misc) String() string {
 func (*Misc) ProtoMessage() {}
 
 func (x *Misc) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_proto_msgTypes[6]
+	mi := &file_xml_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -509,7 +585,7 @@ func (x *Misc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Misc.ProtoReflect.Descriptor instead.
 func (*Misc) Descriptor() ([]byte, []int) {
-	return file_xml_proto_rawDescGZIP(), []int{6}
+	return file_xml_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Misc) GetItem() isMisc_Item {
@@ -571,21 +647,28 @@ const file_xml_proto_rawDesc = "" +
 	"\bencoding\x18\x02 \x01(\tR\bencoding\x12\x1e\n" +
 	"\n" +
 	"standalone\x18\x03 \x01(\tR\n" +
-	"standalone\"m\n" +
+	"standalone\"\x9b\x01\n" +
 	"\x03Tag\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12$\n" +
-	"\x05attrs\x18\x02 \x03(\v2\x0e.xml.AttributeR\x05attrs\x12,\n" +
-	"\bcontents\x18\x03 \x03(\v2\x10.xml.ContentItemR\bcontents\"5\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12,\n" +
+	"\tnamespace\x18\x02 \x01(\v2\x0e.xml.NamespaceR\tnamespace\x12$\n" +
+	"\x05attrs\x18\x03 \x03(\v2\x0e.xml.AttributeR\x05attrs\x12,\n" +
+	"\bcontents\x18\x04 \x03(\v2\x10.xml.ContentItemR\bcontents\"c\n" +
 	"\tAttribute\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x9c\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12,\n" +
+	"\tnamespace\x18\x03 \x01(\v2\x0e.xml.NamespaceR\tnamespace\"\x9c\x01\n" +
 	"\vContentItem\x12\x14\n" +
 	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12 \n" +
 	"\x05child\x18\x02 \x01(\v2\b.xml.TagH\x00R\x05child\x12\x16\n" +
 	"\x05cdata\x18\x03 \x01(\tH\x00R\x05cdata\x12\x1a\n" +
 	"\acomment\x18\x04 \x01(\tH\x00R\acomment\x12\x19\n" +
 	"\x02pi\x18\x05 \x01(\v2\a.xml.PIH\x00R\x02piB\x06\n" +
-	"\x04item\"0\n" +
+	"\x04item\"g\n" +
+	"\tNamespace\x12#\n" +
+	"\rnamespace_uri\x18\x03 \x01(\tR\fnamespaceUri\x12\x1d\n" +
+	"\n" +
+	"local_name\x18\x04 \x01(\tR\tlocalName\x12\x16\n" +
+	"\x06prefix\x18\x05 \x01(\tR\x06prefix\"0\n" +
 	"\x02PI\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\tR\x04data\"E\n" +
@@ -606,33 +689,36 @@ func file_xml_proto_rawDescGZIP() []byte {
 	return file_xml_proto_rawDescData
 }
 
-var file_xml_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_xml_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_xml_proto_goTypes = []any{
 	(*Document)(nil),    // 0: xml.Document
 	(*XmlDecl)(nil),     // 1: xml.XmlDecl
 	(*Tag)(nil),         // 2: xml.Tag
 	(*Attribute)(nil),   // 3: xml.Attribute
 	(*ContentItem)(nil), // 4: xml.ContentItem
-	(*PI)(nil),          // 5: xml.PI
-	(*Misc)(nil),        // 6: xml.Misc
-	(*dtd.Doctype)(nil), // 7: dtd.Doctype
+	(*Namespace)(nil),   // 5: xml.Namespace
+	(*PI)(nil),          // 6: xml.PI
+	(*Misc)(nil),        // 7: xml.Misc
+	(*dtd.Doctype)(nil), // 8: dtd.Doctype
 }
 var file_xml_proto_depIdxs = []int32{
 	1,  // 0: xml.Document.xml_decl:type_name -> xml.XmlDecl
-	7,  // 1: xml.Document.doctype:type_name -> dtd.Doctype
-	6,  // 2: xml.Document.prolog_misc:type_name -> xml.Misc
+	8,  // 1: xml.Document.doctype:type_name -> dtd.Doctype
+	7,  // 2: xml.Document.prolog_misc:type_name -> xml.Misc
 	2,  // 3: xml.Document.root:type_name -> xml.Tag
-	6,  // 4: xml.Document.epilog_misc:type_name -> xml.Misc
-	3,  // 5: xml.Tag.attrs:type_name -> xml.Attribute
-	4,  // 6: xml.Tag.contents:type_name -> xml.ContentItem
-	2,  // 7: xml.ContentItem.child:type_name -> xml.Tag
-	5,  // 8: xml.ContentItem.pi:type_name -> xml.PI
-	5,  // 9: xml.Misc.pi:type_name -> xml.PI
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	7,  // 4: xml.Document.epilog_misc:type_name -> xml.Misc
+	5,  // 5: xml.Tag.namespace:type_name -> xml.Namespace
+	3,  // 6: xml.Tag.attrs:type_name -> xml.Attribute
+	4,  // 7: xml.Tag.contents:type_name -> xml.ContentItem
+	5,  // 8: xml.Attribute.namespace:type_name -> xml.Namespace
+	2,  // 9: xml.ContentItem.child:type_name -> xml.Tag
+	6,  // 10: xml.ContentItem.pi:type_name -> xml.PI
+	6,  // 11: xml.Misc.pi:type_name -> xml.PI
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_xml_proto_init() }
@@ -647,7 +733,7 @@ func file_xml_proto_init() {
 		(*ContentItem_Comment)(nil),
 		(*ContentItem_Pi)(nil),
 	}
-	file_xml_proto_msgTypes[6].OneofWrappers = []any{
+	file_xml_proto_msgTypes[7].OneofWrappers = []any{
 		(*Misc_Comment)(nil),
 		(*Misc_Pi)(nil),
 	}
@@ -657,7 +743,7 @@ func file_xml_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_proto_rawDesc), len(file_xml_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

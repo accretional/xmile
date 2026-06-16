@@ -72,6 +72,13 @@ DTD-less corpora (xlsx, docx, RSS) be accepted as valid.
 
 ## 5. Corpus consequence: dropping the no-DTD "invalid" tests
 
+> **Superseded by ADR 0006.** Once a `validate` flag introduced an explicit
+> validating mode, the no-DTD "invalid" tests are no longer dropped — in
+> validating mode they are correctly `INVALID` (no DTD), and parameter-entity
+> tests are kept too (internal PEs are expanded). The reasoning below still
+> explains *why* a no-DTD document is invalid only when validating.
+
+
 48 of the W3C suite's `invalid` documents have no DTD at all (mostly OASIS
 `o-pNNpassM` production tests). They are marked `invalid` because the suite is
 written for a *mandatory-validating* processor; the suite's own `testcases.dtd`

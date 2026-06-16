@@ -26,19 +26,17 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0003).
+// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
 //
-// The service *is* the parser: callers send XML bytes and receive the
-// parsed, augmented AST. Modeled on proto-http's HttpService.Parse.
+// The service *is* the parser, and it is a classifier: callers send XML bytes
+// and receive either the parsed AST or a typed verdict explaining the refusal.
+// The RPC succeeds (the service did its job); the outcome rides in the response.
 type XmlServiceClient interface {
-	// Parse parses XML bytes into a Document AST.
+	// Parse parses XML bytes and returns the document AST, or a verdict.
 	//
-	// On success it returns the parsed and (if a DTD is present) validated +
-	// augmented Document. The outcome is carried by the RPC status, not a
-	// verdict field. Not-well-formed and invalid inputs return an error and
-	// no tree, distinguished by status code:
-	//   - INVALID_ARGUMENT    — not well-formed
-	//   - FAILED_PRECONDITION  — well-formed but invalid against its DTD
+	// ParseResponse is a oneof: a Document when the input is accepted, or a
+	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
+	// both cases; a non-OK status is a genuine server fault, not a bad document.
 	Parse(ctx context.Context, in *ParseRequest, opts ...grpc.CallOption) (*ParseResponse, error)
 }
 
@@ -64,19 +62,17 @@ func (c *xmlServiceClient) Parse(ctx context.Context, in *ParseRequest, opts ...
 // All implementations must embed UnimplementedXmlServiceServer
 // for forward compatibility.
 //
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0003).
+// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
 //
-// The service *is* the parser: callers send XML bytes and receive the
-// parsed, augmented AST. Modeled on proto-http's HttpService.Parse.
+// The service *is* the parser, and it is a classifier: callers send XML bytes
+// and receive either the parsed AST or a typed verdict explaining the refusal.
+// The RPC succeeds (the service did its job); the outcome rides in the response.
 type XmlServiceServer interface {
-	// Parse parses XML bytes into a Document AST.
+	// Parse parses XML bytes and returns the document AST, or a verdict.
 	//
-	// On success it returns the parsed and (if a DTD is present) validated +
-	// augmented Document. The outcome is carried by the RPC status, not a
-	// verdict field. Not-well-formed and invalid inputs return an error and
-	// no tree, distinguished by status code:
-	//   - INVALID_ARGUMENT    — not well-formed
-	//   - FAILED_PRECONDITION  — well-formed but invalid against its DTD
+	// ParseResponse is a oneof: a Document when the input is accepted, or a
+	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
+	// both cases; a non-OK status is a genuine server fault, not a bad document.
 	Parse(context.Context, *ParseRequest) (*ParseResponse, error)
 	mustEmbedUnimplementedXmlServiceServer()
 }

@@ -137,7 +137,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error
 		if err != nil {
 			return err
 		}
-		if _, perr := p.Parse(decl + "<xmilewrap>" + expanded + "</xmilewrap>"); perr != nil {
+		if _, perr := p.parse(decl+"<xmilewrap>"+expanded+"</xmilewrap>", false, false); perr != nil {
 			return &WFError{Msg: "entity " + name + " replacement is not well-formed: " + perr.Error()}
 		}
 	}

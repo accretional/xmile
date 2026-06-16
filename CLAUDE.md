@@ -50,13 +50,18 @@ service/  parse pipeline:
   2. well-formedness walk (tag match, dup attrs, PI target, charref, pubid)
   3. DTD second pass (lang/dtd.ebnf): parse internal subset + entity WFCs
   4. project CST -> xml.proto Document (general entities expanded into content)
-  5. DTD validity (validate.go): content models, attribute decls, ID/IDREF,
-     when the document has an internal subset (no external subset / PEs)
+  5. attribute-value normalization by declared type
+  6. namespaces (namespace.go, integral): resolve QNames, enforce the namespace
+     constraints, fill Tag/Attribute.namespace
+  7. DTD validity (validate.go), only when validating: content models, attribute
+     decls, ID/IDREF; internal parameter entities expanded (pe.go); an external
+     subset / external PE yields CannotValidate
         │
         ▼
-XmlService.Parse(bytes) -> Document
-  not-well-formed -> INVALID_ARGUMENT ; DTD-invalid -> FAILED_PRECONDITION
-  (cmd/xmlserve serves it; cmd/xmlparse is a CLI)
+XmlService.Parse(bytes, validate) -> ParseResponse
+  oneof: Document | ParseError{verdict, reason}
+  verdict: NOT_WELL_FORMED | INVALID | CANNOT_VALIDATE   (RPC status stays OK)
+  (cmd/xmlserve serves it; cmd/xmlparse is a CLI, -validate to validate)
 ```
 
 ## Architecture
@@ -75,24 +80,32 @@ XmlService.Parse(bytes) -> Document
 - **Validity is a separate pass.** `validate.go` builds a model from the parsed
   DTD (content models, attribute declarations, notations) and checks the
   projected tree against it: element content models, attribute types and
-  defaults, ID/IDREF, and the DTD-level VCs. It runs only for an internal subset
-  with no external declarations or parameter entities (which it does not expand),
-  so a valid document is never wrongly rejected. See ADR 0005.
+  defaults, ID/IDREF, and the DTD-level VCs. It runs only in validating mode;
+  internal parameter entities are expanded (`pe.go`) and an external subset / PE
+  yields CannotValidate, so a valid document is never wrongly rejected. ADR 0005.
+- **Namespaces are integral, not grammar.** XML requires `:` to be a name
+  character, so the grammar stays namespace-unaware; the namespace constraints
+  are context-sensitive, so `namespace.go` resolves QNames and enforces them as
+  a tree walk applied in both modes, filling `Tag/Attribute.namespace`. ADR 0006.
+- **Parse is a mode-aware classifier.** `Parse(src, validating)` is the
+  validating vs non-validating processor; it returns the AST or a typed error
+  (`*WFError` / `*ValidityError` / `*CannotValidateError`), surfaced over gRPC as
+  a `ParseResponse` oneof (`Document` | `ParseError{verdict, reason}`). ADR 0006.
 
 ## Testing
 
-- **`service` is the gate** (`go test ./...`): `TestCorpusWellFormed` runs over
-  `testing/corpus/xml/<verdict>/` and requires every valid document to parse,
-  every invalid document to be rejected as DTD-invalid (a `*ValidityError`), and
-  every not-wf document to be rejected, at or above `minRejectRate`.
-- The corpus is fetched and organized by file type via `go run ./testing`;
-  `go run ./testing/xml-parse` prints the corpus report (xml, docx, xlsx, rss).
-- The corpus is the applicable subset (XML 1.0 5th edition and 1.1; no
-  namespaces or external entities), filtered at fetch time, so nothing is
-  skipped at test time. `invalid` tests with no internal subset, or whose DTD
-  uses parameter entities, are out of the validity scope and also filtered (see
-  `testing/README.md`). The IBM `P85-P89` name-character tests are 4th-edition
-  only and are excluded by the edition filter.
+- **Two gates.** `service/conformance_test.go` (`go test ./...`) is
+  self-contained — it carries its own XML samples, so individual testing needs
+  nothing fetched. The full W3C corpus is gated by the harness
+  (`go run ./testing/xml-parse`, run by `test.sh`): the deterministic `xml/`
+  corpus must be 100% (non-zero exit otherwise); the real-world `docx/xlsx/rss`
+  corpora are reported but do not gate.
+- The corpus is fetched and organized by file type via `go run ./testing`.
+- The corpus is the applicable subset (XML 1.0 5th edition and 1.1, plus
+  Namespaces; no external entities), filtered at fetch time. Out of scope and
+  filtered: external entities, the `NAMESPACE="no"` tests (written for a
+  non-namespace processor), 4th-edition name-character tests, and `invalid`
+  tests with an external subset. See `testing/README.md`.
 
 ## Layout
 

@@ -3,9 +3,6 @@ package service
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
@@ -25,16 +22,25 @@ func NewServer() (*Server, error) {
 	return &Server{parser: p}, nil
 }
 
-// Parse parses the request bytes into a Document AST. Not-well-formed input
-// returns INVALID_ARGUMENT with no tree; a well-formed document that violates
-// its DTD returns FAILED_PRECONDITION. Both carry no tree.
+// Parse parses the request bytes and returns either the Document or a typed
+// ParseError verdict (see ADR 0006). The RPC status is OK in both cases; a
+// non-OK status is reserved for a genuine server fault.
 func (s *Server) Parse(_ context.Context, req *xmlpb.ParseRequest) (*xmlpb.ParseResponse, error) {
-	doc, err := s.parser.Parse(string(req.GetXml()))
+	doc, err := s.parser.Parse(string(req.GetXml()), req.GetValidate())
 	if err != nil {
-		if _, ok := err.(*ValidityError); ok {
-			return nil, status.Error(codes.FailedPrecondition, err.Error())
-		}
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return &xmlpb.ParseResponse{Response: &xmlpb.ParseResponse_Error{Error: verdictOf(err)}}, nil
 	}
-	return &xmlpb.ParseResponse{Document: doc}, nil
+	return &xmlpb.ParseResponse{Response: &xmlpb.ParseResponse_Document{Document: doc}}, nil
+}
+
+// verdictOf classifies a parser rejection into the wire ParseError.
+func verdictOf(err error) *xmlpb.ParseError {
+	v := xmlpb.Verdict_NOT_WELL_FORMED
+	switch err.(type) {
+	case *ValidityError:
+		v = xmlpb.Verdict_INVALID
+	case *CannotValidateError:
+		v = xmlpb.Verdict_CANNOT_VALIDATE
+	}
+	return &xmlpb.ParseError{Verdict: v, Reason: err.Error()}
 }

@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 DEMO='<?xml version="1.0"?><!DOCTYPE doc [<!ELEMENT doc (#PCDATA|b)*><!ATTLIST doc x CDATA #IMPLIED><!ELEMENT b EMPTY><!ENTITY who "world">]><doc x="1">hello &who;<b/></doc>'
 echo "[rip] live parse demo:"
 echo "$DEMO"
-echo "[rip] parsed (well-formed + DTD-valid):"
-printf '%s' "$DEMO" | go run ./cmd/xmlparse
+echo "[rip] parsed (validating mode -> well-formed + DTD-valid):"
+printf '%s' "$DEMO" | go run ./cmd/xmlparse -validate
 
 echo "[rip] OK"

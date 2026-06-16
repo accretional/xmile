@@ -17,6 +17,7 @@ import (
 
 func main() {
 	cst := flag.Bool("cst", false, "print the raw concrete syntax tree")
+	validate := flag.Bool("validate", false, "validate against the DTD (validating mode)")
 	flag.Parse()
 
 	var src []byte
@@ -47,7 +48,7 @@ func main() {
 		return
 	}
 
-	doc, perr := p.Parse(string(src))
+	doc, perr := p.Parse(string(src), *validate)
 	if perr != nil {
 		// WFError and ValidityError each format their own category prefix.
 		fmt.Fprintln(os.Stderr, perr)

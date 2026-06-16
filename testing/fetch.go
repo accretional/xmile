@@ -19,6 +19,7 @@ var xmlManifests = []string{
 	"oasis/oasis.xml",
 	"ibm/ibm_oasis_valid.xml", "ibm/ibm_oasis_invalid.xml", "ibm/ibm_oasis_not-wf.xml",
 	"eduni/xml-1.1/xml11.xml",
+	"eduni/namespaces/1.0/rmt-ns10.xml", "eduni/namespaces/1.1/rmt-ns11.xml",
 }
 
 type tcGroup struct {
@@ -242,45 +243,39 @@ func referenceCharset(label string, input io.Reader) (io.Reader, error) {
 	return nil, fmt.Errorf("unsupported encoding %q", label)
 }
 
-// hasInternalSubset reports whether the document has a real DOCTYPE with an
-// internal subset ("<!DOCTYPE name [ ... ]>") — i.e. declarations we can
-// validate against. Comments are skipped first so a "<!DOCTYPE" that only
-// appears inside a comment (as in some OASIS production tests) does not count.
-func hasInternalSubset(b []byte) bool {
+// hasExternalSubset reports whether a real DOCTYPE references an external
+// subset (a SYSTEM or PUBLIC external identifier). We do not load external
+// subsets, so an invalid test that has one comes back CANNOT_VALIDATE rather
+// than INVALID. Comments / PIs / CDATA are skipped so a "<!DOCTYPE" buried in
+// one (as in some OASIS production tests) does not count.
+func hasExternalSubset(b []byte) bool {
 	s := string(b)
 	for i := 0; i < len(s); {
 		switch {
-		case strings.HasPrefix(s[i:], "<!--"): // skip a comment
+		case strings.HasPrefix(s[i:], "<!--"):
 			j := strings.Index(s[i+4:], "-->")
 			if j < 0 {
 				return false
 			}
 			i += 4 + j + 3
-		case strings.HasPrefix(s[i:], "<?"): // skip a processing instruction
+		case strings.HasPrefix(s[i:], "<?"):
 			j := strings.Index(s[i+2:], "?>")
 			if j < 0 {
 				return false
 			}
 			i += 2 + j + 2
-		case strings.HasPrefix(s[i:], "<![CDATA["): // skip a CDATA section
+		case strings.HasPrefix(s[i:], "<![CDATA["):
 			j := strings.Index(s[i+9:], "]]>")
 			if j < 0 {
 				return false
 			}
 			i += 9 + j + 3
 		case strings.HasPrefix(s[i:], "<!DOCTYPE"):
-			// A real DOCTYPE: an internal subset opens with '[' before its
-			// closing '>' (skipping quoted system/public literals).
-			for j := i + len("<!DOCTYPE"); j < len(s); j++ {
-				switch s[j] {
-				case '"', '\'':
-					q := s[j]
-					for j++; j < len(s) && s[j] != q; j++ {
-					}
-				case '[':
+			// The external ID, if any, is the SYSTEM/PUBLIC keyword before the
+			// internal subset '[' or the closing '>'.
+			for j := i + len("<!DOCTYPE"); j < len(s) && s[j] != '[' && s[j] != '>'; j++ {
+				if strings.HasPrefix(s[j:], "SYSTEM") || strings.HasPrefix(s[j:], "PUBLIC") {
 					return true
-				case '>':
-					return false
 				}
 			}
 			return false
@@ -289,28 +284,6 @@ func hasInternalSubset(b []byte) bool {
 		}
 	}
 	return false
-}
-
-// usesParameterEntities reports whether the document declares a parameter
-// entity ("<!ENTITY % ..."). The parser does not expand parameter entities, so
-// it cannot fully validate a DTD that uses them; such invalid tests are out of
-// scope and skipped.
-func usesParameterEntities(b []byte) bool {
-	s := string(b)
-	for i := 0; ; {
-		k := strings.Index(s[i:], "<!ENTITY")
-		if k < 0 {
-			return false
-		}
-		j := i + k + len("<!ENTITY")
-		for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\r' || s[j] == '\n') {
-			j++
-		}
-		if j < len(s) && s[j] == '%' {
-			return true
-		}
-		i = i + k + len("<!ENTITY")
-	}
 }
 
 // classifyXML copies each conformance test file from the suite at root into
@@ -342,13 +315,14 @@ func classifyXML(root string) int {
 			if err != nil {
 				continue
 			}
-			// Validity is defined relative to a DTD, and we validate only what we
-			// can fully read: an internal subset with no parameter entities
-			// (which we do not expand). An "invalid" document with no internal
-			// subset (most OASIS o-pNNpass well-formedness tests and the edition
-			// character tests) or one whose declarations depend on parameter
-			// entities is out of the DTD-validity scope. Skip it.
-			if verdict == "invalid" && (!hasInternalSubset(b) || usesParameterEntities(b)) {
+			// In validating mode a no-DTD "invalid" document is correctly
+			// rejected (nothing declares its elements), and internal parameter
+			// entities are expanded, so those are kept. What we still cannot
+			// validate is a DTD with an external subset: such an invalid test
+			// comes back CANNOT_VALIDATE rather than INVALID, so it is skipped.
+			// (External-parameter-entity tests are already excluded by the
+			// ENTITIES filter above.)
+			if verdict == "invalid" && hasExternalSubset(b) {
 				continue
 			}
 			id := strings.TrimSuffix(rt.t.ID, ".xml")
@@ -362,10 +336,12 @@ func classifyXML(root string) int {
 }
 
 // classifyTest returns the verdict folder for a test, or skip=true for tests
-// outside this parser's scope: namespaces, external entities, 4th-edition-only
-// character tests, and "error"-type tests.
+// outside this parser's scope: external entities, 4th-edition-only character
+// tests, "error"-type tests, and the namespace tests written for a
+// non-namespace processor (NAMESPACE="no"). The namespace-recommendation tests
+// are kept: we apply namespaces integrally.
 func classifyTest(t tcTest) (verdict string, skip bool) {
-	if strings.HasPrefix(t.Rec, "NS") || t.Namespace == "no" {
+	if t.Namespace == "no" {
 		return "", true
 	}
 	if t.Edition != "" && !strings.Contains(" "+t.Edition+" ", " 5 ") {

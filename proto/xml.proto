@@ -46,9 +46,10 @@ message XmlDecl {
 
 // Tag is an element node. Homogeneous across all element types.
 message Tag {
-  string name = 1;
-  repeated Attribute attrs = 2;
-  repeated ContentItem contents = 3;
+  string name = 1;  // the QName as written, e.g. "n:a" or "a"
+  Namespace namespace = 2;
+  repeated Attribute attrs = 3;
+  repeated ContentItem contents = 4;
 }
 
 // Attribute is one name=value pair. The value is normalized: entity and
@@ -57,6 +58,7 @@ message Tag {
 message Attribute {
   string name = 1;
   string value = 2;
+  Namespace namespace = 3;
 }
 
 // ContentItem is one item in an element's content. References (entity /
@@ -70,6 +72,12 @@ message ContentItem {
     string comment = 4;  // text from <!-- … -->
     PI pi = 5;           // a processing instruction
   }
+}
+
+message Namespace {
+  string namespace_uri = 3;
+  string local_name = 4;
+  string prefix = 5;
 }
 
 // PI is a processing instruction: <?target data?> (target != "xml").

@@ -7,32 +7,50 @@ import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0003).
+// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
 //
-// The service *is* the parser: callers send XML bytes and receive the
-// parsed, augmented AST. Modeled on proto-http's HttpService.Parse.
+// The service *is* the parser, and it is a classifier: callers send XML bytes
+// and receive either the parsed AST or a typed verdict explaining the refusal.
+// The RPC succeeds (the service did its job); the outcome rides in the response.
 service XmlService {
-  // Parse parses XML bytes into a Document AST.
+  // Parse parses XML bytes and returns the document AST, or a verdict.
   //
-  // On success it returns the parsed and (if a DTD is present) validated +
-  // augmented Document. The outcome is carried by the RPC status, not a
-  // verdict field. Not-well-formed and invalid inputs return an error and
-  // no tree, distinguished by status code:
-  //   - INVALID_ARGUMENT    — not well-formed
-  //   - FAILED_PRECONDITION  — well-formed but invalid against its DTD
+  // ParseResponse is a oneof: a Document when the input is accepted, or a
+  // ParseError (verdict + reason) when it is refused. The RPC status is OK in
+  // both cases; a non-OK status is a genuine server fault, not a bad document.
   rpc Parse(ParseRequest) returns (ParseResponse);
 }
 
 message ParseRequest {
   bytes xml = 1;
+  // validate selects the parser mode (XML's validating vs non-validating
+  // processor distinction). When false, only well-formedness is checked and
+  // any well-formed document is accepted. When true, the document is validated
+  // against its DTD: it must have one and satisfy it.
+  bool validate = 2;
+}
+
+// Verdict classifies why a document was refused.
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  NOT_WELL_FORMED = 1;  // syntactically not a document
+  INVALID = 2;          // well-formed but breaks its DTD (validate=true)
+  CANNOT_VALIDATE = 3;  // validate=true, but the DTD cannot be fully read
+                        // (external subset / external parameter entities)
+}
+
+message ParseError {
+  Verdict verdict = 1;
+  string reason = 2;  // human-readable detail
 }
 
 message ParseResponse {
-  // The parsed, augmented AST. When the document had a DOCTYPE, the parsed
-  // inline DTD rides on Document.doctype (dtd.Doctype); whether the tree was
-  // merely well-formed or DTD-valid is visible from there, not surfaced as a
-  // separate field.
-  Document document = 1;
+  // A Document on acceptance, or a ParseError on refusal, never both. There is
+  // no point returning a tree for input that is not well-formed or not valid.
+  oneof response {
+    Document document = 1;
+    ParseError error = 2;
+  }
 }
 
 // SchemaService is the *type-level* companion to XmlService (see ADR 0004).

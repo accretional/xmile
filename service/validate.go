@@ -34,6 +34,16 @@ type ValidityError struct {
 
 func (e *ValidityError) Error() string { return "invalid: " + e.Msg }
 
+// CannotValidateError reports that validation was requested but the document's
+// DTD cannot be fully read — an external subset or external parameter entities,
+// which this parser does not resolve. The document may or may not be valid; we
+// decline to guess rather than risk wrongly rejecting a valid document.
+type CannotValidateError struct {
+	Msg string
+}
+
+func (e *CannotValidateError) Error() string { return "cannot validate: " + e.Msg }
+
 func invalidf(format string, args ...any) *ValidityError {
 	return &ValidityError{Msg: fmt.Sprintf(format, args...)}
 }
@@ -215,6 +225,64 @@ func defaultLegal(d *attrDecl) bool {
 		return contains(d.values, collapseSpaces(d.defVal))
 	}
 	return true
+}
+
+// normalizeAttrTypes applies attribute-value normalization by declared type:
+// a non-CDATA attribute (a tokenized type) has its value collapsed (leading and
+// trailing space stripped, internal runs folded to one space), per XML 3.3.3.
+// This is required for the infoset to be correct, and it is what lets two
+// namespace declarations of different declared types compare equal. CDATA and
+// undeclared attributes are left verbatim. It runs in both modes (it is
+// projection, not validation), using the DTD as parsed (parameter entities
+// undeclared here are simply not seen).
+func normalizeAttrTypes(doc *xmlpb.Document, dtdRoot *pb.ASTNode) {
+	types := attrTypeMap(dtdRoot)
+	if len(types) == 0 {
+		return
+	}
+	var walk func(*xmlpb.Tag)
+	walk = func(tag *xmlpb.Tag) {
+		et := types[tag.GetName()]
+		for _, a := range tag.GetAttrs() {
+			if ty := et[a.GetName()]; ty != "" && ty != "CDATA" {
+				a.Value = collapseSpaces(a.GetValue())
+			}
+		}
+		for _, ci := range tag.GetContents() {
+			if ch, ok := ci.GetItem().(*xmlpb.ContentItem_Child); ok {
+				walk(ch.Child)
+			}
+		}
+	}
+	if doc.GetRoot() != nil {
+		walk(doc.GetRoot())
+	}
+}
+
+// attrTypeMap maps element name -> attribute name -> declared type, first
+// declaration binding.
+func attrTypeMap(dtdRoot *pb.ASTNode) map[string]map[string]string {
+	out := map[string]map[string]string{}
+	for _, decl := range descendants(dtdRoot, "attlistDecl") {
+		elem := firstName(decl)
+		if elem == "" {
+			continue
+		}
+		m := out[elem]
+		if m == nil {
+			m = map[string]string{}
+			out[elem] = m
+		}
+		for _, ad := range descendants(decl, "attDef") {
+			an := firstName(ad)
+			if an == "" || m[an] != "" {
+				continue
+			}
+			ty, _ := parseAttType(firstDescendant(ad, "attType"))
+			m[an] = ty
+		}
+	}
+	return out
 }
 
 func sortedKeys[V any](m map[string]V) []string {
@@ -484,8 +552,9 @@ func (v *validator) attrValue(elem, attr string, d *attrDecl, raw string) error 
 	case "CDATA":
 		return nil
 	case "ID":
+		// Under namespaces a Name-typed value must be an NCName (no colon).
 		val := collapseSpaces(raw)
-		if !isXMLName(val) {
+		if !isNCName(val) {
 			return invalidf("ID attribute %q on <%s> is not a valid name: %q", attr, elem, val)
 		}
 		if v.ids[val] {
@@ -494,7 +563,7 @@ func (v *validator) attrValue(elem, attr string, d *attrDecl, raw string) error 
 		v.ids[val] = true
 	case "IDREF":
 		val := collapseSpaces(raw)
-		if !isXMLName(val) {
+		if !isNCName(val) {
 			return invalidf("IDREF attribute %q on <%s> is not a valid name: %q", attr, elem, val)
 		}
 		v.idrefs = append(v.idrefs, val)
@@ -504,7 +573,7 @@ func (v *validator) attrValue(elem, attr string, d *attrDecl, raw string) error 
 			return invalidf("IDREFS attribute %q on <%s> is empty", attr, elem)
 		}
 		for _, t := range toks {
-			if !isXMLName(t) {
+			if !isNCName(t) {
 				return invalidf("IDREFS token %q on <%s> is not a valid name", t, elem)
 			}
 			v.idrefs = append(v.idrefs, t)

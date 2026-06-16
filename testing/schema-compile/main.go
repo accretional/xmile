@@ -110,7 +110,7 @@ func checkFeed(parser *service.Parser, rssDesc protoreflect.MessageDescriptor, b
 	if err != nil {
 		return fmt.Sprintf("[fail] %s: read: %v", base, err), false, 0
 	}
-	doc, err := parser.Parse(string(data))
+	doc, err := parser.Parse(string(data), false)
 	if err != nil {
 		return fmt.Sprintf("[fail] %s: not well-formed: %v", base, err), false, 0
 	}

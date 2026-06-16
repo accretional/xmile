@@ -53,8 +53,9 @@ var formats = []struct {
 var verdictDirs = []string{"valid", "invalid", "not-wf"}
 
 var (
-	verbose = flag.Bool("v", false, "print every file, not just failures")
-	astFlag = flag.Bool("ast", false, "print the parsed AST of each file argument")
+	verbose     = flag.Bool("v", false, "print every file, not just failures")
+	astFlag     = flag.Bool("ast", false, "print the parsed AST of each file argument")
+	astValidate = flag.Bool("validate", false, "with -ast, parse in validating mode")
 )
 
 func main() {
@@ -74,9 +75,9 @@ func main() {
 				fmt.Printf("  (init error: %v)\n", perr)
 				continue
 			}
-			doc, derr := p.Parse(string(data))
+			doc, derr := p.Parse(string(data), *astValidate)
 			if derr != nil {
-				fmt.Printf("  (not well-formed: %v)\n", derr)
+				fmt.Printf("  (%v)\n", derr)
 				continue
 			}
 			fmt.Print(prototext.Format(doc))
@@ -93,9 +94,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "corpus not found under %s — run: go run ./testing\n", testingDir)
 		os.Exit(1)
 	}
-	// Report-only: the Go gate (service tests) enforces the XML corpus;
-	// docx/xlsx/rss are real-world and reported for visibility.
-	runCorpus(filter)
+	// This harness is the full-corpus gate (the service unit test is
+	// self-contained). The W3C xml corpus must be 100%; docx/xlsx/rss are
+	// real-world and reported for visibility but do not gate.
+	if runCorpus(filter) {
+		os.Exit(1)
+	}
 }
 
 // corpusPresent reports whether at least one verdict folder has files.
@@ -116,6 +120,7 @@ type tally struct{ pass, fail int }
 type corpusTask struct {
 	path, group, verdict string
 	isZip                bool
+	validating           bool
 }
 
 type corpusResult struct {
@@ -141,7 +146,10 @@ func runCorpus(filter string) bool {
 				if e.IsDir() {
 					continue
 				}
-				tasks = append(tasks, corpusTask{filepath.Join(dir, e.Name()), f.name + "/" + v, v, f.isZip})
+				// The W3C xml corpus distinguishes valid from invalid, so it is
+				// checked in validating mode. The real-world corpora only assert
+				// well-formedness (they are DTD-less), so non-validating mode.
+				tasks = append(tasks, corpusTask{filepath.Join(dir, e.Name()), f.name + "/" + v, v, f.isZip, f.name == "xml"})
 			}
 		}
 	}
@@ -156,7 +164,7 @@ func runCorpus(filter string) bool {
 			defer wg.Done()
 			for i := range idx {
 				t := tasks[i]
-				ok, detail := checkFile(t.path, t.verdict, t.isZip)
+				ok, detail := checkFile(t.path, t.verdict, t.isZip, t.validating)
 				results[i] = corpusResult{t.group, t.path, detail, ok}
 				bar.Inc()
 			}
@@ -199,16 +207,22 @@ func runCorpus(filter string) bool {
 	fmt.Println("\ncorpus results:")
 	fmt.Println("group              pass  fail   rate")
 	fmt.Println("-------------------------------------")
-	var totPass, totFail int
+	var totPass, totFail, xmlFail int
 	for _, k := range keys {
 		t := tallies[k]
 		totPass += t.pass
 		totFail += t.fail
+		if strings.HasPrefix(k, "xml/") {
+			xmlFail += t.fail
+		}
 		fmt.Printf("%-16s  %5d %5d  %s\n", k, t.pass, t.fail, rate(t.pass, t.fail))
 	}
 	fmt.Println("-------------------------------------")
 	fmt.Printf("%-16s  %5d %5d  %s\n", "TOTAL", totPass, totFail, rate(totPass, totFail))
-	return totFail > 0
+	// The W3C xml corpus is deterministic and gates: any miss is a failure. The
+	// real-world corpora (rss/docx/xlsx) are reported but do not gate, since
+	// they are fetched live and may drift.
+	return xmlFail > 0
 }
 
 func rate(pass, fail int) string {
@@ -221,21 +235,21 @@ func rate(pass, fail int) string {
 
 // checkFile validates one corpus file (or every XML part of a ZIP) and
 // reports whether the result matches the expected verdict for its folder.
-func checkFile(path, want string, isZip bool) (bool, string) {
+func checkFile(path, want string, isZip, validating bool) (bool, string) {
 	if isZip {
-		return checkZip(path, want)
+		return checkZip(path, want, validating)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return false, "read: " + err.Error()
 	}
-	got, gerr := validate(string(data))
+	got, gerr := validate(string(data), validating)
 	return matchVerdict(want, got), describe(got, gerr)
 }
 
 // checkZip validates every XML part of a ZIP container against the folder's
 // expectation.
-func checkZip(path, want string) (bool, string) {
+func checkZip(path, want string, validating bool) (bool, string) {
 	zr, err := zip.OpenReader(path)
 	if err != nil {
 		return false, "open zip: " + err.Error()
@@ -252,7 +266,7 @@ func checkZip(path, want string) (bool, string) {
 		}
 		b, _ := io.ReadAll(rc)
 		rc.Close()
-		got, gerr := validate(string(b))
+		got, gerr := validate(string(b), validating)
 		if !matchVerdict(want, got) {
 			return false, f.Name + ": " + describe(got, gerr)
 		}
@@ -261,15 +275,13 @@ func checkZip(path, want string) (bool, string) {
 }
 
 // matchVerdict reports whether a verdict satisfies the folder's expectation.
-// The W3C xml corpus distinguishes valid from invalid (DTD conformance); the
-// real-world corpora (rss, docx, xlsx) only assert well-formedness, so for
-// those a "valid" folder is satisfied by either valid or invalid — anything
-// that is not not-wf. The strict valid-vs-invalid split is gated by the
-// service conformance test.
+// The xml corpus is checked in validating mode, so valid/invalid/not-wf each
+// have a distinct verdict; the real-world corpora are checked non-validating,
+// where a well-formed document reports "valid".
 func matchVerdict(want string, got verdict) bool {
 	switch want {
 	case "valid":
-		return got == valid || got == invalid
+		return got == valid
 	case "invalid":
 		return got == invalid
 	case "not-wf":

@@ -67,9 +67,25 @@ func (p *Parser) ParseCST(src string) (*pb.ASTDescriptor, error) {
 	})
 }
 
-// Parse parses src into the xml.proto AST. The error is non-nil exactly
-// when src is not well-formed XML (a *WFError).
-func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
+// Parse parses src into the xml.proto AST. The error is non-nil exactly when
+// src is rejected, as one of three types: *WFError (not well-formed),
+// *ValidityError (DTD-invalid, only when validating), or *CannotValidateError
+// (validating requested but the DTD cannot be fully read).
+//
+// validating selects the parser mode. When false (non-validating) any
+// well-formed document is accepted regardless of its DTD. When true the
+// document must have a DTD and satisfy it (a validating processor).
+//
+// Namespaces are applied integrally in both modes.
+func (p *Parser) Parse(src string, validating bool) (*xmlpb.Document, error) {
+	return p.parse(src, validating, true)
+}
+
+// parse is Parse with an internal switch to suppress namespace checking. The
+// entity-replacement well-formedness reparse uses checkNS=false: a fragment is
+// checked out of its namespace context, where an in-scope prefix would look
+// undeclared.
+func (p *Parser) parse(src string, validating, checkNS bool) (*xmlpb.Document, error) {
 	src = normalizeEncoding(src)
 	src = decodeDeclaredEncoding(src)
 	is11 := detectVersion(src)
@@ -107,15 +123,41 @@ func (p *Parser) Parse(src string) (*xmlpb.Document, error) {
 		return nil, err
 	}
 	doc := projectDocument(p, cst.GetRoot(), info, is11)
-	// DTD validity: only when we can read the whole content model — an internal
-	// subset with no external declarations and no parameter entities (which we
-	// do not expand). A declaration could hide inside an unexpanded PE, so
-	// validating then would risk wrongly rejecting a valid document; we report
-	// such documents as well-formed, never invalid.
-	if dtdRoot != nil && !info.hasExternal && !info.hasPERef {
-		if verr := validate(doc, buildModel(dtdRoot, info), is11); verr != nil {
-			return nil, verr
+	// Attribute-value normalization by declared type (required for the infoset,
+	// and for namespace declarations to compare correctly).
+	normalizeAttrTypes(doc, dtdRoot)
+	// Namespaces are integral: resolve and check them in both modes (unless this
+	// is the entity-replacement reparse, whose fragment lacks the real context).
+	if checkNS {
+		if nerr := checkNamespaces(doc, is11); nerr != nil {
+			return nil, nerr
 		}
+		if nerr := checkDTDNamespaceNames(dtdRoot); nerr != nil {
+			return nil, nerr
+		}
+	}
+	if !validating {
+		return doc, nil
+	}
+	// Validating mode: the document must have a DTD and satisfy it. A document
+	// with no DTD is invalid (nothing declares its elements). A DTD we cannot
+	// fully read — an external subset or external parameter entities — yields
+	// CannotValidate rather than a guess: a declaration could hide there, and
+	// claiming "invalid" might wrongly reject a valid document.
+	if dtdRoot == nil {
+		return nil, &ValidityError{Msg: "document has no DTD to validate against"}
+	}
+	if info.hasExternal {
+		return nil, &CannotValidateError{Msg: "DTD has an external subset"}
+	}
+	// Expand internal parameter entities for the validation view; bail to
+	// CannotValidate if a reference cannot be resolved (external/undeclared PE).
+	vRoot, vInfo, ok := p.expandedDTD(cst.GetRoot())
+	if !ok {
+		return nil, &CannotValidateError{Msg: "DTD uses external or undeclared parameter entities"}
+	}
+	if verr := validate(doc, buildModel(vRoot, vInfo), is11); verr != nil {
+		return nil, verr
 	}
 	return doc, nil
 }
