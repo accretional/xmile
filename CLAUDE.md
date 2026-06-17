@@ -21,11 +21,14 @@ record lives in `docs/decisions/`.
   grammar knowledge. Structure is in `lang/*.ebnf`; lexing is in `lang/*.lex`;
   both are compiled by `genproto` into `proto/`. Never hand-code grammar rules,
   keyword lists, or character classes in Go.
-- **NEVER edit generated files by hand.** Regenerate manually via
-  `go run ./lang/cmd/genproto` plus protoc when the grammar or protos change;
-  the artifacts are committed, so `build.sh` only sets up and builds. Generated:
-  `proto/dtd.proto`, `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,
-  lexical.go}`, `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`.
+- **NEVER edit generated files by hand.** Regenerate with `./regen.sh` (runs
+  `go run ./lang/cmd/genproto`, `go run ./lang/cmd/genproto_rss`, then protoc)
+  when a grammar or proto changes; the artifacts are committed, so `build.sh`
+  only sets up and builds. Generated: `proto/dtd.proto`,
+  `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,lexical.go}`,
+  `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`, and from the RSS 2.0
+  grammar `proto/rss.proto` + `lang/rss.fdset` (no committed Go: the runtime
+  recompiles `rss.ebnf` to a descriptor and projects into `dynamicpb`).
 - `proto/xml.proto` and `proto/xml_service.proto` are **hand-written** (see
   ADR 0003) and run through `protoc` during that manual regeneration step.
 - Any changes made in the project must be then updated in the respective documents.
@@ -91,6 +94,15 @@ XmlService.Parse(bytes, validate) -> ParseResponse
   validating vs non-validating processor; it returns the AST or a typed error
   (`*WFError` / `*ValidityError` / `*CannotValidateError`), surfaced over gRPC as
   a `ParseResponse` oneof (`Document` | `ParseError{verdict, reason}`). ADR 0006.
+- **Vocabularies are grammars, parsed by walking the XML AST.** A format's
+  schema is a grammar compiled to a typed proto AST through the same gluon
+  engine: a DTD via `CompileDTD`, an EBNF schema grammar via `CompileGrammar`
+  (the EBNF front-end). RSS 2.0 is `lang/rss.ebnf` -> `proto/rss.proto`; a feed
+  is parsed by the universal XML parser into the `Tag` tree, then walked into
+  that AST (`service/rss.go`, `ParseRSS`, exposed as `XmlService.ParseRss`).
+  Namespace extensibility — which a DTD cannot express — is enforced in that
+  walk: namespaced markup is a tolerated extension, unprefixed out-of-vocabulary
+  markup is invalid. ADR 0007.
 
 ## Testing
 
@@ -100,6 +112,12 @@ XmlService.Parse(bytes, validate) -> ParseResponse
   (`go run ./testing/xml-parse`, run by `test.sh`): the deterministic `xml/`
   corpus must be 100% (non-zero exit otherwise); the real-world `docx/xlsx/rss`
   corpora are reported but do not gate.
+- **Vocabulary harnesses (reported, not gating).** `testing/schema-compile`
+  compiles the RSS 0.91 DTD and projects the 0.91 corpus; `testing/rss-parse`
+  runs `service.ParseRSS` over the real-world RSS 2.0 corpus
+  (`testing/corpus/rss2.0`, 1000+ feeds fetched by `go run ./testing rss2.0`),
+  reporting the projection pass rate. The deterministic RSS-2.0 correctness gate
+  is `service/rss_test.go` under `go test ./...`. See ADR 0007.
 - The corpus is fetched and organized by file type via `go run ./testing`.
 - The corpus is the applicable subset (XML 1.0 5th edition and 1.1, plus
   Namespaces; no external entities), filtered at fetch time. Out of scope and
@@ -112,15 +130,19 @@ XmlService.Parse(bytes, validate) -> ParseResponse
 | Path | Role |
 |---|---|
 | `lang/xml.ebnf`, `lang/dtd.ebnf` | grammars (hand-edited) |
+| `lang/rss.ebnf` | RSS 2.0 schema grammar over the element vocabulary (hand-edited; ADR 0007) |
 | `lang/xml.lex`, `lang/dtd.lex` | lexical specs (hand-edited) |
 | `lang/cmd/genproto/` | grammar -> proto + maps + lexical tables |
+| `lang/cmd/genproto_rss/` | rss.ebnf -> `proto/rss.proto` + `lang/rss.fdset` |
 | `lang/embed.go` | embeds the grammars for the runtime |
 | `lex/` | generic lexical-matcher engine (no grammar knowledge) |
 | `proto/xml.proto`, `proto/xml_service.proto` | hand-written AST + service |
-| `proto/dtd.proto`, `proto/pb/**` | generated |
-| `service/` | parser + gRPC server |
+| `proto/dtd.proto`, `proto/rss.proto`, `proto/pb/**`, `lang/*.fdset` | generated |
+| `service/` | parser + gRPC server; `rss.go` = RSS 2.0 parse/project/validate |
 | `cmd/xmlparse/` | CLI: file/stdin -> AST (or `-cst`) |
 | `cmd/xmlserve/` | gRPC server |
-| `testing/` | corpus fetcher (`go run ./testing`); corpora are gitignored |
+| `testing/` | corpus fetcher (`go run ./testing`, `… rss0.91`, `… rss2.0`); corpora are gitignored |
 | `testing/xml-parse/` | corpus harness (`go run ./testing/xml-parse`) |
+| `testing/schema-compile/` | RSS 0.91 DTD->proto + projection harness |
+| `testing/rss-parse/` | RSS 2.0 corpus harness (`go run ./testing/rss-parse`) |
 | `docs/decisions/` | ADRs |

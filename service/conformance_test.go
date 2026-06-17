@@ -80,6 +80,38 @@ var conformanceCases = []struct {
 	{"colon in PI target", `<?a:b data?><doc/>`, vNotWF},
 }
 
+// TestAttrValueNormalization pins XML 3.3.3 attribute-value normalization in the
+// projected AST: literal and entity-replacement white space fold to a space,
+// but a direct character reference keeps its literal character.
+func TestAttrValueNormalization(t *testing.T) {
+	p, err := Default()
+	if err != nil {
+		t.Fatalf("parser init: %v", err)
+	}
+	const head = `<!DOCTYPE d [<!ELEMENT d EMPTY><!ATTLIST d a CDATA #IMPLIED>`
+	cases := []struct{ name, xml, want string }{
+		{"literal whitespace folds", head + `]><d a="x` + "\n" + `y"/>`, "x y"},
+		{"entity whitespace folds", head + `<!ENTITY e "` + "\n" + `">]><d a="x&e;y"/>`, "x y"},
+		{"direct char-ref preserved", head + `]><d a="x&#9;y"/>`, "x\ty"},
+	}
+	for _, c := range cases {
+		doc, perr := p.Parse(c.xml, false)
+		if perr != nil {
+			t.Errorf("%s: parse: %v", c.name, perr)
+			continue
+		}
+		got := ""
+		for _, at := range doc.GetRoot().GetAttrs() {
+			if at.GetName() == "a" {
+				got = at.GetValue()
+			}
+		}
+		if got != c.want {
+			t.Errorf("%s: attr a = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
 func TestConformance(t *testing.T) {
 	p, err := Default()
 	if err != nil {

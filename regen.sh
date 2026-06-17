@@ -12,6 +12,9 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 echo "[regen] genproto: dtd.proto + lexical/prefix/separator tables"
 go run ./lang/cmd/genproto
 
+echo "[regen] genproto_rss: rss.proto + rss.fdset from lang/rss.ebnf"
+go run ./lang/cmd/genproto_rss
+
 command -v protoc >/dev/null || { echo "[regen] FATAL: protoc missing (setup should have installed it)"; exit 1; }
 
 echo "[regen] protoc -> proto/pb"

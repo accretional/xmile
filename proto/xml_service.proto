@@ -3,6 +3,7 @@ syntax = "proto3";
 package xml;
 
 import "xml.proto";
+import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
@@ -19,6 +20,29 @@ service XmlService {
   // ParseError (verdict + reason) when it is refused. The RPC status is OK in
   // both cases; a non-OK status is a genuine server fault, not a bad document.
   rpc Parse(ParseRequest) returns (ParseResponse);
+
+  // ParseRss parses RSS 2.0 bytes the way Parse handles generic XML, then
+  // walks the resulting Tag tree into the typed RSS AST compiled from
+  // lang/rss.ebnf (see service/rss.go). It is the "generic XML AST + walk
+  // against a vocabulary" path applied to one format. Like Parse it is a
+  // classifier: the reply carries the typed AST or a verdict, never a non-OK
+  // status for a bad document. Namespace-qualified extensions are tolerated;
+  // an unprefixed out-of-vocabulary element is INVALID.
+  rpc ParseRss(ParseRssRequest) returns (ParseRssResponse);
+}
+
+message ParseRssRequest {
+  bytes xml = 1;
+}
+
+message ParseRssResponse {
+  // The typed RSS AST (an rss.Rss, carried as Any so the service need not link
+  // the generated Go type — decode it with the descriptor from a schema
+  // compile of lang/rss.ebnf) on acceptance, or a ParseError on refusal.
+  oneof response {
+    google.protobuf.Any rss = 1;
+    ParseError error = 2;
+  }
 }
 
 message ParseRequest {

@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	XmlService_Parse_FullMethodName = "/xml.XmlService/Parse"
+	XmlService_Parse_FullMethodName    = "/xml.XmlService/Parse"
+	XmlService_ParseRss_FullMethodName = "/xml.XmlService/ParseRss"
 )
 
 // XmlServiceClient is the client API for XmlService service.
@@ -38,6 +39,14 @@ type XmlServiceClient interface {
 	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
 	// both cases; a non-OK status is a genuine server fault, not a bad document.
 	Parse(ctx context.Context, in *ParseRequest, opts ...grpc.CallOption) (*ParseResponse, error)
+	// ParseRss parses RSS 2.0 bytes the way Parse handles generic XML, then
+	// walks the resulting Tag tree into the typed RSS AST compiled from
+	// lang/rss.ebnf (see service/rss.go). It is the "generic XML AST + walk
+	// against a vocabulary" path applied to one format. Like Parse it is a
+	// classifier: the reply carries the typed AST or a verdict, never a non-OK
+	// status for a bad document. Namespace-qualified extensions are tolerated;
+	// an unprefixed out-of-vocabulary element is INVALID.
+	ParseRss(ctx context.Context, in *ParseRssRequest, opts ...grpc.CallOption) (*ParseRssResponse, error)
 }
 
 type xmlServiceClient struct {
@@ -52,6 +61,16 @@ func (c *xmlServiceClient) Parse(ctx context.Context, in *ParseRequest, opts ...
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ParseResponse)
 	err := c.cc.Invoke(ctx, XmlService_Parse_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *xmlServiceClient) ParseRss(ctx context.Context, in *ParseRssRequest, opts ...grpc.CallOption) (*ParseRssResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ParseRssResponse)
+	err := c.cc.Invoke(ctx, XmlService_ParseRss_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +93,14 @@ type XmlServiceServer interface {
 	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
 	// both cases; a non-OK status is a genuine server fault, not a bad document.
 	Parse(context.Context, *ParseRequest) (*ParseResponse, error)
+	// ParseRss parses RSS 2.0 bytes the way Parse handles generic XML, then
+	// walks the resulting Tag tree into the typed RSS AST compiled from
+	// lang/rss.ebnf (see service/rss.go). It is the "generic XML AST + walk
+	// against a vocabulary" path applied to one format. Like Parse it is a
+	// classifier: the reply carries the typed AST or a verdict, never a non-OK
+	// status for a bad document. Namespace-qualified extensions are tolerated;
+	// an unprefixed out-of-vocabulary element is INVALID.
+	ParseRss(context.Context, *ParseRssRequest) (*ParseRssResponse, error)
 	mustEmbedUnimplementedXmlServiceServer()
 }
 
@@ -86,6 +113,9 @@ type UnimplementedXmlServiceServer struct{}
 
 func (UnimplementedXmlServiceServer) Parse(context.Context, *ParseRequest) (*ParseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Parse not implemented")
+}
+func (UnimplementedXmlServiceServer) ParseRss(context.Context, *ParseRssRequest) (*ParseRssResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ParseRss not implemented")
 }
 func (UnimplementedXmlServiceServer) mustEmbedUnimplementedXmlServiceServer() {}
 func (UnimplementedXmlServiceServer) testEmbeddedByValue()                    {}
@@ -126,6 +156,24 @@ func _XmlService_Parse_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _XmlService_ParseRss_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ParseRssRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XmlServiceServer).ParseRss(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XmlService_ParseRss_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XmlServiceServer).ParseRss(ctx, req.(*ParseRssRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // XmlService_ServiceDesc is the grpc.ServiceDesc for XmlService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -136,6 +184,10 @@ var XmlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Parse",
 			Handler:    _XmlService_Parse_Handler,
+		},
+		{
+			MethodName: "ParseRss",
+			Handler:    _XmlService_ParseRss_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

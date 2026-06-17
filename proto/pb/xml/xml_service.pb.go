@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
+	anypb "google.golang.org/protobuf/types/known/anypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -75,6 +76,136 @@ func (Verdict) EnumDescriptor() ([]byte, []int) {
 	return file_xml_service_proto_rawDescGZIP(), []int{0}
 }
 
+type ParseRssRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Xml           []byte                 `protobuf:"bytes,1,opt,name=xml,proto3" json:"xml,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseRssRequest) Reset() {
+	*x = ParseRssRequest{}
+	mi := &file_xml_service_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseRssRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseRssRequest) ProtoMessage() {}
+
+func (x *ParseRssRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseRssRequest.ProtoReflect.Descriptor instead.
+func (*ParseRssRequest) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ParseRssRequest) GetXml() []byte {
+	if x != nil {
+		return x.Xml
+	}
+	return nil
+}
+
+type ParseRssResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The typed RSS AST (an rss.Rss, carried as Any so the service need not link
+	// the generated Go type — decode it with the descriptor from a schema
+	// compile of lang/rss.ebnf) on acceptance, or a ParseError on refusal.
+	//
+	// Types that are valid to be assigned to Response:
+	//
+	//	*ParseRssResponse_Rss
+	//	*ParseRssResponse_Error
+	Response      isParseRssResponse_Response `protobuf_oneof:"response"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseRssResponse) Reset() {
+	*x = ParseRssResponse{}
+	mi := &file_xml_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseRssResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseRssResponse) ProtoMessage() {}
+
+func (x *ParseRssResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseRssResponse.ProtoReflect.Descriptor instead.
+func (*ParseRssResponse) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ParseRssResponse) GetResponse() isParseRssResponse_Response {
+	if x != nil {
+		return x.Response
+	}
+	return nil
+}
+
+func (x *ParseRssResponse) GetRss() *anypb.Any {
+	if x != nil {
+		if x, ok := x.Response.(*ParseRssResponse_Rss); ok {
+			return x.Rss
+		}
+	}
+	return nil
+}
+
+func (x *ParseRssResponse) GetError() *ParseError {
+	if x != nil {
+		if x, ok := x.Response.(*ParseRssResponse_Error); ok {
+			return x.Error
+		}
+	}
+	return nil
+}
+
+type isParseRssResponse_Response interface {
+	isParseRssResponse_Response()
+}
+
+type ParseRssResponse_Rss struct {
+	Rss *anypb.Any `protobuf:"bytes,1,opt,name=rss,proto3,oneof"`
+}
+
+type ParseRssResponse_Error struct {
+	Error *ParseError `protobuf:"bytes,2,opt,name=error,proto3,oneof"`
+}
+
+func (*ParseRssResponse_Rss) isParseRssResponse_Response() {}
+
+func (*ParseRssResponse_Error) isParseRssResponse_Response() {}
+
 type ParseRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Xml   []byte                 `protobuf:"bytes,1,opt,name=xml,proto3" json:"xml,omitempty"`
@@ -89,7 +220,7 @@ type ParseRequest struct {
 
 func (x *ParseRequest) Reset() {
 	*x = ParseRequest{}
-	mi := &file_xml_service_proto_msgTypes[0]
+	mi := &file_xml_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -101,7 +232,7 @@ func (x *ParseRequest) String() string {
 func (*ParseRequest) ProtoMessage() {}
 
 func (x *ParseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[0]
+	mi := &file_xml_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -114,7 +245,7 @@ func (x *ParseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseRequest.ProtoReflect.Descriptor instead.
 func (*ParseRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{0}
+	return file_xml_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ParseRequest) GetXml() []byte {
@@ -141,7 +272,7 @@ type ParseError struct {
 
 func (x *ParseError) Reset() {
 	*x = ParseError{}
-	mi := &file_xml_service_proto_msgTypes[1]
+	mi := &file_xml_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -153,7 +284,7 @@ func (x *ParseError) String() string {
 func (*ParseError) ProtoMessage() {}
 
 func (x *ParseError) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[1]
+	mi := &file_xml_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -166,7 +297,7 @@ func (x *ParseError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseError.ProtoReflect.Descriptor instead.
 func (*ParseError) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{1}
+	return file_xml_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ParseError) GetVerdict() Verdict {
@@ -199,7 +330,7 @@ type ParseResponse struct {
 
 func (x *ParseResponse) Reset() {
 	*x = ParseResponse{}
-	mi := &file_xml_service_proto_msgTypes[2]
+	mi := &file_xml_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -211,7 +342,7 @@ func (x *ParseResponse) String() string {
 func (*ParseResponse) ProtoMessage() {}
 
 func (x *ParseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[2]
+	mi := &file_xml_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -224,7 +355,7 @@ func (x *ParseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseResponse.ProtoReflect.Descriptor instead.
 func (*ParseResponse) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{2}
+	return file_xml_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ParseResponse) GetResponse() isParseResponse_Response {
@@ -282,7 +413,7 @@ type CompileRequest struct {
 
 func (x *CompileRequest) Reset() {
 	*x = CompileRequest{}
-	mi := &file_xml_service_proto_msgTypes[3]
+	mi := &file_xml_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -294,7 +425,7 @@ func (x *CompileRequest) String() string {
 func (*CompileRequest) ProtoMessage() {}
 
 func (x *CompileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[3]
+	mi := &file_xml_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -307,7 +438,7 @@ func (x *CompileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileRequest.ProtoReflect.Descriptor instead.
 func (*CompileRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{3}
+	return file_xml_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CompileRequest) GetDtd() []byte {
@@ -349,7 +480,7 @@ type CompileResponse struct {
 
 func (x *CompileResponse) Reset() {
 	*x = CompileResponse{}
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +492,7 @@ func (x *CompileResponse) String() string {
 func (*CompileResponse) ProtoMessage() {}
 
 func (x *CompileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +505,7 @@ func (x *CompileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
 func (*CompileResponse) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{4}
+	return file_xml_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CompileResponse) GetFile() *descriptorpb.FileDescriptorProto {
@@ -388,7 +519,14 @@ var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a google/protobuf/descriptor.proto\"<\n" +
+	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\"#\n" +
+	"\x0fParseRssRequest\x12\x10\n" +
+	"\x03xml\x18\x01 \x01(\fR\x03xml\"q\n" +
+	"\x10ParseRssResponse\x12(\n" +
+	"\x03rss\x18\x01 \x01(\v2\x14.google.protobuf.AnyH\x00R\x03rss\x12'\n" +
+	"\x05error\x18\x02 \x01(\v2\x0f.xml.ParseErrorH\x00R\x05errorB\n" +
+	"\n" +
+	"\bresponse\"<\n" +
 	"\fParseRequest\x12\x10\n" +
 	"\x03xml\x18\x01 \x01(\fR\x03xml\x12\x1a\n" +
 	"\bvalidate\x18\x02 \x01(\bR\bvalidate\"L\n" +
@@ -413,10 +551,11 @@ const file_xml_service_proto_rawDesc = "" +
 	"\x13VERDICT_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fNOT_WELL_FORMED\x10\x01\x12\v\n" +
 	"\aINVALID\x10\x02\x12\x13\n" +
-	"\x0fCANNOT_VALIDATE\x10\x032<\n" +
+	"\x0fCANNOT_VALIDATE\x10\x032u\n" +
 	"\n" +
 	"XmlService\x12.\n" +
-	"\x05Parse\x12\x11.xml.ParseRequest\x1a\x12.xml.ParseResponse2E\n" +
+	"\x05Parse\x12\x11.xml.ParseRequest\x1a\x12.xml.ParseResponse\x127\n" +
+	"\bParseRss\x12\x14.xml.ParseRssRequest\x1a\x15.xml.ParseRssResponse2E\n" +
 	"\rSchemaService\x124\n" +
 	"\aCompile\x12\x13.xml.CompileRequest\x1a\x14.xml.CompileResponseB1Z/github.com/accretional/xmile/proto/pb/xml;xmlpbb\x06proto3"
 
@@ -433,31 +572,38 @@ func file_xml_service_proto_rawDescGZIP() []byte {
 }
 
 var file_xml_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_xml_service_proto_goTypes = []any{
 	(Verdict)(0),                             // 0: xml.Verdict
-	(*ParseRequest)(nil),                     // 1: xml.ParseRequest
-	(*ParseError)(nil),                       // 2: xml.ParseError
-	(*ParseResponse)(nil),                    // 3: xml.ParseResponse
-	(*CompileRequest)(nil),                   // 4: xml.CompileRequest
-	(*CompileResponse)(nil),                  // 5: xml.CompileResponse
-	(*Document)(nil),                         // 6: xml.Document
-	(*descriptorpb.FileDescriptorProto)(nil), // 7: google.protobuf.FileDescriptorProto
+	(*ParseRssRequest)(nil),                  // 1: xml.ParseRssRequest
+	(*ParseRssResponse)(nil),                 // 2: xml.ParseRssResponse
+	(*ParseRequest)(nil),                     // 3: xml.ParseRequest
+	(*ParseError)(nil),                       // 4: xml.ParseError
+	(*ParseResponse)(nil),                    // 5: xml.ParseResponse
+	(*CompileRequest)(nil),                   // 6: xml.CompileRequest
+	(*CompileResponse)(nil),                  // 7: xml.CompileResponse
+	(*anypb.Any)(nil),                        // 8: google.protobuf.Any
+	(*Document)(nil),                         // 9: xml.Document
+	(*descriptorpb.FileDescriptorProto)(nil), // 10: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
-	0, // 0: xml.ParseError.verdict:type_name -> xml.Verdict
-	6, // 1: xml.ParseResponse.document:type_name -> xml.Document
-	2, // 2: xml.ParseResponse.error:type_name -> xml.ParseError
-	7, // 3: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
-	1, // 4: xml.XmlService.Parse:input_type -> xml.ParseRequest
-	4, // 5: xml.SchemaService.Compile:input_type -> xml.CompileRequest
-	3, // 6: xml.XmlService.Parse:output_type -> xml.ParseResponse
-	5, // 7: xml.SchemaService.Compile:output_type -> xml.CompileResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	8,  // 0: xml.ParseRssResponse.rss:type_name -> google.protobuf.Any
+	4,  // 1: xml.ParseRssResponse.error:type_name -> xml.ParseError
+	0,  // 2: xml.ParseError.verdict:type_name -> xml.Verdict
+	9,  // 3: xml.ParseResponse.document:type_name -> xml.Document
+	4,  // 4: xml.ParseResponse.error:type_name -> xml.ParseError
+	10, // 5: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
+	3,  // 6: xml.XmlService.Parse:input_type -> xml.ParseRequest
+	1,  // 7: xml.XmlService.ParseRss:input_type -> xml.ParseRssRequest
+	6,  // 8: xml.SchemaService.Compile:input_type -> xml.CompileRequest
+	5,  // 9: xml.XmlService.Parse:output_type -> xml.ParseResponse
+	2,  // 10: xml.XmlService.ParseRss:output_type -> xml.ParseRssResponse
+	7,  // 11: xml.SchemaService.Compile:output_type -> xml.CompileResponse
+	9,  // [9:12] is the sub-list for method output_type
+	6,  // [6:9] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_xml_service_proto_init() }
@@ -466,7 +612,11 @@ func file_xml_service_proto_init() {
 		return
 	}
 	file_xml_proto_init()
-	file_xml_service_proto_msgTypes[2].OneofWrappers = []any{
+	file_xml_service_proto_msgTypes[1].OneofWrappers = []any{
+		(*ParseRssResponse_Rss)(nil),
+		(*ParseRssResponse_Error)(nil),
+	}
+	file_xml_service_proto_msgTypes[4].OneofWrappers = []any{
 		(*ParseResponse_Document)(nil),
 		(*ParseResponse_Error)(nil),
 	}
@@ -476,7 +626,7 @@ func file_xml_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_service_proto_rawDesc), len(file_xml_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
