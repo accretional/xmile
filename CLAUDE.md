@@ -27,8 +27,8 @@ record lives in `docs/decisions/`.
   only sets up and builds. Generated: `proto/dtd.proto`,
   `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,lexical.go}`,
   `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`, and from the RSS 2.0
-  grammar `proto/rss.proto` + `lang/rss.fdset` (no committed Go: the runtime
-  recompiles `rss.ebnf` to a descriptor and projects into `dynamicpb`).
+  grammar `proto/rss.proto` + `lang/rss.fdset` + `proto/pb/rss/rss.pb.go` (the
+  typed `rss.Rss` AST a feed projects into).
 - `proto/xml.proto` and `proto/xml_service.proto` are **hand-written** (see
   ADR 0003) and run through `protoc` during that manual regeneration step.
 - Any changes made in the project must be then updated in the respective documents.

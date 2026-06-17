@@ -51,10 +51,11 @@ rule. A reference with no rule of its own lowers to a `string` field:
 
 The `at_` marker is required because an attribute and an element can share a
 name: `<url>` is a child of `<image>`, but `url=` is an attribute of
-`<enclosure>`/`<source>`. `genproto_rss` writes the committed `proto/rss.proto`
-+ `lang/rss.fdset`; the runtime recompiles the embedded grammar to a descriptor
-and projects into `dynamicpb` (no committed Go for the vocabulary — same
-lifecycle as the RSS 0.91 schema-compile harness).
+`<enclosure>`/`<source>`. `genproto_rss` writes `proto/rss.proto` +
+`lang/rss.fdset`, and protoc compiles that into the committed
+`proto/pb/rss/rss.pb.go` — the typed `rss.Rss` a feed projects into, so
+`ParseRss` returns it directly. (RSS is small, 33 messages; unlike a future
+OOXML vocabulary, committing its Go is cheap.)
 
 ## 3. Parsing = generic XML AST + a namespace-aware walk
 
@@ -92,12 +93,10 @@ The CFG-inexpressible constraints split two ways, mirroring the project's
 
 ## 5. Service surface
 
-`XmlService.ParseRss(ParseRssRequest{xml}) → ParseRssResponse{oneof: Any rss |
-ParseError error}`. The typed AST rides in a `google.protobuf.Any` so the
-server need not link a generated Go `rss` type (it projects into `dynamicpb`); a
-client decodes it with the descriptor from compiling `lang/rss.ebnf`. `Parse`
-(bytes → `Tag`) is unchanged. Verdicts are reused: `NOT_WELL_FORMED` (bad XML),
-`INVALID` (well-formed but not RSS 2.0).
+`XmlService.ParseRss(ParseRssRequest{xml}) → ParseRssResponse{oneof: rss.Rss
+rss | ParseError error}` — the typed RSS AST directly (the committed `rss.Rss`),
+or a verdict. `Parse` (bytes → `Tag`) is unchanged. Verdicts are reused:
+`NOT_WELL_FORMED` (bad XML), `INVALID` (well-formed but not RSS 2.0).
 
 ## 6. Scope boundaries (v1)
 

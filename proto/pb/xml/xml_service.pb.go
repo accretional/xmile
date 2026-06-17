@@ -7,10 +7,10 @@
 package xmlpb
 
 import (
+	rss "github.com/accretional/xmile/proto/pb/rss"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
-	anypb "google.golang.org/protobuf/types/known/anypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -122,9 +122,8 @@ func (x *ParseRssRequest) GetXml() []byte {
 
 type ParseRssResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The typed RSS AST (an rss.Rss, carried as Any so the service need not link
-	// the generated Go type — decode it with the descriptor from a schema
-	// compile of lang/rss.ebnf) on acceptance, or a ParseError on refusal.
+	// The typed RSS AST (rss.Rss, the proto compiled from lang/rss.ebnf) on
+	// acceptance, or a ParseError on refusal.
 	//
 	// Types that are valid to be assigned to Response:
 	//
@@ -172,7 +171,7 @@ func (x *ParseRssResponse) GetResponse() isParseRssResponse_Response {
 	return nil
 }
 
-func (x *ParseRssResponse) GetRss() *anypb.Any {
+func (x *ParseRssResponse) GetRss() *rss.Rss {
 	if x != nil {
 		if x, ok := x.Response.(*ParseRssResponse_Rss); ok {
 			return x.Rss
@@ -195,7 +194,7 @@ type isParseRssResponse_Response interface {
 }
 
 type ParseRssResponse_Rss struct {
-	Rss *anypb.Any `protobuf:"bytes,1,opt,name=rss,proto3,oneof"`
+	Rss *rss.Rss `protobuf:"bytes,1,opt,name=rss,proto3,oneof"`
 }
 
 type ParseRssResponse_Error struct {
@@ -519,11 +518,11 @@ var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\"#\n" +
+	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a\trss.proto\x1a google/protobuf/descriptor.proto\"#\n" +
 	"\x0fParseRssRequest\x12\x10\n" +
-	"\x03xml\x18\x01 \x01(\fR\x03xml\"q\n" +
-	"\x10ParseRssResponse\x12(\n" +
-	"\x03rss\x18\x01 \x01(\v2\x14.google.protobuf.AnyH\x00R\x03rss\x12'\n" +
+	"\x03xml\x18\x01 \x01(\fR\x03xml\"e\n" +
+	"\x10ParseRssResponse\x12\x1c\n" +
+	"\x03rss\x18\x01 \x01(\v2\b.rss.RssH\x00R\x03rss\x12'\n" +
 	"\x05error\x18\x02 \x01(\v2\x0f.xml.ParseErrorH\x00R\x05errorB\n" +
 	"\n" +
 	"\bresponse\"<\n" +
@@ -582,12 +581,12 @@ var file_xml_service_proto_goTypes = []any{
 	(*ParseResponse)(nil),                    // 5: xml.ParseResponse
 	(*CompileRequest)(nil),                   // 6: xml.CompileRequest
 	(*CompileResponse)(nil),                  // 7: xml.CompileResponse
-	(*anypb.Any)(nil),                        // 8: google.protobuf.Any
+	(*rss.Rss)(nil),                          // 8: rss.Rss
 	(*Document)(nil),                         // 9: xml.Document
 	(*descriptorpb.FileDescriptorProto)(nil), // 10: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
-	8,  // 0: xml.ParseRssResponse.rss:type_name -> google.protobuf.Any
+	8,  // 0: xml.ParseRssResponse.rss:type_name -> rss.Rss
 	4,  // 1: xml.ParseRssResponse.error:type_name -> xml.ParseError
 	0,  // 2: xml.ParseError.verdict:type_name -> xml.Verdict
 	9,  // 3: xml.ParseResponse.document:type_name -> xml.Document

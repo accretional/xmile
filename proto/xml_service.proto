@@ -3,7 +3,7 @@ syntax = "proto3";
 package xml;
 
 import "xml.proto";
-import "google/protobuf/any.proto";
+import "rss.proto";
 import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
@@ -36,11 +36,10 @@ message ParseRssRequest {
 }
 
 message ParseRssResponse {
-  // The typed RSS AST (an rss.Rss, carried as Any so the service need not link
-  // the generated Go type — decode it with the descriptor from a schema
-  // compile of lang/rss.ebnf) on acceptance, or a ParseError on refusal.
+  // The typed RSS AST (rss.Rss, the proto compiled from lang/rss.ebnf) on
+  // acceptance, or a ParseError on refusal.
   oneof response {
-    google.protobuf.Any rss = 1;
+    rss.Rss rss = 1;
     ParseError error = 2;
   }
 }

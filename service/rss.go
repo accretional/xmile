@@ -15,62 +15,22 @@ package service
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
-	"google.golang.org/protobuf/types/dynamicpb"
 
-	"github.com/accretional/xmile/lang"
+	rsspb "github.com/accretional/xmile/proto/pb/rss"
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
-var (
-	rssOnce sync.Once
-	rssMD   protoreflect.MessageDescriptor
-	rssErr  error
-)
-
-// rssRoot compiles lang/rss.ebnf once and returns the descriptor of its root
-// Rss message — the typed AST a feed projects into. The grammar is the source
-// of truth; this carries no RSS knowledge of its own.
-func rssRoot() (protoreflect.MessageDescriptor, error) {
-	rssOnce.Do(func() {
-		fdp, err := CompileGrammar([]byte(lang.RSSGrammar), SchemaOptions{Package: "rss", FileName: "rss.proto"})
-		if err != nil {
-			rssErr = fmt.Errorf("compile rss.ebnf: %w", err)
-			return
-		}
-		fd, err := protodesc.NewFile(fdp, new(protoregistry.Files))
-		if err != nil {
-			rssErr = fmt.Errorf("rss schema does not link: %w", err)
-			return
-		}
-		md := fd.Messages().ByName("Rss")
-		if md == nil {
-			rssErr = fmt.Errorf("rss schema has no Rss message")
-			return
-		}
-		rssMD = md
-	})
-	return rssMD, rssErr
-}
-
 // ParseRSS parses RSS 2.0 source: it parses the bytes as XML (well-formedness
 // and namespaces), enforces the RSS-2.0 constraints a CFG cannot, and walks the
-// resulting Tag tree into the typed rss.Rss AST. The error is *WFError when the
-// bytes are not well-formed XML, *ValidityError when they are well-formed but
-// not valid RSS 2.0 (wrong root/version, missing required children, or an
-// unprefixed out-of-vocabulary element); any other error is an internal fault
-// (the embedded grammar failed to compile). Namespace-qualified extensions are
-// tolerated, never rejected.
-func ParseRSS(p *Parser, src string) (proto.Message, error) {
-	md, err := rssRoot()
-	if err != nil {
-		return nil, err // internal: the embedded grammar should always compile
-	}
+// resulting Tag tree into the typed rss.Rss AST (proto/pb/rss, generated from
+// lang/rss.ebnf). The error is *WFError when the bytes are not well-formed XML,
+// or *ValidityError when they are well-formed but not valid RSS 2.0 (wrong
+// root/version, missing required children, or an unprefixed out-of-vocabulary
+// element). Namespace-qualified extensions are tolerated, never rejected.
+func ParseRSS(p *Parser, src string) (*rsspb.Rss, error) {
 	doc, err := p.Parse(src, false)
 	if err != nil {
 		return nil, err // *WFError
@@ -78,12 +38,12 @@ func ParseRSS(p *Parser, src string) (proto.Message, error) {
 	if verr := validateRSS(doc); verr != nil {
 		return nil, verr // *ValidityError
 	}
-	msg := dynamicpb.NewMessage(md)
-	_, unknown := projectRSS(doc.GetRoot(), md, msg)
+	out := &rsspb.Rss{}
+	_, unknown := projectRSS(doc.GetRoot(), out.ProtoReflect().Descriptor(), out.ProtoReflect())
 	if len(unknown) > 0 {
 		return nil, &ValidityError{Msg: fmt.Sprintf("not RSS 2.0: out-of-vocabulary markup %v (extensions must be in a namespace)", dedupStrings(unknown))}
 	}
-	return msg, nil
+	return out, nil
 }
 
 // projectRSS walks a parsed Tag tree against the rss.proto descriptor, filling
