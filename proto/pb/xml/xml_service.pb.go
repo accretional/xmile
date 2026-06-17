@@ -22,14 +22,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Verdict classifies why a document was refused.
+// Verdict classifies a Process outcome.
 type Verdict int32
 
 const (
 	Verdict_VERDICT_UNSPECIFIED Verdict = 0
 	Verdict_NOT_WELL_FORMED     Verdict = 1 // syntactically not a document
-	Verdict_INVALID             Verdict = 2 // well-formed but breaks its DTD (validate=true)
-	Verdict_CANNOT_VALIDATE     Verdict = 3 // validate=true, but the DTD cannot be fully read
+	Verdict_WELL_FORMED         Verdict = 2 // accepted, not validated (no schema, project-only)
+	Verdict_VALID               Verdict = 3 // accepted and validated against its schema / DTD
+	Verdict_INVALID             Verdict = 4 // well-formed but breaks its schema / DTD
+	Verdict_CANNOT_VALIDATE     Verdict = 5 // validation requested but the DTD cannot be fully read
 )
 
 // Enum value maps for Verdict.
@@ -37,14 +39,18 @@ var (
 	Verdict_name = map[int32]string{
 		0: "VERDICT_UNSPECIFIED",
 		1: "NOT_WELL_FORMED",
-		2: "INVALID",
-		3: "CANNOT_VALIDATE",
+		2: "WELL_FORMED",
+		3: "VALID",
+		4: "INVALID",
+		5: "CANNOT_VALIDATE",
 	}
 	Verdict_value = map[string]int32{
 		"VERDICT_UNSPECIFIED": 0,
 		"NOT_WELL_FORMED":     1,
-		"INVALID":             2,
-		"CANNOT_VALIDATE":     3,
+		"WELL_FORMED":         2,
+		"VALID":               3,
+		"INVALID":             4,
+		"CANNOT_VALIDATE":     5,
 	}
 )
 
@@ -75,142 +81,337 @@ func (Verdict) EnumDescriptor() ([]byte, []int) {
 	return file_xml_service_proto_rawDescGZIP(), []int{0}
 }
 
-type ParseRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Xml   []byte                 `protobuf:"bytes,1,opt,name=xml,proto3" json:"xml,omitempty"`
-	// validate selects the parser mode (XML's validating vs non-validating
-	// processor distinction). When false, only well-formedness is checked and
-	// any well-formed document is accepted. When true, the document is validated
-	// against its DTD: it must have one and satisfy it.
-	Validate      bool `protobuf:"varint,2,opt,name=validate,proto3" json:"validate,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
+type Severity int32
 
-func (x *ParseRequest) Reset() {
-	*x = ParseRequest{}
-	mi := &file_xml_service_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
+const (
+	Severity_SEVERITY_UNSPECIFIED Severity = 0
+	Severity_ERROR                Severity = 1
+	Severity_WARNING              Severity = 2
+)
 
-func (x *ParseRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ParseRequest) ProtoMessage() {}
-
-func (x *ParseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+// Enum value maps for Severity.
+var (
+	Severity_name = map[int32]string{
+		0: "SEVERITY_UNSPECIFIED",
+		1: "ERROR",
+		2: "WARNING",
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ParseRequest.ProtoReflect.Descriptor instead.
-func (*ParseRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *ParseRequest) GetXml() []byte {
-	if x != nil {
-		return x.Xml
+	Severity_value = map[string]int32{
+		"SEVERITY_UNSPECIFIED": 0,
+		"ERROR":                1,
+		"WARNING":              2,
 	}
-	return nil
+)
+
+func (x Severity) Enum() *Severity {
+	p := new(Severity)
+	*p = x
+	return p
 }
 
-func (x *ParseRequest) GetValidate() bool {
-	if x != nil {
-		return x.Validate
-	}
-	return false
+func (x Severity) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-type ParseError struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Verdict       Verdict                `protobuf:"varint,1,opt,name=verdict,proto3,enum=xml.Verdict" json:"verdict,omitempty"`
-	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // human-readable detail
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (Severity) Descriptor() protoreflect.EnumDescriptor {
+	return file_xml_service_proto_enumTypes[1].Descriptor()
 }
 
-func (x *ParseError) Reset() {
-	*x = ParseError{}
-	mi := &file_xml_service_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
+func (Severity) Type() protoreflect.EnumType {
+	return &file_xml_service_proto_enumTypes[1]
 }
 
-func (x *ParseError) String() string {
-	return protoimpl.X.MessageStringOf(x)
+func (x Severity) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
 }
 
-func (*ParseError) ProtoMessage() {}
-
-func (x *ParseError) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ParseError.ProtoReflect.Descriptor instead.
-func (*ParseError) Descriptor() ([]byte, []int) {
+// Deprecated: Use Severity.Descriptor instead.
+func (Severity) EnumDescriptor() ([]byte, []int) {
 	return file_xml_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ParseError) GetVerdict() Verdict {
-	if x != nil {
-		return x.Verdict
+type Mode int32
+
+const (
+	Mode_PROJECT_ONLY Mode = 0 // parse / project and report; do not enforce validity
+	Mode_VALIDATE     Mode = 1 // enforce validity (the DTD for generic XML; vocabulary coverage for a schema)
+)
+
+// Enum value maps for Mode.
+var (
+	Mode_name = map[int32]string{
+		0: "PROJECT_ONLY",
+		1: "VALIDATE",
 	}
-	return Verdict_VERDICT_UNSPECIFIED
+	Mode_value = map[string]int32{
+		"PROJECT_ONLY": 0,
+		"VALIDATE":     1,
+	}
+)
+
+func (x Mode) Enum() *Mode {
+	p := new(Mode)
+	*p = x
+	return p
 }
 
-func (x *ParseError) GetReason() string {
+func (x Mode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Mode) Descriptor() protoreflect.EnumDescriptor {
+	return file_xml_service_proto_enumTypes[2].Descriptor()
+}
+
+func (Mode) Type() protoreflect.EnumType {
+	return &file_xml_service_proto_enumTypes[2]
+}
+
+func (x Mode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Mode.Descriptor instead.
+func (Mode) EnumDescriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{2}
+}
+
+type SchemaLanguage int32
+
+const (
+	SchemaLanguage_SCHEMA_LANGUAGE_UNSPECIFIED SchemaLanguage = 0 // treated as EBNF_VOCAB
+	SchemaLanguage_DTD                         SchemaLanguage = 1
+	SchemaLanguage_EBNF_VOCAB                  SchemaLanguage = 2
+	SchemaLanguage_XSD                         SchemaLanguage = 3
+)
+
+// Enum value maps for SchemaLanguage.
+var (
+	SchemaLanguage_name = map[int32]string{
+		0: "SCHEMA_LANGUAGE_UNSPECIFIED",
+		1: "DTD",
+		2: "EBNF_VOCAB",
+		3: "XSD",
+	}
+	SchemaLanguage_value = map[string]int32{
+		"SCHEMA_LANGUAGE_UNSPECIFIED": 0,
+		"DTD":                         1,
+		"EBNF_VOCAB":                  2,
+		"XSD":                         3,
+	}
+)
+
+func (x SchemaLanguage) Enum() *SchemaLanguage {
+	p := new(SchemaLanguage)
+	*p = x
+	return p
+}
+
+func (x SchemaLanguage) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SchemaLanguage) Descriptor() protoreflect.EnumDescriptor {
+	return file_xml_service_proto_enumTypes[3].Descriptor()
+}
+
+func (SchemaLanguage) Type() protoreflect.EnumType {
+	return &file_xml_service_proto_enumTypes[3]
+}
+
+func (x SchemaLanguage) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SchemaLanguage.Descriptor instead.
+func (SchemaLanguage) EnumDescriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{3}
+}
+
+// Diagnostic is a non-fatal finding (soft conformance), severity-tagged so a
+// vocabulary's "SHOULD" rules are reported without failing the parse.
+type Diagnostic struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Severity      Severity               `protobuf:"varint,1,opt,name=severity,proto3,enum=xml.Severity" json:"severity,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Diagnostic) Reset() {
+	*x = Diagnostic{}
+	mi := &file_xml_service_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Diagnostic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Diagnostic) ProtoMessage() {}
+
+func (x *Diagnostic) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Diagnostic.ProtoReflect.Descriptor instead.
+func (*Diagnostic) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Diagnostic) GetSeverity() Severity {
+	if x != nil {
+		return x.Severity
+	}
+	return Severity_SEVERITY_UNSPECIFIED
+}
+
+func (x *Diagnostic) GetReason() string {
 	if x != nil {
 		return x.Reason
 	}
 	return ""
 }
 
-type ParseResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// A Document on acceptance, or a ParseError on refusal, never both. There is
-	// no point returning a tree for input that is not well-formed or not valid.
+type ProcessRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Source []byte                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// schema selects the vocabulary to project into. Unset -> generic XML (the
+	// homogeneous Tag tree, i.e. the former Parse). A registered format name or
+	// an inline metagrammar compile projects into that vocabulary's typed tree.
 	//
-	// Types that are valid to be assigned to Response:
+	// Types that are valid to be assigned to Schema:
 	//
-	//	*ParseResponse_Document
-	//	*ParseResponse_Error
-	Response      isParseResponse_Response `protobuf_oneof:"response"`
+	//	*ProcessRequest_Format
+	//	*ProcessRequest_Compile
+	Schema        isProcessRequest_Schema `protobuf_oneof:"schema"`
+	Mode          Mode                    `protobuf:"varint,4,opt,name=mode,proto3,enum=xml.Mode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ParseResponse) Reset() {
-	*x = ParseResponse{}
+func (x *ProcessRequest) Reset() {
+	*x = ProcessRequest{}
+	mi := &file_xml_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessRequest) ProtoMessage() {}
+
+func (x *ProcessRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessRequest.ProtoReflect.Descriptor instead.
+func (*ProcessRequest) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ProcessRequest) GetSource() []byte {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
+func (x *ProcessRequest) GetSchema() isProcessRequest_Schema {
+	if x != nil {
+		return x.Schema
+	}
+	return nil
+}
+
+func (x *ProcessRequest) GetFormat() string {
+	if x != nil {
+		if x, ok := x.Schema.(*ProcessRequest_Format); ok {
+			return x.Format
+		}
+	}
+	return ""
+}
+
+func (x *ProcessRequest) GetCompile() *CompileRequest {
+	if x != nil {
+		if x, ok := x.Schema.(*ProcessRequest_Compile); ok {
+			return x.Compile
+		}
+	}
+	return nil
+}
+
+func (x *ProcessRequest) GetMode() Mode {
+	if x != nil {
+		return x.Mode
+	}
+	return Mode_PROJECT_ONLY
+}
+
+type isProcessRequest_Schema interface {
+	isProcessRequest_Schema()
+}
+
+type ProcessRequest_Format struct {
+	Format string `protobuf:"bytes,2,opt,name=format,proto3,oneof"` // a registered format, e.g. "rss-2.0"
+}
+
+type ProcessRequest_Compile struct {
+	Compile *CompileRequest `protobuf:"bytes,3,opt,name=compile,proto3,oneof"` // compile a metagrammar, then project against it
+}
+
+func (*ProcessRequest_Format) isProcessRequest_Schema() {}
+
+func (*ProcessRequest_Compile) isProcessRequest_Schema() {}
+
+type ProcessResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Result:
+	//
+	//	*ProcessResponse_Document
+	//	*ProcessResponse_Typed
+	//	*ProcessResponse_Error
+	Result        isProcessResponse_Result `protobuf_oneof:"result"`
+	Verdict       Verdict                  `protobuf:"varint,4,opt,name=verdict,proto3,enum=xml.Verdict" json:"verdict,omitempty"`
+	Diagnostics   []*Diagnostic            `protobuf:"bytes,5,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"` // soft conformance (severity WARNING)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessResponse) Reset() {
+	*x = ProcessResponse{}
 	mi := &file_xml_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ParseResponse) String() string {
+func (x *ProcessResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ParseResponse) ProtoMessage() {}
+func (*ProcessResponse) ProtoMessage() {}
 
-func (x *ParseResponse) ProtoReflect() protoreflect.Message {
+func (x *ProcessResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_xml_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -222,67 +423,211 @@ func (x *ParseResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ParseResponse.ProtoReflect.Descriptor instead.
-func (*ParseResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ProcessResponse.ProtoReflect.Descriptor instead.
+func (*ProcessResponse) Descriptor() ([]byte, []int) {
 	return file_xml_service_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ParseResponse) GetResponse() isParseResponse_Response {
+func (x *ProcessResponse) GetResult() isProcessResponse_Result {
 	if x != nil {
-		return x.Response
+		return x.Result
 	}
 	return nil
 }
 
-func (x *ParseResponse) GetDocument() *Document {
+func (x *ProcessResponse) GetDocument() *Document {
 	if x != nil {
-		if x, ok := x.Response.(*ParseResponse_Document); ok {
+		if x, ok := x.Result.(*ProcessResponse_Document); ok {
 			return x.Document
 		}
 	}
 	return nil
 }
 
-func (x *ParseResponse) GetError() *ParseError {
+func (x *ProcessResponse) GetTyped() *TypedTree {
 	if x != nil {
-		if x, ok := x.Response.(*ParseResponse_Error); ok {
+		if x, ok := x.Result.(*ProcessResponse_Typed); ok {
+			return x.Typed
+		}
+	}
+	return nil
+}
+
+func (x *ProcessResponse) GetError() *ProcessError {
+	if x != nil {
+		if x, ok := x.Result.(*ProcessResponse_Error); ok {
 			return x.Error
 		}
 	}
 	return nil
 }
 
-type isParseResponse_Response interface {
-	isParseResponse_Response()
+func (x *ProcessResponse) GetVerdict() Verdict {
+	if x != nil {
+		return x.Verdict
+	}
+	return Verdict_VERDICT_UNSPECIFIED
 }
 
-type ParseResponse_Document struct {
-	Document *Document `protobuf:"bytes,1,opt,name=document,proto3,oneof"`
+func (x *ProcessResponse) GetDiagnostics() []*Diagnostic {
+	if x != nil {
+		return x.Diagnostics
+	}
+	return nil
 }
 
-type ParseResponse_Error struct {
-	Error *ParseError `protobuf:"bytes,2,opt,name=error,proto3,oneof"`
+type isProcessResponse_Result interface {
+	isProcessResponse_Result()
 }
 
-func (*ParseResponse_Document) isParseResponse_Response() {}
+type ProcessResponse_Document struct {
+	Document *Document `protobuf:"bytes,1,opt,name=document,proto3,oneof"` // no schema: the generic XML AST
+}
 
-func (*ParseResponse_Error) isParseResponse_Response() {}
+type ProcessResponse_Typed struct {
+	Typed *TypedTree `protobuf:"bytes,2,opt,name=typed,proto3,oneof"` // a schema: the projected typed tree, self-describing
+}
+
+type ProcessResponse_Error struct {
+	Error *ProcessError `protobuf:"bytes,3,opt,name=error,proto3,oneof"` // refusal
+}
+
+func (*ProcessResponse_Document) isProcessResponse_Result() {}
+
+func (*ProcessResponse_Typed) isProcessResponse_Result() {}
+
+func (*ProcessResponse_Error) isProcessResponse_Result() {}
+
+type ProcessError struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Verdict       Verdict                `protobuf:"varint,1,opt,name=verdict,proto3,enum=xml.Verdict" json:"verdict,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessError) Reset() {
+	*x = ProcessError{}
+	mi := &file_xml_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessError) ProtoMessage() {}
+
+func (x *ProcessError) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessError.ProtoReflect.Descriptor instead.
+func (*ProcessError) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ProcessError) GetVerdict() Verdict {
+	if x != nil {
+		return x.Verdict
+	}
+	return Verdict_VERDICT_UNSPECIFIED
+}
+
+func (x *ProcessError) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// TypedTree carries a projected message plus the descriptor needed to decode it,
+// so a dynamic (runtime-compiled) vocabulary's tree is self-describing on the
+// wire: the client links `schema` with protodesc and unmarshals `message` into a
+// dynamicpb message of `root_message`.
+type TypedTree struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Schema        *descriptorpb.FileDescriptorProto `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
+	RootMessage   string                            `protobuf:"bytes,2,opt,name=root_message,json=rootMessage,proto3" json:"root_message,omitempty"`
+	Message       []byte                            `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TypedTree) Reset() {
+	*x = TypedTree{}
+	mi := &file_xml_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypedTree) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypedTree) ProtoMessage() {}
+
+func (x *TypedTree) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypedTree.ProtoReflect.Descriptor instead.
+func (*TypedTree) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TypedTree) GetSchema() *descriptorpb.FileDescriptorProto {
+	if x != nil {
+		return x.Schema
+	}
+	return nil
+}
+
+func (x *TypedTree) GetRootMessage() string {
+	if x != nil {
+		return x.RootMessage
+	}
+	return ""
+}
+
+func (x *TypedTree) GetMessage() []byte {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
 
 type CompileRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The DTD external subset to compile.
-	Dtd []byte `protobuf:"bytes,1,opt,name=dtd,proto3" json:"dtd,omitempty"`
-	// Naming options for the emitted descriptor; all optional.
-	Package       string `protobuf:"bytes,2,opt,name=package,proto3" json:"package,omitempty"`                      // proto package (e.g. "rss"); defaults to "lang".
-	GoPackage     string `protobuf:"bytes,3,opt,name=go_package,json=goPackage,proto3" json:"go_package,omitempty"` // go_package file option; omitted if empty.
-	FileName      string `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`    // FileDescriptorProto.name; "<package>.proto" default.
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Source        []byte                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	Language      SchemaLanguage         `protobuf:"varint,2,opt,name=language,proto3,enum=xml.SchemaLanguage" json:"language,omitempty"`
+	Package       string                 `protobuf:"bytes,3,opt,name=package,proto3" json:"package,omitempty"`                      // proto package (e.g. "rss"); defaults to "lang"
+	GoPackage     string                 `protobuf:"bytes,4,opt,name=go_package,json=goPackage,proto3" json:"go_package,omitempty"` // go_package file option; omitted if empty
+	FileName      string                 `protobuf:"bytes,5,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`    // FileDescriptorProto.name; "<package>.proto" default
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CompileRequest) Reset() {
 	*x = CompileRequest{}
-	mi := &file_xml_service_proto_msgTypes[3]
+	mi := &file_xml_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -294,7 +639,7 @@ func (x *CompileRequest) String() string {
 func (*CompileRequest) ProtoMessage() {}
 
 func (x *CompileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[3]
+	mi := &file_xml_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -307,14 +652,21 @@ func (x *CompileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileRequest.ProtoReflect.Descriptor instead.
 func (*CompileRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{3}
+	return file_xml_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *CompileRequest) GetDtd() []byte {
+func (x *CompileRequest) GetSource() []byte {
 	if x != nil {
-		return x.Dtd
+		return x.Source
 	}
 	return nil
+}
+
+func (x *CompileRequest) GetLanguage() SchemaLanguage {
+	if x != nil {
+		return x.Language
+	}
+	return SchemaLanguage_SCHEMA_LANGUAGE_UNSPECIFIED
 }
 
 func (x *CompileRequest) GetPackage() string {
@@ -340,16 +692,18 @@ func (x *CompileRequest) GetFileName() string {
 
 type CompileResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The compiled schema. It can be linked with protodesc for dynamic use or
-	// written out as a .proto / FileDescriptorSet.
-	File          *descriptorpb.FileDescriptorProto `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	// Types that are valid to be assigned to Result:
+	//
+	//	*CompileResponse_File
+	//	*CompileResponse_Error
+	Result        isCompileResponse_Result `protobuf_oneof:"result"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CompileResponse) Reset() {
 	*x = CompileResponse{}
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +715,7 @@ func (x *CompileResponse) String() string {
 func (*CompileResponse) ProtoMessage() {}
 
 func (x *CompileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,50 +728,113 @@ func (x *CompileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
 func (*CompileResponse) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{4}
+	return file_xml_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CompileResponse) GetResult() isCompileResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
 }
 
 func (x *CompileResponse) GetFile() *descriptorpb.FileDescriptorProto {
 	if x != nil {
-		return x.File
+		if x, ok := x.Result.(*CompileResponse_File); ok {
+			return x.File
+		}
 	}
 	return nil
 }
+
+func (x *CompileResponse) GetError() string {
+	if x != nil {
+		if x, ok := x.Result.(*CompileResponse_Error); ok {
+			return x.Error
+		}
+	}
+	return ""
+}
+
+type isCompileResponse_Result interface {
+	isCompileResponse_Result()
+}
+
+type CompileResponse_File struct {
+	File *descriptorpb.FileDescriptorProto `protobuf:"bytes,1,opt,name=file,proto3,oneof"`
+}
+
+type CompileResponse_Error struct {
+	Error string `protobuf:"bytes,2,opt,name=error,proto3,oneof"`
+}
+
+func (*CompileResponse_File) isCompileResponse_Result() {}
+
+func (*CompileResponse_Error) isCompileResponse_Result() {}
 
 var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a google/protobuf/descriptor.proto\"<\n" +
-	"\fParseRequest\x12\x10\n" +
-	"\x03xml\x18\x01 \x01(\fR\x03xml\x12\x1a\n" +
-	"\bvalidate\x18\x02 \x01(\bR\bvalidate\"L\n" +
+	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a google/protobuf/descriptor.proto\"O\n" +
 	"\n" +
-	"ParseError\x12&\n" +
+	"Diagnostic\x12)\n" +
+	"\bseverity\x18\x01 \x01(\x0e2\r.xml.SeverityR\bseverity\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x9c\x01\n" +
+	"\x0eProcessRequest\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\fR\x06source\x12\x18\n" +
+	"\x06format\x18\x02 \x01(\tH\x00R\x06format\x12/\n" +
+	"\acompile\x18\x03 \x01(\v2\x13.xml.CompileRequestH\x00R\acompile\x12\x1d\n" +
+	"\x04mode\x18\x04 \x01(\x0e2\t.xml.ModeR\x04modeB\b\n" +
+	"\x06schema\"\xf6\x01\n" +
+	"\x0fProcessResponse\x12+\n" +
+	"\bdocument\x18\x01 \x01(\v2\r.xml.DocumentH\x00R\bdocument\x12&\n" +
+	"\x05typed\x18\x02 \x01(\v2\x0e.xml.TypedTreeH\x00R\x05typed\x12)\n" +
+	"\x05error\x18\x03 \x01(\v2\x11.xml.ProcessErrorH\x00R\x05error\x12&\n" +
+	"\averdict\x18\x04 \x01(\x0e2\f.xml.VerdictR\averdict\x121\n" +
+	"\vdiagnostics\x18\x05 \x03(\v2\x0f.xml.DiagnosticR\vdiagnosticsB\b\n" +
+	"\x06result\"N\n" +
+	"\fProcessError\x12&\n" +
 	"\averdict\x18\x01 \x01(\x0e2\f.xml.VerdictR\averdict\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"q\n" +
-	"\rParseResponse\x12+\n" +
-	"\bdocument\x18\x01 \x01(\v2\r.xml.DocumentH\x00R\bdocument\x12'\n" +
-	"\x05error\x18\x02 \x01(\v2\x0f.xml.ParseErrorH\x00R\x05errorB\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x86\x01\n" +
+	"\tTypedTree\x12<\n" +
+	"\x06schema\x18\x01 \x01(\v2$.google.protobuf.FileDescriptorProtoR\x06schema\x12!\n" +
+	"\froot_message\x18\x02 \x01(\tR\vrootMessage\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\fR\amessage\"\xaf\x01\n" +
+	"\x0eCompileRequest\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\fR\x06source\x12/\n" +
+	"\blanguage\x18\x02 \x01(\x0e2\x13.xml.SchemaLanguageR\blanguage\x12\x18\n" +
+	"\apackage\x18\x03 \x01(\tR\apackage\x12\x1d\n" +
 	"\n" +
-	"\bresponse\"x\n" +
-	"\x0eCompileRequest\x12\x10\n" +
-	"\x03dtd\x18\x01 \x01(\fR\x03dtd\x12\x18\n" +
-	"\apackage\x18\x02 \x01(\tR\apackage\x12\x1d\n" +
-	"\n" +
-	"go_package\x18\x03 \x01(\tR\tgoPackage\x12\x1b\n" +
-	"\tfile_name\x18\x04 \x01(\tR\bfileName\"K\n" +
-	"\x0fCompileResponse\x128\n" +
-	"\x04file\x18\x01 \x01(\v2$.google.protobuf.FileDescriptorProtoR\x04file*Y\n" +
+	"go_package\x18\x04 \x01(\tR\tgoPackage\x12\x1b\n" +
+	"\tfile_name\x18\x05 \x01(\tR\bfileName\"o\n" +
+	"\x0fCompileResponse\x12:\n" +
+	"\x04file\x18\x01 \x01(\v2$.google.protobuf.FileDescriptorProtoH\x00R\x04file\x12\x16\n" +
+	"\x05error\x18\x02 \x01(\tH\x00R\x05errorB\b\n" +
+	"\x06result*u\n" +
 	"\aVerdict\x12\x17\n" +
 	"\x13VERDICT_UNSPECIFIED\x10\x00\x12\x13\n" +
-	"\x0fNOT_WELL_FORMED\x10\x01\x12\v\n" +
-	"\aINVALID\x10\x02\x12\x13\n" +
-	"\x0fCANNOT_VALIDATE\x10\x032<\n" +
+	"\x0fNOT_WELL_FORMED\x10\x01\x12\x0f\n" +
+	"\vWELL_FORMED\x10\x02\x12\t\n" +
+	"\x05VALID\x10\x03\x12\v\n" +
+	"\aINVALID\x10\x04\x12\x13\n" +
+	"\x0fCANNOT_VALIDATE\x10\x05*<\n" +
+	"\bSeverity\x12\x18\n" +
+	"\x14SEVERITY_UNSPECIFIED\x10\x00\x12\t\n" +
+	"\x05ERROR\x10\x01\x12\v\n" +
+	"\aWARNING\x10\x02*&\n" +
+	"\x04Mode\x12\x10\n" +
+	"\fPROJECT_ONLY\x10\x00\x12\f\n" +
+	"\bVALIDATE\x10\x01*S\n" +
+	"\x0eSchemaLanguage\x12\x1f\n" +
+	"\x1bSCHEMA_LANGUAGE_UNSPECIFIED\x10\x00\x12\a\n" +
+	"\x03DTD\x10\x01\x12\x0e\n" +
 	"\n" +
-	"XmlService\x12.\n" +
-	"\x05Parse\x12\x11.xml.ParseRequest\x1a\x12.xml.ParseResponse2E\n" +
-	"\rSchemaService\x124\n" +
+	"EBNF_VOCAB\x10\x02\x12\a\n" +
+	"\x03XSD\x10\x032A\n" +
+	"\tDocuments\x124\n" +
+	"\aProcess\x12\x13.xml.ProcessRequest\x1a\x14.xml.ProcessResponse2?\n" +
+	"\aSchemas\x124\n" +
 	"\aCompile\x12\x13.xml.CompileRequest\x1a\x14.xml.CompileResponseB1Z/github.com/accretional/xmile/proto/pb/xml;xmlpbb\x06proto3"
 
 var (
@@ -432,32 +849,45 @@ func file_xml_service_proto_rawDescGZIP() []byte {
 	return file_xml_service_proto_rawDescData
 }
 
-var file_xml_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_xml_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_xml_service_proto_goTypes = []any{
 	(Verdict)(0),                             // 0: xml.Verdict
-	(*ParseRequest)(nil),                     // 1: xml.ParseRequest
-	(*ParseError)(nil),                       // 2: xml.ParseError
-	(*ParseResponse)(nil),                    // 3: xml.ParseResponse
-	(*CompileRequest)(nil),                   // 4: xml.CompileRequest
-	(*CompileResponse)(nil),                  // 5: xml.CompileResponse
-	(*Document)(nil),                         // 6: xml.Document
-	(*descriptorpb.FileDescriptorProto)(nil), // 7: google.protobuf.FileDescriptorProto
+	(Severity)(0),                            // 1: xml.Severity
+	(Mode)(0),                                // 2: xml.Mode
+	(SchemaLanguage)(0),                      // 3: xml.SchemaLanguage
+	(*Diagnostic)(nil),                       // 4: xml.Diagnostic
+	(*ProcessRequest)(nil),                   // 5: xml.ProcessRequest
+	(*ProcessResponse)(nil),                  // 6: xml.ProcessResponse
+	(*ProcessError)(nil),                     // 7: xml.ProcessError
+	(*TypedTree)(nil),                        // 8: xml.TypedTree
+	(*CompileRequest)(nil),                   // 9: xml.CompileRequest
+	(*CompileResponse)(nil),                  // 10: xml.CompileResponse
+	(*Document)(nil),                         // 11: xml.Document
+	(*descriptorpb.FileDescriptorProto)(nil), // 12: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
-	0, // 0: xml.ParseError.verdict:type_name -> xml.Verdict
-	6, // 1: xml.ParseResponse.document:type_name -> xml.Document
-	2, // 2: xml.ParseResponse.error:type_name -> xml.ParseError
-	7, // 3: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
-	1, // 4: xml.XmlService.Parse:input_type -> xml.ParseRequest
-	4, // 5: xml.SchemaService.Compile:input_type -> xml.CompileRequest
-	3, // 6: xml.XmlService.Parse:output_type -> xml.ParseResponse
-	5, // 7: xml.SchemaService.Compile:output_type -> xml.CompileResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1,  // 0: xml.Diagnostic.severity:type_name -> xml.Severity
+	9,  // 1: xml.ProcessRequest.compile:type_name -> xml.CompileRequest
+	2,  // 2: xml.ProcessRequest.mode:type_name -> xml.Mode
+	11, // 3: xml.ProcessResponse.document:type_name -> xml.Document
+	8,  // 4: xml.ProcessResponse.typed:type_name -> xml.TypedTree
+	7,  // 5: xml.ProcessResponse.error:type_name -> xml.ProcessError
+	0,  // 6: xml.ProcessResponse.verdict:type_name -> xml.Verdict
+	4,  // 7: xml.ProcessResponse.diagnostics:type_name -> xml.Diagnostic
+	0,  // 8: xml.ProcessError.verdict:type_name -> xml.Verdict
+	12, // 9: xml.TypedTree.schema:type_name -> google.protobuf.FileDescriptorProto
+	3,  // 10: xml.CompileRequest.language:type_name -> xml.SchemaLanguage
+	12, // 11: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
+	5,  // 12: xml.Documents.Process:input_type -> xml.ProcessRequest
+	9,  // 13: xml.Schemas.Compile:input_type -> xml.CompileRequest
+	6,  // 14: xml.Documents.Process:output_type -> xml.ProcessResponse
+	10, // 15: xml.Schemas.Compile:output_type -> xml.CompileResponse
+	14, // [14:16] is the sub-list for method output_type
+	12, // [12:14] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_xml_service_proto_init() }
@@ -466,17 +896,26 @@ func file_xml_service_proto_init() {
 		return
 	}
 	file_xml_proto_init()
+	file_xml_service_proto_msgTypes[1].OneofWrappers = []any{
+		(*ProcessRequest_Format)(nil),
+		(*ProcessRequest_Compile)(nil),
+	}
 	file_xml_service_proto_msgTypes[2].OneofWrappers = []any{
-		(*ParseResponse_Document)(nil),
-		(*ParseResponse_Error)(nil),
+		(*ProcessResponse_Document)(nil),
+		(*ProcessResponse_Typed)(nil),
+		(*ProcessResponse_Error)(nil),
+	}
+	file_xml_service_proto_msgTypes[6].OneofWrappers = []any{
+		(*CompileResponse_File)(nil),
+		(*CompileResponse_Error)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_service_proto_rawDesc), len(file_xml_service_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   5,
+			NumEnums:      4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

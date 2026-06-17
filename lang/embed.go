@@ -10,3 +10,6 @@ var XMLGrammar string
 
 //go:embed dtd.ebnf
 var DTDGrammar string
+
+//go:embed rss.ebnf
+var RSSGrammar string

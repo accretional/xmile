@@ -1,34 +1,34 @@
 package service
 
+// schema_grpc.go — the Schemas gRPC service: the wire face of CompileSource, the
+// type-level companion to Documents (ADR 0008). It lowers a metagrammar (DTD,
+// EBNF vocabulary, or XSD) into a proto descriptor of the document family.
+
 import (
 	"context"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
-// SchemaServer implements the xml.SchemaService gRPC service: it compiles a
-// DTD into a proto descriptor (see ADR 0004). It is the type-level companion
-// to Server (which serves XmlService.Parse).
-type SchemaServer struct {
-	xmlpb.UnimplementedSchemaServiceServer
+// SchemasServer implements the xml.Schemas gRPC service.
+type SchemasServer struct {
+	xmlpb.UnimplementedSchemasServer
 }
 
-// NewSchemaServer builds the schema-compilation service.
-func NewSchemaServer() *SchemaServer { return &SchemaServer{} }
+// NewSchemasServer builds the schema-compilation service.
+func NewSchemasServer() *SchemasServer { return &SchemasServer{} }
 
-// Compile lowers the request's DTD bytes into a FileDescriptorProto. A DTD
-// that is not well-formed returns INVALID_ARGUMENT with no descriptor.
-func (s *SchemaServer) Compile(_ context.Context, req *xmlpb.CompileRequest) (*xmlpb.CompileResponse, error) {
-	fdp, err := CompileDTD(req.GetDtd(), SchemaOptions{
+// Compile lowers the request's metagrammar into a FileDescriptorProto. A source
+// that does not compile rides back as the response's error string (the RPC
+// status stays OK).
+func (s *SchemasServer) Compile(_ context.Context, req *xmlpb.CompileRequest) (*xmlpb.CompileResponse, error) {
+	fdp, err := CompileSource(req.GetSource(), req.GetLanguage(), SchemaOptions{
 		Package:   req.GetPackage(),
 		GoPackage: req.GetGoPackage(),
 		FileName:  req.GetFileName(),
 	})
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return &xmlpb.CompileResponse{Result: &xmlpb.CompileResponse_Error{Error: err.Error()}}, nil
 	}
-	return &xmlpb.CompileResponse{File: fdp}, nil
+	return &xmlpb.CompileResponse{Result: &xmlpb.CompileResponse_File{File: fdp}}, nil
 }

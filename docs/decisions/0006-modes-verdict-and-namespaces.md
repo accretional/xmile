@@ -1,6 +1,9 @@
 # ADR 0006 — Parser modes, a verdict response, and integral namespaces
 
-- **Status:** Accepted
+- **Status:** Accepted — `Parse` is now the no-schema case of `Documents.Process`
+  (ADR 0008); the `validate` bool became the `Mode` enum and the verdict set grew
+  (`WELL_FORMED`/`VALID` added). The mode-aware-classifier design, the typed
+  errors, and integral namespaces all stand.
 - **Date:** 2026-06-16
 - **Decision:** Make `Parse` a mode-aware classifier. A `validate` flag selects
   XML's validating vs non-validating processor; the response is a oneof of the

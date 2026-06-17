@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/accretional/gluon/v2/compiler"
+	"github.com/accretional/gluon/v2/metaparser"
 	pb "github.com/accretional/gluon/v2/pb"
 
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
@@ -71,6 +72,91 @@ func CompileDTD(dtd []byte, opts SchemaOptions) (*descriptorpb.FileDescriptorPro
 		GoPackage: opts.GoPackage,
 		FileName:  opts.FileName,
 	})
+}
+
+// CompileGrammar lowers an EBNF *schema grammar* (a grammar over an element
+// vocabulary, e.g. lang/rss.ebnf) into a FileDescriptorProto — one message per
+// rule, the EBNF analogue of CompileDTD. It rides gluon's own EBNF front-end
+// (ParseEBNF -> GrammarToAST) and the shared compiler.Compile backend, so no
+// hand-coded grammar knowledge lives here.
+//
+// A reference with no rule of its own lowers to a `string` field rather than a
+// dangling message reference (same convention CompileDTD uses for #PCDATA
+// leaves and attributes): a leading `at_` marks an attribute (the marker is
+// stripped to name the field), and the bare `text` reference is a leaf's
+// character content. Every other reference targets a declared rule and becomes
+// a message field. Returns an error if the bytes are not a well-formed EBNF.
+func CompileGrammar(ebnf []byte, opts SchemaOptions) (*descriptorpb.FileDescriptorProto, error) {
+	gd, err := metaparser.ParseEBNF(metaparser.WrapString(string(ebnf)))
+	if err != nil {
+		return nil, fmt.Errorf("parse grammar: %w", err)
+	}
+	ast, err := compiler.GrammarToAST(gd)
+	if err != nil {
+		return nil, fmt.Errorf("grammar to AST: %w", err)
+	}
+	pkg := opts.Package
+	if pkg == "" {
+		pkg = "lang"
+	}
+	ast.Language = pkg
+
+	declared := map[string]bool{}
+	for _, r := range ast.GetRoot().GetChildren() {
+		if r.GetKind() == compiler.KindRule {
+			declared[r.GetValue()] = true
+		}
+	}
+	ast.Root = scalarizeUndeclared(ast.Root, declared)
+
+	return compiler.Compile(ast, compiler.Options{
+		Package:   pkg,
+		GoPackage: opts.GoPackage,
+		FileName:  opts.FileName,
+	})
+}
+
+// CompileSource lowers a metagrammar into a FileDescriptorProto, dispatching on
+// the schema language: DTD (CompileDTD), an EBNF element vocabulary
+// (CompileGrammar, the default), or XSD (CompileXSD). It is the single entry the
+// Schemas.Compile RPC and the Documents.Process compile-then-use path share.
+func CompileSource(src []byte, language xmlpb.SchemaLanguage, opts SchemaOptions) (*descriptorpb.FileDescriptorProto, error) {
+	switch language {
+	case xmlpb.SchemaLanguage_DTD:
+		return CompileDTD(src, opts)
+	case xmlpb.SchemaLanguage_XSD:
+		return CompileXSD(src, opts)
+	default: // EBNF_VOCAB / unspecified
+		return CompileGrammar(src, opts)
+	}
+}
+
+// attrMarker prefixes a grammar reference to mark it as an attribute (a string
+// field) rather than a child element, so an attribute can share a name with an
+// element (e.g. enclosure's `url=` vs <image>'s <url>). See lang/rss.ebnf.
+const attrMarker = "at_"
+
+// scalarizeUndeclared rewrites every nonterminal reference that has no rule of
+// its own into a scalar (string) node, stripping the attribute marker so the
+// field is named after the attribute. The input is not mutated.
+func scalarizeUndeclared(root *pb.ASTNode, declared map[string]bool) *pb.ASTNode {
+	if root == nil {
+		return nil
+	}
+	if root.GetKind() == compiler.KindNonterminal {
+		name := root.GetValue()
+		if strings.HasPrefix(name, attrMarker) {
+			return &pb.ASTNode{Kind: compiler.KindScalar, Value: name[len(attrMarker):]}
+		}
+		if !declared[name] {
+			return &pb.ASTNode{Kind: compiler.KindScalar, Value: name}
+		}
+	}
+	kids := make([]*pb.ASTNode, 0, len(root.GetChildren()))
+	for _, c := range root.GetChildren() {
+		kids = append(kids, scalarizeUndeclared(c, declared))
+	}
+	return &pb.ASTNode{Kind: root.GetKind(), Value: root.GetValue(), Children: kids}
 }
 
 // parseExternalSubset parses a bare external-subset DTD into its CST.
@@ -430,45 +516,7 @@ func (p *cmParser) occ() byte {
 // matching field — empty for a document fully covered by the schema, non-empty
 // for one carrying out-of-vocabulary markup.
 func ProjectTag(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protoreflect.Message) []string {
-	var unknown []string
-	for _, a := range tag.GetAttrs() {
-		if f := scalarField(md, a.GetName()); f != nil {
-			msg.Set(f, protoreflect.ValueOfString(a.GetValue()))
-		} else {
-			unknown = append(unknown, "@"+a.GetName())
-		}
-	}
-
-	var children []*xmlpb.Tag
-	var text strings.Builder
-	for _, ci := range tag.GetContents() {
-		switch it := ci.GetItem().(type) {
-		case *xmlpb.ContentItem_Child:
-			children = append(children, it.Child)
-		case *xmlpb.ContentItem_Text:
-			text.WriteString(it.Text)
-		case *xmlpb.ContentItem_Cdata:
-			text.WriteString(it.Cdata)
-		}
-	}
-
-	if len(children) == 0 {
-		if strings.TrimSpace(text.String()) != "" {
-			if f := md.Fields().ByName("text"); f != nil && f.Kind() == protoreflect.StringKind {
-				msg.Set(f, protoreflect.ValueOfString(text.String()))
-			}
-		}
-		return unknown
-	}
-
-	for _, child := range children {
-		cd, cm, ok := placeChild(md, msg, child.GetName())
-		if !ok {
-			unknown = append(unknown, child.GetName())
-			continue
-		}
-		unknown = append(unknown, ProjectTag(child, cd, cm)...)
-	}
+	_, unknown := project(tag, md, msg, projectOptions{nsExtensible: false})
 	return unknown
 }
 

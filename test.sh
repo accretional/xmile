@@ -19,6 +19,23 @@ if [ -z "$(ls -A testing/corpus/rss0.91 2>/dev/null || true)" ]; then
   go run ./testing rss0.91
 fi
 
+# Ensure the large real-world RSS 2.0 corpus for the rss-parse harness. Fetched
+# once (thousands of live feeds) then cached; gitignored like the rest.
+if [ -z "$(ls -A testing/corpus/rss2.0 2>/dev/null || true)" ]; then
+  echo "[test] fetching rss 2.0 corpus"
+  go run ./testing rss2.0
+  # Split the fetched feeds into the valid set and a curated invalid/ set of
+  # genuine spec violations (parser-defined, so done here, not at fetch time).
+  go run ./testing/rss-parse -classify
+fi
+
+# Ensure the W3C XSD test-suite corpus for the xsd-parse harness (reported, not
+# gating); fetched once then cached.
+if [ -z "$(ls -A testing/corpus/xsd 2>/dev/null || true)" ]; then
+  echo "[test] fetching xsd corpus"
+  go run ./testing xsd
+fi
+
 echo "[test] go test ./..."
 go test ./...
 
@@ -27,5 +44,14 @@ go run ./testing/xml-parse
 
 echo "[test] schema-compile (DTD -> proto -> parse rss 0.91 corpus):"
 go run ./testing/schema-compile
+
+echo "[test] rss-parse (rss.ebnf -> proto -> parse rss 2.0 corpus):"
+go run ./testing/rss-parse
+
+echo "[test] opc-parse (OPC packages -> parts + relationships):"
+go run ./testing/opc-parse
+
+echo "[test] xsd-parse (W3C xsd suite -> CompileXSD; reported, not gating):"
+go run ./testing/xsd-parse
 
 echo "[test] OK"

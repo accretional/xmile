@@ -1,10 +1,14 @@
 # xmile
 
-A grammar-driven XML parser. XML 1.0 source is parsed against an EBNF
-grammar by the gluon engine and projected into a homogeneous proto AST
+A grammar-driven XML parser and schema-driven projector. XML 1.0 source is
+parsed against an EBNF grammar by the gluon engine into a homogeneous proto AST
 (`proto/xml.proto`); the DOCTYPE/DTD is a generated proto model
-(`proto/dtd.proto`). Parsing is exposed as a gRPC service. The design
-record lives in `docs/decisions/`.
+(`proto/dtd.proto`). Given a schema (a DTD, an EBNF element vocabulary, or an
+XSD), the same parsed tree is projected into that vocabulary's typed AST —
+generic XML is just the loosest schema. OPC packages (`.docx`/`.xlsx`) are a
+layer over the same parser. Exposed as gRPC services (`Documents.Process`,
+`Schemas.Compile`). The design record lives in `docs/decisions/`; the current
+architecture is ADR 0008.
 
 ## Build Discipline
 
@@ -21,11 +25,14 @@ record lives in `docs/decisions/`.
   grammar knowledge. Structure is in `lang/*.ebnf`; lexing is in `lang/*.lex`;
   both are compiled by `genproto` into `proto/`. Never hand-code grammar rules,
   keyword lists, or character classes in Go.
-- **NEVER edit generated files by hand.** Regenerate manually via
-  `go run ./lang/cmd/genproto` plus protoc when the grammar or protos change;
-  the artifacts are committed, so `build.sh` only sets up and builds. Generated:
-  `proto/dtd.proto`, `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,
-  lexical.go}`, `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`.
+- **NEVER edit generated files by hand.** Regenerate with `./regen.sh` (runs
+  `go run ./lang/cmd/genproto`, `go run ./lang/cmd/genproto_rss`, then protoc)
+  when a grammar or proto changes; the artifacts are committed, so `build.sh`
+  only sets up and builds. Generated: `proto/dtd.proto`,
+  `proto/pb/dtd/{dtd.pb.go,prefix_map.go,separator_map.go,lexical.go}`,
+  `proto/pb/xml/{*.pb.go,lexical.go}`, `lang/dtd.fdset`, and from the RSS 2.0
+  grammar `proto/rss.proto` + `lang/rss.fdset` + `proto/pb/rss/rss.pb.go` (the
+  typed `rss.Rss` AST a feed projects into).
 - `proto/xml.proto` and `proto/xml_service.proto` are **hand-written** (see
   ADR 0003) and run through `protoc` during that manual regeneration step.
 - Any changes made in the project must be then updated in the respective documents.
@@ -58,10 +65,13 @@ service/  parse pipeline:
      subset / external PE yields CannotValidate
         │
         ▼
-XmlService.Parse(bytes, validate) -> ParseResponse
-  oneof: Document | ParseError{verdict, reason}
-  verdict: NOT_WELL_FORMED | INVALID | CANNOT_VALIDATE   (RPC status stays OK)
-  (cmd/xmlserve serves it; cmd/xmlparse is a CLI, -validate to validate)
+Documents.Process(bytes, schema, mode) -> ProcessResponse
+  no schema -> Document (the generic XML AST; the former Parse)
+  a schema  -> TypedTree (the vocabulary's typed AST, self-describing on the wire)
+  oneof: Document | TypedTree | ProcessError{verdict, reason}
+  verdict: NOT_WELL_FORMED | WELL_FORMED | VALID | INVALID | CANNOT_VALIDATE
+  Schemas.Compile(source, language) -> FileDescriptorProto   (DTD | EBNF | XSD)
+  (cmd/xmlserve serves both; cmd/xmlparse is a CLI: -schema <format>, -validate)
 ```
 
 ## Architecture
@@ -87,10 +97,30 @@ XmlService.Parse(bytes, validate) -> ParseResponse
   character, so the grammar stays namespace-unaware; the namespace constraints
   are context-sensitive, so `namespace.go` resolves QNames and enforces them as
   a tree walk applied in both modes, filling `Tag/Attribute.namespace`. ADR 0006.
-- **Parse is a mode-aware classifier.** `Parse(src, validating)` is the
-  validating vs non-validating processor; it returns the AST or a typed error
-  (`*WFError` / `*ValidityError` / `*CannotValidateError`), surfaced over gRPC as
-  a `ParseResponse` oneof (`Document` | `ParseError{verdict, reason}`). ADR 0006.
+- **Process is the unified, mode-aware classifier.** `Process(src, schema,
+  validating)` (`service/process.go`) subsumes the former Parse and ParseRSS:
+  with no schema it returns the generic XML AST (the loosest projection); with a
+  schema it projects the parsed tree into that vocabulary's typed message. It
+  returns the AST/typed tree or a typed error (`*WFError` / `*ValidityError` /
+  `*CannotValidateError`), surfaced over gRPC as `Documents.Process` (a
+  `ProcessResponse` oneof). ADR 0008.
+- **Vocabularies are schemas, projected by one generic engine.** A format's
+  schema compiles to a typed proto descriptor through gluon's `compiler.Compile`,
+  via a front-end per schema *language*: a DTD (`CompileDTD`), an EBNF element
+  vocabulary (`CompileGrammar`), or an XSD (`CompileXSD`, `service/xsd.go`, which
+  parses the XSD as XML and walks `xs:*`); `CompileSource` dispatches on the
+  language. A single generic walk (`service/engine.go`, `project`) then projects
+  any parsed `Tag` tree into the descriptor's typed message — it subsumes the old
+  per-format `projectRSS`/`ProjectTag`. Namespace extensibility (which a DTD
+  cannot express) is enforced in the walk: namespaced markup is a tolerated
+  extension, unprefixed out-of-vocabulary markup is invalid. RSS 2.0 is
+  `lang/rss.ebnf`; `Format("rss-2.0")` selects it. ADR 0008 (generalizing 0004/0007).
+- **OPC packages are a layer over the parser.** A `.docx`/`.xlsx` is an OPC ZIP
+  of XML parts plus `[Content_Types].xml` and a relationship graph;
+  `ProcessPackage` (`service/opc.go`) unpacks it, parses each XML part through
+  the same parser, and resolves content types and relationships into a typed
+  package tree. The package layer is format-agnostic; only the part vocabularies
+  (WordprocessingML, SpreadsheetML) differ. ADR 0008 Phase 5.
 
 ## Testing
 
@@ -100,6 +130,19 @@ XmlService.Parse(bytes, validate) -> ParseResponse
   (`go run ./testing/xml-parse`, run by `test.sh`): the deterministic `xml/`
   corpus must be 100% (non-zero exit otherwise); the real-world `docx/xlsx/rss`
   corpora are reported but do not gate.
+- **Vocabulary harnesses (reported, not gating).** `testing/schema-compile`
+  compiles the RSS 0.91 DTD and projects the 0.91 corpus; `testing/rss-parse`
+  runs `service.ParseRSS` over the real-world RSS 2.0 corpus
+  (`testing/corpus/rss2.0`, 1000+ feeds fetched by `go run ./testing rss2.0`),
+  reporting the projection pass rate. The deterministic RSS-2.0 correctness gate
+  is `service/rss_test.go` under `go test ./...`. See ADR 0007.
+- **OPC + XSD harnesses (ADR 0008).** `testing/opc-parse` runs `ProcessPackage`
+  over the docx/xlsx corpus and **gates** (every package must unpack and every
+  XML part parse; ~1000 packages, ~8000 parts). `testing/xsd-parse` compiles the
+  W3C XSD test suite (`go run ./testing xsd`) with `CompileXSD` and reports
+  coverage of the supported subset (reported, not gating — the suite spans full
+  XSD). Both also have deterministic self-contained gates under `go test ./...`
+  (`service/opc_test.go`, `service/xsd_test.go`).
 - The corpus is fetched and organized by file type via `go run ./testing`.
 - The corpus is the applicable subset (XML 1.0 5th edition and 1.1, plus
   Namespaces; no external entities), filtered at fetch time. Out of scope and
@@ -112,15 +155,26 @@ XmlService.Parse(bytes, validate) -> ParseResponse
 | Path | Role |
 |---|---|
 | `lang/xml.ebnf`, `lang/dtd.ebnf` | grammars (hand-edited) |
+| `lang/rss.ebnf` | RSS 2.0 schema grammar over the element vocabulary (hand-edited; ADR 0007) |
 | `lang/xml.lex`, `lang/dtd.lex` | lexical specs (hand-edited) |
 | `lang/cmd/genproto/` | grammar -> proto + maps + lexical tables |
+| `lang/cmd/genproto_rss/` | rss.ebnf -> `proto/rss.proto` + `lang/rss.fdset` |
 | `lang/embed.go` | embeds the grammars for the runtime |
 | `lex/` | generic lexical-matcher engine (no grammar knowledge) |
-| `proto/xml.proto`, `proto/xml_service.proto` | hand-written AST + service |
-| `proto/dtd.proto`, `proto/pb/**` | generated |
-| `service/` | parser + gRPC server |
-| `cmd/xmlparse/` | CLI: file/stdin -> AST (or `-cst`) |
-| `cmd/xmlserve/` | gRPC server |
-| `testing/` | corpus fetcher (`go run ./testing`); corpora are gitignored |
-| `testing/xml-parse/` | corpus harness (`go run ./testing/xml-parse`) |
-| `docs/decisions/` | ADRs |
+| `proto/xml.proto` | hand-written homogeneous AST (Document/Tag) |
+| `proto/xml_service.proto` | hand-written `Documents` + `Schemas` services |
+| `proto/dtd.proto`, `proto/rss.proto`, `proto/pb/**`, `lang/*.fdset` | generated |
+| `service/process.go` | `Process` (unified entry) + `Schema` + `Format` registry |
+| `service/engine.go` | generic schema-driven projection walk (`project`) |
+| `service/rss.go` | RSS 2.0 hard/soft constraints (`validateRSS`, `RSSConformance`) |
+| `service/xsd.go` | XSD front-end (`CompileXSD`); `service/opc.go` = OPC packages (`ProcessPackage`) |
+| `service/` (rest) | parser, well-formedness, namespaces, DTD validity, gRPC servers |
+| `cmd/xmlparse/` | CLI: file/stdin -> AST (`-schema <format>`, `-validate`, `-cst`) |
+| `cmd/xmlserve/` | gRPC server (Documents + Schemas) |
+| `testing/` | corpus fetcher (`go run ./testing`, `… rss0.91`, `… rss2.0`, `… xsd`); corpora gitignored |
+| `testing/xml-parse/` | W3C XML conformance harness (gates `xml/` at 100%) |
+| `testing/schema-compile/` | RSS 0.91 DTD->proto + projection harness |
+| `testing/rss-parse/` | RSS 2.0 corpus harness |
+| `testing/opc-parse/` | OPC docx/xlsx package harness (gates) |
+| `testing/xsd-parse/` | W3C XSD suite harness (reported) |
+| `docs/decisions/` | ADRs (0008 = current architecture) |

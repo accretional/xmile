@@ -53,7 +53,9 @@ func httpGet(u string, timeout time.Duration) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "xmile-testing/0.1")
+	// A browser-like UA: many feed hosts reject unknown bot agents with 403,
+	// which would shrink the real-world corpus for no good reason.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err

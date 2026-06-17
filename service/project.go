@@ -204,7 +204,15 @@ func (pr *projector) attrValue(a *pb.ASTNode) string {
 			b.WriteString(normalizeAttrWS(x.GetValue()))
 			return
 		case "Reference", "EntityRef", "CharRef":
-			b.WriteString(pr.resolveRef(x))
+			// A character reference contributes its literal character, even if
+			// it is white space. A general-entity reference's replacement text
+			// is processed as ordinary content, so white space in it folds to a
+			// space (XML 3.3.3, step 3 of attribute-value normalization).
+			if firstDescendant(x, "CharRef") != nil {
+				b.WriteString(pr.resolveRef(x))
+			} else {
+				b.WriteString(normalizeAttrWS(pr.resolveRef(x)))
+			}
 			return
 		}
 		for _, c := range x.GetChildren() {

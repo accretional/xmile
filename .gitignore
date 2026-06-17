@@ -34,3 +34,6 @@ go.work.sum
 # Test corpora — fetched/organized on demand via `go run ./testing`.
 # Not committed.
 testing/corpus/
+
+# Temporary files
+temp/

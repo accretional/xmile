@@ -12,13 +12,16 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 echo "[regen] genproto: dtd.proto + lexical/prefix/separator tables"
 go run ./lang/cmd/genproto
 
+echo "[regen] genproto_rss: rss.proto + rss.fdset from lang/rss.ebnf"
+go run ./lang/cmd/genproto_rss
+
 command -v protoc >/dev/null || { echo "[regen] FATAL: protoc missing (setup should have installed it)"; exit 1; }
 
 echo "[regen] protoc -> proto/pb"
 protoc -Iproto \
   --go_out=proto/pb --go_opt=module=github.com/accretional/xmile/proto/pb \
   --go-grpc_out=proto/pb --go-grpc_opt=module=github.com/accretional/xmile/proto/pb \
-  dtd.proto xml.proto xml_service.proto
+  dtd.proto xml.proto rss.proto xml_service.proto
 
 go mod tidy >/dev/null 2>&1 || true
 echo "[regen] OK — commit the regenerated proto/pb/** and proto/dtd.proto"

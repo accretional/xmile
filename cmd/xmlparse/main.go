@@ -1,7 +1,9 @@
-// Command xmlparse parses an XML file (or stdin) with the service parser
-// and prints the resulting AST as textproto. With -cst it prints the raw
-// concrete syntax tree instead. Not-well-formed input ("not well-formed: ...")
-// and DTD-invalid input ("invalid: ...") both exit non-zero.
+// Command xmlparse processes an XML file (or stdin) with the service parser and
+// prints the result as textproto. With no -schema it prints the generic XML AST
+// (the homogeneous Tag tree); with -schema it prints the typed tree the document
+// projects into. -cst prints the raw concrete syntax tree instead. Not-well-
+// formed input ("not well-formed: ...") and invalid input ("invalid: ...") both
+// exit non-zero.
 package main
 
 import (
@@ -17,7 +19,8 @@ import (
 
 func main() {
 	cst := flag.Bool("cst", false, "print the raw concrete syntax tree")
-	validate := flag.Bool("validate", false, "validate against the DTD (validating mode)")
+	validate := flag.Bool("validate", false, "validate against the DTD (validating mode; generic XML only)")
+	schema := flag.String("schema", "", "project against a registered format (e.g. rss-2.0); empty = generic XML")
 	flag.Parse()
 
 	var src []byte
@@ -48,11 +51,20 @@ func main() {
 		return
 	}
 
-	doc, perr := p.Parse(string(src), *validate)
+	sch, serr := service.Format(*schema)
+	if serr != nil {
+		fmt.Fprintln(os.Stderr, serr)
+		os.Exit(1)
+	}
+	res, perr := p.Process(string(src), sch, *validate)
 	if perr != nil {
-		// WFError and ValidityError each format their own category prefix.
+		// WFError / ValidityError / CannotValidateError each format their own prefix.
 		fmt.Fprintln(os.Stderr, perr)
 		os.Exit(1)
 	}
-	fmt.Print(prototext.Format(doc))
+	if res.Document != nil {
+		fmt.Print(prototext.Format(res.Document))
+		return
+	}
+	fmt.Print(prototext.Format(res.Typed))
 }

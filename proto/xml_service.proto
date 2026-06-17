@@ -7,76 +7,112 @@ import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
+// xml_service.proto — the xmile services (see docs/decisions/0008).
 //
-// The service *is* the parser, and it is a classifier: callers send XML bytes
-// and receive either the parsed AST or a typed verdict explaining the refusal.
-// The RPC succeeds (the service did its job); the outcome rides in the response.
-service XmlService {
-  // Parse parses XML bytes and returns the document AST, or a verdict.
-  //
-  // ParseResponse is a oneof: a Document when the input is accepted, or a
-  // ParseError (verdict + reason) when it is refused. The RPC status is OK in
-  // both cases; a non-OK status is a genuine server fault, not a bad document.
-  rpc Parse(ParseRequest) returns (ParseResponse);
-}
+// Two services, split by phase. Documents.Process is the unified instance-level
+// classifier: it parses bytes into the generic XML AST and, given a schema,
+// projects that AST into the schema's typed message — generic XML being simply
+// the loosest schema, so Process with no schema is the former Parse and a
+// format selector is the former ParseRss. Schemas.Compile is the type-level
+// companion: it lowers a metagrammar (DTD / EBNF vocabulary / XSD) into a proto
+// descriptor of the document family it governs.
+//
+// As with the old surface the RPC status stays OK for a rejected document: the
+// service did its job; the verdict rides in the response.
 
-message ParseRequest {
-  bytes xml = 1;
-  // validate selects the parser mode (XML's validating vs non-validating
-  // processor distinction). When false, only well-formedness is checked and
-  // any well-formed document is accepted. When true, the document is validated
-  // against its DTD: it must have one and satisfy it.
-  bool validate = 2;
-}
-
-// Verdict classifies why a document was refused.
+// Verdict classifies a Process outcome.
 enum Verdict {
   VERDICT_UNSPECIFIED = 0;
-  NOT_WELL_FORMED = 1;  // syntactically not a document
-  INVALID = 2;          // well-formed but breaks its DTD (validate=true)
-  CANNOT_VALIDATE = 3;  // validate=true, but the DTD cannot be fully read
-                        // (external subset / external parameter entities)
+  NOT_WELL_FORMED = 1;   // syntactically not a document
+  WELL_FORMED = 2;       // accepted, not validated (no schema, project-only)
+  VALID = 3;             // accepted and validated against its schema / DTD
+  INVALID = 4;           // well-formed but breaks its schema / DTD
+  CANNOT_VALIDATE = 5;   // validation requested but the DTD cannot be fully read
 }
 
-message ParseError {
-  Verdict verdict = 1;
-  string reason = 2;  // human-readable detail
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  ERROR = 1;
+  WARNING = 2;
 }
 
-message ParseResponse {
-  // A Document on acceptance, or a ParseError on refusal, never both. There is
-  // no point returning a tree for input that is not well-formed or not valid.
-  oneof response {
-    Document document = 1;
-    ParseError error = 2;
+// Diagnostic is a non-fatal finding (soft conformance), severity-tagged so a
+// vocabulary's "SHOULD" rules are reported without failing the parse.
+message Diagnostic {
+  Severity severity = 1;
+  string reason = 2;
+}
+
+enum Mode {
+  PROJECT_ONLY = 0;  // parse / project and report; do not enforce validity
+  VALIDATE = 1;      // enforce validity (the DTD for generic XML; vocabulary coverage for a schema)
+}
+
+// Documents is the instance-level service: bytes (+ optional schema) -> result.
+service Documents {
+  rpc Process(ProcessRequest) returns (ProcessResponse);
+}
+
+message ProcessRequest {
+  bytes source = 1;
+  // schema selects the vocabulary to project into. Unset -> generic XML (the
+  // homogeneous Tag tree, i.e. the former Parse). A registered format name or
+  // an inline metagrammar compile projects into that vocabulary's typed tree.
+  oneof schema {
+    string format = 2;          // a registered format, e.g. "rss-2.0"
+    CompileRequest compile = 3; // compile a metagrammar, then project against it
   }
+  Mode mode = 4;
 }
 
-// SchemaService is the *type-level* companion to XmlService (see ADR 0004).
-// Where Parse takes one document's bytes and returns that document's AST,
-// Compile takes a DTD (a schema for a whole family of documents) and returns a
-// proto descriptor of that family: one message per <!ELEMENT>. Compiling a
-// vocabulary's DTD once yields a typed AST (e.g. an rss.Rss) for every document
-// in it, instead of the homogeneous Tag.
-service SchemaService {
-  // Compile lowers a DTD (an external subset — the bare markup declarations of
-  // a .dtd file) into a FileDescriptorProto. INVALID_ARGUMENT if the bytes are
-  // not a well-formed DTD.
+message ProcessResponse {
+  oneof result {
+    Document document = 1;   // no schema: the generic XML AST
+    TypedTree typed = 2;     // a schema: the projected typed tree, self-describing
+    ProcessError error = 3;  // refusal
+  }
+  Verdict verdict = 4;
+  repeated Diagnostic diagnostics = 5;  // soft conformance (severity WARNING)
+}
+
+message ProcessError {
+  Verdict verdict = 1;
+  string reason = 2;
+}
+
+// TypedTree carries a projected message plus the descriptor needed to decode it,
+// so a dynamic (runtime-compiled) vocabulary's tree is self-describing on the
+// wire: the client links `schema` with protodesc and unmarshals `message` into a
+// dynamicpb message of `root_message`.
+message TypedTree {
+  google.protobuf.FileDescriptorProto schema = 1;
+  string root_message = 2;
+  bytes message = 3;
+}
+
+// Schemas is the type-level service: a metagrammar -> a proto descriptor.
+service Schemas {
   rpc Compile(CompileRequest) returns (CompileResponse);
 }
 
+enum SchemaLanguage {
+  SCHEMA_LANGUAGE_UNSPECIFIED = 0;  // treated as EBNF_VOCAB
+  DTD = 1;
+  EBNF_VOCAB = 2;
+  XSD = 3;
+}
+
 message CompileRequest {
-  // The DTD external subset to compile.
-  bytes dtd = 1;
-  // Naming options for the emitted descriptor; all optional.
-  string package = 2;     // proto package (e.g. "rss"); defaults to "lang".
-  string go_package = 3;  // go_package file option; omitted if empty.
-  string file_name = 4;   // FileDescriptorProto.name; "<package>.proto" default.
+  bytes source = 1;
+  SchemaLanguage language = 2;
+  string package = 3;     // proto package (e.g. "rss"); defaults to "lang"
+  string go_package = 4;  // go_package file option; omitted if empty
+  string file_name = 5;   // FileDescriptorProto.name; "<package>.proto" default
 }
 
 message CompileResponse {
-  // The compiled schema. It can be linked with protodesc for dynamic use or
-  // written out as a .proto / FileDescriptorSet.
-  google.protobuf.FileDescriptorProto file = 1;
+  oneof result {
+    google.protobuf.FileDescriptorProto file = 1;
+    string error = 2;
+  }
 }

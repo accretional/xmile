@@ -13,14 +13,16 @@ own behavior.
 
 | Path | Role |
 |---|---|
-| `main.go` | fetcher entry point: `go run ./testing` builds the corpus; `go run ./testing rss0.91` fetches just the RSS 0.91 set |
+| `main.go` | fetcher entry point: `go run ./testing` builds the corpus; `go run ./testing rss0.91` / `rss2.0` fetch just that vocabulary's set |
 | `fetch.go` | drives the fetch, classifies the W3C suite by manifest, fetches and routes RSS by reference oracle |
 | `download.go` | downloads the W3C conformance zip and the OOXML reference repos |
 | `rssfetch.go` | HTTP / OPML helpers for reaching the RSS feeds |
 | `rss091.go` | fetches the RSS 0.91 set used by the schema compiler |
+| `rss2.go` | fetches the large real-world RSS 2.0 set (OPML + TSV catalogs) for the rss-parse harness |
 | `progress/` | a small terminal progress bar |
 | `xml-parse/` | full-corpus gate: runs the parser over the corpus (`go run ./testing/xml-parse`); the `xml/` corpus must be 100% (non-zero exit otherwise), real-world corpora are reported |
 | `schema-compile/` | DTD-as-schema harness: compiles `rss.dtd` and projects the RSS 0.91 corpus |
+| `rss-parse/` | RSS 2.0 harness: runs `service.ParseRSS` over the `rss2.0` corpus, reports the valid-set pass rate and the invalid-set reject rate; `-classify` splits feeds into valid/invalid (not gating; ADR 0007) |
 | `corpus/` | the fetched corpus (gitignored; rebuilt on demand) |
 
 ## Corpus
@@ -35,6 +37,7 @@ corpus/
   xlsx/  valid/                        # real .xlsx parts
   rss/   valid/  not-wf/               # real-world RSS/Atom feeds
   rss0.91/                             # real RSS 0.91 feeds (schema-compile)
+  rss2.0/   invalid/                   # real RSS 2.0 feeds; invalid/ = genuine spec violations (rss-parse)
 ```
 
 ### Sources
@@ -46,6 +49,7 @@ corpus/
 | `xlsx/` | [jmcnamara/XlsxWriter](https://github.com/jmcnamara/XlsxWriter) (`xlsxwriter/test/comparison/xlsx_files`) | real OOXML SpreadsheetML parts |
 | `rss/` | [plenaryapp/awesome-rss-feeds](https://github.com/plenaryapp/awesome-rss-feeds) OPML + the live feeds they list | routed valid/not-wf by Go's `encoding/xml` (plus a charset reader and a misplaced-`<?xml?>` check, to match libxml2) |
 | `rss0.91/` | the [RSS Advisory Board sample](https://www.rssboard.org/files/sample-rss-091.xml) and Wayback-archived 0.91 feeds | genuine RSS 0.91, for the schema compiler |
+| `rss2.0/` | [plenaryapp/awesome-rss-feeds](https://github.com/plenaryapp/awesome-rss-feeds) + [kilimchoi/engineering-blogs](https://github.com/kilimchoi/engineering-blogs) OPML and the [tfederman/fountain-of-rss](https://github.com/tfederman/fountain-of-rss) TSV catalog | thousands of live feeds, kept only when well-formed and `version="2.0"`; for the rss-parse harness |
 
 The W3C subset is filtered at fetch time to what this parser targets: XML 1.0
 5th edition and 1.1, Namespaces in XML, no external entities. See the scope

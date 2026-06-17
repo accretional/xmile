@@ -1,52 +1,94 @@
 # xmile
-XML EBNF grammar, metaparsing/formalization of the format, parsing, and transformations.
+
+A grammar-driven XML 1.0 parser and schema-driven projector. XML is parsed
+against an EBNF grammar into a homogeneous AST; given a schema — a **DTD**, an
+**EBNF element vocabulary**, or an **XSD** — the same tree is projected into that
+vocabulary's *typed* AST (generic XML is just the loosest schema). OPC packages
+(`.docx`/`.xlsx`) ride the same parser. Exposed as two gRPC services. Design
+record: `docs/decisions/` (ADR 0008).
 
 ## Quick run
 
 ```bash
-bash LET_IT_RIP.sh  # Setup + build + test. 
-                    # Will take some time to test against the full corpus.
+bash LET_IT_RIP.sh  # setup + build + test (full corpus; takes a while) + a live demo
+bash serve.sh       # setup + build + serve the gRPC services on :50051
 ```
-
-```bash
-bash serve.sh # Setup + build + serve
-```
-
-## Scripts
-
-All work goes through these. They are idempotent and chained (each runs the one before it), so a clean clone needs nothing else installed.
-
-- `setup.sh`: clones the dependency repos (gluon, proto-merge) as siblings, pulls them to the latest if already present, and installs the toolchain (protoc and the Go plugins).
-- `build.sh`: runs setup and builds. The generated protos and lexical tables are committed; regenerate them with `go run ./lang/cmd/genproto` plus protoc only when the grammar or protos change.
-- `test.sh`: runs build, fetches the test corpus on the first run, runs `go test` (the conformance gate), and prints the corpus report.
-- `serve.sh`: runs build and serves the `XmlService.Parse` gRPC server.
-- `LET_IT_RIP.sh`: runs setup, build, test, and a live parse demo.
 
 ## How it works
 
-The structural grammar lives in `lang/*.ebnf` and the lexical layer in `lang/*.lex`. genproto compiles both into `proto/`. The runtime parser in `service/` carries no grammar of its own. It drives gluon with the generated lexical table, runs the well-formedness walk, parses the inline DTD and enforces the entity constraints, projects the tree into the hand-written AST (`proto/xml.proto`) with general entities expanded and attribute values normalized, resolves namespaces, and — when asked to validate — checks the document against its DTD. Design notes are in `docs/decisions`.
+The structural grammar (`lang/*.ebnf`) and lexer (`lang/*.lex`) compile to
+`proto/` via gluon; the runtime parser carries no grammar of its own. `Process`
+parses XML into the homogeneous AST and, given a schema (compiled to a proto
+descriptor by a per-language front-end), projects it through one generic walk
+into that vocabulary's typed message. OPC packages are unpacked over the same
+parser, resolving content types and the relationship graph.
 
-## XML Parsing
-### Done
+## Using the services
 
-- **Well-formedness parsing for XML 1.0 (5th edition) and 1.1**: version dispatch, restricted characters, Latin-1 and line-end handling, references, CDATA, comments, PIs, the inline DTD (internal subset), and the entity well-formedness constraints.
-- **Namespaces**, applied integrally (not a separate mode): QName resolution, prefix scoping, the namespace constraints (prefix declared, attribute uniqueness after expansion, reserved `xml`/`xmlns`, no colon in PI/entity/notation names), and resolved `namespace` bindings on every element and attribute. See `docs/decisions/0006-modes-verdict-and-namespaces.md`.
-- **DTD validity** (validating mode): element content models (EMPTY / ANY / mixed / children, with full occurrence matching), attribute types and defaults (ID/IDREF(S), ENTITY/ENTITIES, NMTOKEN(S), enumerations, NOTATION, #REQUIRED/#FIXED), ID uniqueness and IDREF resolution, the DTD-level constraints, and internal parameter-entity expansion. See `docs/decisions/0005-dtd-validity.md`.
-- **Two parser modes**: `validate=false` checks only well-formedness; `validate=true` requires a DTD and full validity (a document with no readable DTD is then invalid). The service returns a `ParseResponse` oneof — the `Document`, or a `ParseError{verdict, reason}` with verdict `NOT_WELL_FORMED` / `INVALID` / `CANNOT_VALIDATE`.
-- **AST and service**: parses to the homogeneous `proto/xml.proto` tree (general entities expanded, attribute values type-normalized, namespaces resolved), exposed over gRPC.
-- **Conformance covers 100% of the applicable W3C subset**, including the namespace tests: 289 valid, 114 invalid, 838 not-wf, all classified correctly. OOXML parts also parse (986 xlsx, 44 docx).
+`bash serve.sh` serves both on `:50051` with reflection enabled, so
+[`grpcurl`](https://github.com/fullstorydev/grpcurl) can call them directly
+(`source` is a `bytes` field, so it is base64-encoded — the examples pipe through
+`base64`).
 
-### To do
+### `Documents.Process` — parse, and optionally project against a schema
 
-- **External entities and the external DTD subset**, currently out of scope. A document that depends on external or external-parameter-entity declarations is reported `CANNOT_VALIDATE` when validating, never wrongly invalid. (Internal parameter entities *are* expanded.)
+No schema → the generic XML AST (the verdict is `WELL_FORMED`):
 
-## Schema compiling
+```bash
+grpcurl -plaintext \
+  -d "{\"source\": \"$(printf '<a x="1">hi</a>' | base64)\"}" \
+  :50051 xml.Documents/Process
+```
+```json
+{
+  "document": {
+    "root": { "name": "a", "attrs": [{"name": "x", "value": "1"}], "contents": [{"text": "hi"}] }
+  },
+  "verdict": "WELL_FORMED"
+}
+```
 
-A DTD describes one XML vocabulary. `SchemaService.Compile` turns a DTD into a proto descriptor (`FileDescriptorProto`), one message per element declaration, so a document in that vocabulary gets a typed AST instead of the homogeneous `Tag`. The runtime parser stays homogeneous; this is a separate offline step.
+A `format` (or an inline `compile`) projects into that vocabulary's typed tree;
+the reply is self-describing (`schema` is the descriptor, `message` the
+base64-serialized typed message):
 
-- Service: `SchemaService.Compile` in `proto/xml_service.proto`, served by `cmd/xmlserve` next to `XmlService` (started by `serve.sh`).
-- Library: `service.CompileDTD(dtd, opts)` returns the descriptor. Link it with `protodesc` for dynamic use, or write it out as a `FileDescriptorSet`.
-- Mapping: `(#PCDATA)` becomes a string field, `(a)` a message field, `(a | b)` a oneof, `(a | b)*` a repeated message holding that oneof (which keeps child order), and `<!ATTLIST>` attributes string fields. This mirrors `proto/xml.proto`'s `ContentItem`.
-- Test: `testing/schema-compile` compiles the RSS 0.91 DTD and parses a real RSS 0.91 corpus (`testing/corpus/rss0.91/`, fetched by `go run ./testing rss0.91`) through the generated proto. `test.sh` runs it.
+```bash
+grpcurl -plaintext \
+  -d "{\"format\": \"rss-2.0\", \"mode\": \"VALIDATE\", \"source\": \"$(printf '%s' \
+     '<rss version="2.0"><channel><title>T</title><link>L</link><description>D</description></channel></rss>' \
+     | base64)\"}" \
+  :50051 xml.Documents/Process
+```
+```json
+{
+  "typed": { "schema": { "name": "rss.proto", "package": "rss", "...": "..." }, "rootMessage": "Rss", "message": "Cg..." },
+  "verdict": "VALID"
+}
+```
 
-See `docs/decisions/0004-dtd-as-schema.md`.
+A rejected document returns `error` with a `verdict` (`NOT_WELL_FORMED` /
+`INVALID` / `CANNOT_VALIDATE`); the RPC status stays `OK`.
+
+### `Schemas.Compile` — a metagrammar → a proto descriptor
+
+`language` is `DTD`, `EBNF_VOCAB`, or `XSD`; the reply is a `FileDescriptorProto`
+of the document family (one message per element):
+
+```bash
+grpcurl -plaintext \
+  -d "{\"language\": \"DTD\", \"package\": \"note\", \"source\": \"$(printf '%s' \
+     '<!ELEMENT note (#PCDATA)>' | base64)\"}" \
+  :50051 xml.Schemas/Compile
+```
+```json
+{
+  "file": {
+    "name": "note.proto",
+    "package": "note",
+    "messageType": [
+      { "name": "Note", "field": [{"name": "text", "number": 1, "label": "LABEL_OPTIONAL", "type": "TYPE_STRING"}] }
+    ],
+    "syntax": "proto3"
+  }
+}
+```

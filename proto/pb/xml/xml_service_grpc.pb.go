@@ -19,123 +19,105 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	XmlService_Parse_FullMethodName = "/xml.XmlService/Parse"
+	Documents_Process_FullMethodName = "/xml.Documents/Process"
 )
 
-// XmlServiceClient is the client API for XmlService service.
+// DocumentsClient is the client API for Documents service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
-//
-// The service *is* the parser, and it is a classifier: callers send XML bytes
-// and receive either the parsed AST or a typed verdict explaining the refusal.
-// The RPC succeeds (the service did its job); the outcome rides in the response.
-type XmlServiceClient interface {
-	// Parse parses XML bytes and returns the document AST, or a verdict.
-	//
-	// ParseResponse is a oneof: a Document when the input is accepted, or a
-	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
-	// both cases; a non-OK status is a genuine server fault, not a bad document.
-	Parse(ctx context.Context, in *ParseRequest, opts ...grpc.CallOption) (*ParseResponse, error)
+// Documents is the instance-level service: bytes (+ optional schema) -> result.
+type DocumentsClient interface {
+	Process(ctx context.Context, in *ProcessRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
 }
 
-type xmlServiceClient struct {
+type documentsClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewXmlServiceClient(cc grpc.ClientConnInterface) XmlServiceClient {
-	return &xmlServiceClient{cc}
+func NewDocumentsClient(cc grpc.ClientConnInterface) DocumentsClient {
+	return &documentsClient{cc}
 }
 
-func (c *xmlServiceClient) Parse(ctx context.Context, in *ParseRequest, opts ...grpc.CallOption) (*ParseResponse, error) {
+func (c *documentsClient) Process(ctx context.Context, in *ProcessRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ParseResponse)
-	err := c.cc.Invoke(ctx, XmlService_Parse_FullMethodName, in, out, cOpts...)
+	out := new(ProcessResponse)
+	err := c.cc.Invoke(ctx, Documents_Process_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// XmlServiceServer is the server API for XmlService service.
-// All implementations must embed UnimplementedXmlServiceServer
+// DocumentsServer is the server API for Documents service.
+// All implementations must embed UnimplementedDocumentsServer
 // for forward compatibility.
 //
-// xml_service.proto — parsing exposed as a service (see docs/decisions/0006).
-//
-// The service *is* the parser, and it is a classifier: callers send XML bytes
-// and receive either the parsed AST or a typed verdict explaining the refusal.
-// The RPC succeeds (the service did its job); the outcome rides in the response.
-type XmlServiceServer interface {
-	// Parse parses XML bytes and returns the document AST, or a verdict.
-	//
-	// ParseResponse is a oneof: a Document when the input is accepted, or a
-	// ParseError (verdict + reason) when it is refused. The RPC status is OK in
-	// both cases; a non-OK status is a genuine server fault, not a bad document.
-	Parse(context.Context, *ParseRequest) (*ParseResponse, error)
-	mustEmbedUnimplementedXmlServiceServer()
+// Documents is the instance-level service: bytes (+ optional schema) -> result.
+type DocumentsServer interface {
+	Process(context.Context, *ProcessRequest) (*ProcessResponse, error)
+	mustEmbedUnimplementedDocumentsServer()
 }
 
-// UnimplementedXmlServiceServer must be embedded to have
+// UnimplementedDocumentsServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedXmlServiceServer struct{}
+type UnimplementedDocumentsServer struct{}
 
-func (UnimplementedXmlServiceServer) Parse(context.Context, *ParseRequest) (*ParseResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Parse not implemented")
+func (UnimplementedDocumentsServer) Process(context.Context, *ProcessRequest) (*ProcessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Process not implemented")
 }
-func (UnimplementedXmlServiceServer) mustEmbedUnimplementedXmlServiceServer() {}
-func (UnimplementedXmlServiceServer) testEmbeddedByValue()                    {}
+func (UnimplementedDocumentsServer) mustEmbedUnimplementedDocumentsServer() {}
+func (UnimplementedDocumentsServer) testEmbeddedByValue()                   {}
 
-// UnsafeXmlServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to XmlServiceServer will
+// UnsafeDocumentsServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DocumentsServer will
 // result in compilation errors.
-type UnsafeXmlServiceServer interface {
-	mustEmbedUnimplementedXmlServiceServer()
+type UnsafeDocumentsServer interface {
+	mustEmbedUnimplementedDocumentsServer()
 }
 
-func RegisterXmlServiceServer(s grpc.ServiceRegistrar, srv XmlServiceServer) {
-	// If the following call panics, it indicates UnimplementedXmlServiceServer was
+func RegisterDocumentsServer(s grpc.ServiceRegistrar, srv DocumentsServer) {
+	// If the following call panics, it indicates UnimplementedDocumentsServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&XmlService_ServiceDesc, srv)
+	s.RegisterService(&Documents_ServiceDesc, srv)
 }
 
-func _XmlService_Parse_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ParseRequest)
+func _Documents_Process_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(XmlServiceServer).Parse(ctx, in)
+		return srv.(DocumentsServer).Process(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: XmlService_Parse_FullMethodName,
+		FullMethod: Documents_Process_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(XmlServiceServer).Parse(ctx, req.(*ParseRequest))
+		return srv.(DocumentsServer).Process(ctx, req.(*ProcessRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// XmlService_ServiceDesc is the grpc.ServiceDesc for XmlService service.
+// Documents_ServiceDesc is the grpc.ServiceDesc for Documents service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var XmlService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "xml.XmlService",
-	HandlerType: (*XmlServiceServer)(nil),
+var Documents_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "xml.Documents",
+	HandlerType: (*DocumentsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Parse",
-			Handler:    _XmlService_Parse_Handler,
+			MethodName: "Process",
+			Handler:    _Documents_Process_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -143,121 +125,105 @@ var XmlService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	SchemaService_Compile_FullMethodName = "/xml.SchemaService/Compile"
+	Schemas_Compile_FullMethodName = "/xml.Schemas/Compile"
 )
 
-// SchemaServiceClient is the client API for SchemaService service.
+// SchemasClient is the client API for Schemas service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// SchemaService is the *type-level* companion to XmlService (see ADR 0004).
-// Where Parse takes one document's bytes and returns that document's AST,
-// Compile takes a DTD (a schema for a whole family of documents) and returns a
-// proto descriptor of that family: one message per <!ELEMENT>. Compiling a
-// vocabulary's DTD once yields a typed AST (e.g. an rss.Rss) for every document
-// in it, instead of the homogeneous Tag.
-type SchemaServiceClient interface {
-	// Compile lowers a DTD (an external subset — the bare markup declarations of
-	// a .dtd file) into a FileDescriptorProto. INVALID_ARGUMENT if the bytes are
-	// not a well-formed DTD.
+// Schemas is the type-level service: a metagrammar -> a proto descriptor.
+type SchemasClient interface {
 	Compile(ctx context.Context, in *CompileRequest, opts ...grpc.CallOption) (*CompileResponse, error)
 }
 
-type schemaServiceClient struct {
+type schemasClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewSchemaServiceClient(cc grpc.ClientConnInterface) SchemaServiceClient {
-	return &schemaServiceClient{cc}
+func NewSchemasClient(cc grpc.ClientConnInterface) SchemasClient {
+	return &schemasClient{cc}
 }
 
-func (c *schemaServiceClient) Compile(ctx context.Context, in *CompileRequest, opts ...grpc.CallOption) (*CompileResponse, error) {
+func (c *schemasClient) Compile(ctx context.Context, in *CompileRequest, opts ...grpc.CallOption) (*CompileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CompileResponse)
-	err := c.cc.Invoke(ctx, SchemaService_Compile_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Schemas_Compile_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// SchemaServiceServer is the server API for SchemaService service.
-// All implementations must embed UnimplementedSchemaServiceServer
+// SchemasServer is the server API for Schemas service.
+// All implementations must embed UnimplementedSchemasServer
 // for forward compatibility.
 //
-// SchemaService is the *type-level* companion to XmlService (see ADR 0004).
-// Where Parse takes one document's bytes and returns that document's AST,
-// Compile takes a DTD (a schema for a whole family of documents) and returns a
-// proto descriptor of that family: one message per <!ELEMENT>. Compiling a
-// vocabulary's DTD once yields a typed AST (e.g. an rss.Rss) for every document
-// in it, instead of the homogeneous Tag.
-type SchemaServiceServer interface {
-	// Compile lowers a DTD (an external subset — the bare markup declarations of
-	// a .dtd file) into a FileDescriptorProto. INVALID_ARGUMENT if the bytes are
-	// not a well-formed DTD.
+// Schemas is the type-level service: a metagrammar -> a proto descriptor.
+type SchemasServer interface {
 	Compile(context.Context, *CompileRequest) (*CompileResponse, error)
-	mustEmbedUnimplementedSchemaServiceServer()
+	mustEmbedUnimplementedSchemasServer()
 }
 
-// UnimplementedSchemaServiceServer must be embedded to have
+// UnimplementedSchemasServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedSchemaServiceServer struct{}
+type UnimplementedSchemasServer struct{}
 
-func (UnimplementedSchemaServiceServer) Compile(context.Context, *CompileRequest) (*CompileResponse, error) {
+func (UnimplementedSchemasServer) Compile(context.Context, *CompileRequest) (*CompileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Compile not implemented")
 }
-func (UnimplementedSchemaServiceServer) mustEmbedUnimplementedSchemaServiceServer() {}
-func (UnimplementedSchemaServiceServer) testEmbeddedByValue()                       {}
+func (UnimplementedSchemasServer) mustEmbedUnimplementedSchemasServer() {}
+func (UnimplementedSchemasServer) testEmbeddedByValue()                 {}
 
-// UnsafeSchemaServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SchemaServiceServer will
+// UnsafeSchemasServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SchemasServer will
 // result in compilation errors.
-type UnsafeSchemaServiceServer interface {
-	mustEmbedUnimplementedSchemaServiceServer()
+type UnsafeSchemasServer interface {
+	mustEmbedUnimplementedSchemasServer()
 }
 
-func RegisterSchemaServiceServer(s grpc.ServiceRegistrar, srv SchemaServiceServer) {
-	// If the following call panics, it indicates UnimplementedSchemaServiceServer was
+func RegisterSchemasServer(s grpc.ServiceRegistrar, srv SchemasServer) {
+	// If the following call panics, it indicates UnimplementedSchemasServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&SchemaService_ServiceDesc, srv)
+	s.RegisterService(&Schemas_ServiceDesc, srv)
 }
 
-func _SchemaService_Compile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Schemas_Compile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CompileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SchemaServiceServer).Compile(ctx, in)
+		return srv.(SchemasServer).Compile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SchemaService_Compile_FullMethodName,
+		FullMethod: Schemas_Compile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SchemaServiceServer).Compile(ctx, req.(*CompileRequest))
+		return srv.(SchemasServer).Compile(ctx, req.(*CompileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// SchemaService_ServiceDesc is the grpc.ServiceDesc for SchemaService service.
+// Schemas_ServiceDesc is the grpc.ServiceDesc for Schemas service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var SchemaService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "xml.SchemaService",
-	HandlerType: (*SchemaServiceServer)(nil),
+var Schemas_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "xml.Schemas",
+	HandlerType: (*SchemasServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Compile",
-			Handler:    _SchemaService_Compile_Handler,
+			Handler:    _Schemas_Compile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

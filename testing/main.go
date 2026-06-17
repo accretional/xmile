@@ -38,10 +38,19 @@ var formats = []struct {
 var verdictDirs = []string{"valid", "invalid", "not-wf"}
 
 func main() {
-	// `go run ./testing rss0.91` fetches only the RSS 0.91 corpus (used by the
-	// schema-compile harness) without re-running the full corpus build.
+	// `go run ./testing rss0.91` / `rss2.0` fetch only that vocabulary's corpus
+	// (used by the schema-compile and rss-parse harnesses) without re-running
+	// the full corpus build.
 	if len(os.Args) > 1 && os.Args[1] == rss091Dir {
 		downloadRSS091()
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == rss2Dir {
+		downloadRSS2()
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == xsdDir {
+		downloadXSD()
 		return
 	}
 	if err := fetchCorpus(); err != nil {
