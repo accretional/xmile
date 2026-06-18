@@ -1,13 +1,22 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -372,4 +381,461 @@ func collectT(g *tcGroup, base string, out *[]resolvedT) {
 	for i := range g.Groups {
 		collectT(&g.Groups[i], b, out)
 	}
+}
+
+// --- W3C XML conformance-suite download + OOXML sparse checkout (was download.go) ---
+
+const xmlconfURL = "https://www.w3.org/XML/Test/xmlts20130923.zip"
+
+// downloadXMLConf fetches the W3C XML Conformance Test Suite zip into a
+// temporary directory and returns the path to its xmlconf/ root. The caller
+// classifies the test files out of it into testing/corpus/xml/<verdict>/ and
+// removes the temp dir; the raw suite is not part of the corpus.
+func downloadXMLConf() (string, error) {
+	fmt.Println("w3c:  downloading", xmlconfURL)
+	b, err := httpGet(xmlconfURL, 120*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("download xmlconf: %w", err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+	if err != nil {
+		return "", fmt.Errorf("open xmlconf zip: %w", err)
+	}
+	tmp, err := os.MkdirTemp("", "xmlconf-")
+	if err != nil {
+		return "", err
+	}
+	for _, f := range zr.File {
+		out := filepath.Join(tmp, f.Name) // entries are "xmlconf/..."
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(out, 0o755)
+			continue
+		}
+		os.MkdirAll(filepath.Dir(out), 0o755)
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		data, _ := io.ReadAll(rc)
+		rc.Close()
+		os.WriteFile(out, data, 0o644)
+	}
+	return filepath.Join(tmp, "xmlconf"), nil
+}
+
+// ooxmlRepos are OOXML fixture sources: one blob-filtered sparse subtree of
+// generated, well-formed reference files each. (Apache POI's test-data is
+// deliberately excluded — it mixes valid and intentionally-malformed files
+// without per-file expectations.)
+var ooxmlRepos = []struct {
+	repo    string
+	subdirs []string
+	format  string
+}{
+	{"https://github.com/python-openxml/python-docx", []string{"tests", "features"}, "docx"},
+	{"https://github.com/jmcnamara/XlsxWriter", []string{"xlsxwriter/test/comparison/xlsx_files"}, "xlsx"},
+}
+
+// downloadOOXML sparse-checks-out the OOXML fixture subtrees and copies their
+// containers into testing/corpus/<docx|xlsx>/valid/ (organized by file type,
+// not source). Best-effort: a source that fails is logged and skipped.
+func downloadOOXML() {
+	for _, s := range ooxmlRepos {
+		dst := filepath.Join(testingDir, s.format, "valid")
+		if entries, _ := os.ReadDir(dst); len(entries) > 0 {
+			fmt.Printf("ooxml: %s already present\n", s.format)
+			continue
+		}
+		tmp, err := os.MkdirTemp("", "ooxml-")
+		if err != nil {
+			continue
+		}
+		if err := sparseCheckout(s.repo, s.subdirs, tmp); err != nil {
+			fmt.Printf("ooxml: %s skipped (%v)\n", s.repo, err)
+			os.RemoveAll(tmp)
+			continue
+		}
+		os.MkdirAll(dst, 0o755)
+		n := 0
+		want := "." + s.format
+		filepath.WalkDir(tmp, func(p string, e os.DirEntry, err error) error {
+			if err != nil || e.IsDir() || !strings.EqualFold(filepath.Ext(p), want) {
+				return nil
+			}
+			b, err := os.ReadFile(p)
+			if err != nil {
+				return nil
+			}
+			if os.WriteFile(filepath.Join(dst, filepath.Base(p)), b, 0o644) == nil {
+				n++
+			}
+			return nil
+		})
+		os.RemoveAll(tmp)
+		fmt.Printf("ooxml: %s -> %d files\n", s.format, n)
+	}
+}
+
+// sparseCheckout clones one subtree of repo into dir with blob filtering, so
+// only the needed files' blobs are fetched.
+func sparseCheckout(repo string, subdirs []string, dir string) error {
+	if err := exec.Command("git", "clone", "--filter=blob:none", "--no-checkout", "--depth", "1", repo, dir).Run(); err != nil {
+		return err
+	}
+	run := func(args ...string) error {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		return cmd.Run()
+	}
+	if err := run(append([]string{"sparse-checkout", "set", "--no-cone"}, subdirs...)...); err != nil {
+		return err
+	}
+	return run("checkout")
+}
+
+// --- Real-world RSS 2.0 corpus at scale (was rss2.go) ---
+
+// rss2Dir is the dedicated real-world RSS 2.0 corpus, fetched at scale for the
+// rss-parse harness (testing/rss-parse). Unlike the small curated rss0.91 set,
+// this aims for thousands of genuine RSS 2.0 feeds drawn from many publishers,
+// so the projector is exercised against the long tail of real-world markup.
+const rss2Dir = "rss2.0"
+
+// rss2OPMLRepos are GitHub repos of OPML feed-list files spanning many topics
+// and countries.
+var rss2OPMLRepos = []string{
+	"plenaryapp/awesome-rss-feeds",
+	"kilimchoi/engineering-blogs",
+}
+
+// rss2TSVSources are raw URLs of tab-separated feed catalogs whose first column
+// is a feed URL (e.g. tfederman/fountain-of-rss, a crawler's catalog of tens of
+// thousands of live feeds). The largest, most diverse source.
+var rss2TSVSources = []string{
+	"https://raw.githubusercontent.com/tfederman/fountain-of-rss/main/feeds.tsv",
+}
+
+// rss2TSVCap bounds how many URLs are taken from each TSV catalog, so the fetch
+// stays within a few minutes (the catalogs hold tens of thousands).
+const rss2TSVCap = 5000
+
+// rss2Versioned matches the <rss version="2.0"> signature so only genuine RSS
+// 2.0 feeds are kept (Atom, RSS 1.0/RDF and 0.9x are dropped).
+var rss2Versioned = regexp.MustCompile(`(?s)<rss\b[^>]*\bversion\s*=\s*["']2\.0["']`)
+
+const (
+	rss2Concurrency = 64
+	rss2Timeout     = 8 * time.Second
+)
+
+// downloadRSS2 fetches as many real-world RSS 2.0 feeds as it can into
+// testing/corpus/rss2.0/. It harvests candidate feed URLs from the OPML and TSV
+// sources, then fetches them concurrently, keeping each response that is both
+// XML-well-formed (by the encoding/xml reference oracle) and a version-2.0
+// <rss> document. Idempotent: a populated corpus is left untouched.
+func downloadRSS2() {
+	dst := filepath.Join(testingDir, rss2Dir)
+	if e, _ := os.ReadDir(dst); len(e) > 0 {
+		fmt.Println("rss2.0: corpus already present")
+		return
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		fmt.Println("rss2.0:", err)
+		return
+	}
+
+	urls := gatherFeedURLs()
+	if len(urls) == 0 {
+		fmt.Println("rss2.0: no candidate feed URLs (network?) — skipping")
+		return
+	}
+	fmt.Printf("rss2.0: %d candidate feed URLs; fetching with %d workers...\n", len(urls), rss2Concurrency)
+	n := fetchInto(dst, urls, 0)
+	fmt.Printf("rss2.0: %d RSS 2.0 feeds -> corpus/%s/ (from %d candidates)\n", n, rss2Dir, len(urls))
+}
+
+// gatherFeedURLs collects and de-duplicates candidate feed URLs from every
+// source: OPML files in the source repos, then the TSV catalogs.
+func gatherFeedURLs() []string {
+	seen := map[string]bool{}
+	var urls []string
+	add := func(u string) {
+		if u != "" && !seen[u] {
+			seen[u] = true
+			urls = append(urls, u)
+		}
+	}
+
+	for _, repo := range rss2OPMLRepos {
+		opmls := repoFilesRawURLs(repo, ".opml")
+		if len(opmls) == 0 {
+			fmt.Printf("rss2.0: %s -> no OPML files (skipped)\n", repo)
+			continue
+		}
+		before := len(urls)
+		for _, ou := range opmls {
+			if body, err := httpGet(ou, 15*time.Second); err == nil {
+				for _, u := range extractXMLUrls(body) {
+					add(u)
+				}
+			}
+		}
+		fmt.Printf("rss2.0: %s -> %d OPML files, %d new feed URLs\n", repo, len(opmls), len(urls)-before)
+	}
+
+	for _, src := range rss2TSVSources {
+		body, err := httpGet(src, 30*time.Second)
+		if err != nil {
+			fmt.Printf("rss2.0: could not fetch %s (%v)\n", src, err)
+			continue
+		}
+		before := len(urls)
+		taken := 0
+		for _, line := range strings.Split(string(body), "\n") {
+			if taken >= rss2TSVCap {
+				break
+			}
+			first, _, _ := strings.Cut(line, "\t")
+			first = strings.TrimSpace(first)
+			if strings.HasPrefix(first, "http") {
+				add(first)
+				taken++
+			}
+		}
+		fmt.Printf("rss2.0: TSV catalog -> %d new feed URLs (of %d taken)\n", len(urls)-before, taken)
+	}
+
+	return urls
+}
+
+// fetchInto fetches urls concurrently and writes each well-formed version-2.0
+// <rss> response to dst as feed_NNNN.xml, numbering from startIdx. Returns the
+// count written.
+func fetchInto(dst string, urls []string, startIdx int) int {
+	var written, attempts int64
+	var wg sync.WaitGroup
+	ch := make(chan string)
+	worker := func() {
+		defer wg.Done()
+		for u := range ch {
+			if k := atomic.AddInt64(&attempts, 1); k%500 == 0 {
+				fmt.Printf("rss2.0: %d/%d tried, %d kept\n", k, len(urls), atomic.LoadInt64(&written))
+			}
+			body, err := httpGet(u, rss2Timeout)
+			if err != nil || !rss2Versioned.Match(body) || !referenceWellFormed(body) {
+				continue
+			}
+			idx := int(atomic.AddInt64(&written, 1)) - 1 + startIdx
+			_ = os.WriteFile(filepath.Join(dst, fmt.Sprintf("feed_%04d.xml", idx)), body, 0o644)
+		}
+	}
+	for range rss2Concurrency {
+		wg.Add(1)
+		go worker()
+	}
+	for _, u := range urls {
+		ch <- u
+	}
+	close(ch)
+	wg.Wait()
+	return int(written)
+}
+
+// repoFilesRawURLs returns raw.githubusercontent URLs for every file with the
+// given extension in a GitHub repo, trying the master then main branch (repos
+// differ), via the git-tree API.
+func repoFilesRawURLs(repo, ext string) []string {
+	for _, branch := range []string{"master", "main"} {
+		body, err := httpGet(fmt.Sprintf("https://api.github.com/repos/%s/git/trees/%s?recursive=1", repo, branch), 15*time.Second)
+		if err != nil {
+			continue
+		}
+		var tree struct {
+			Tree []struct {
+				Path string `json:"path"`
+				Type string `json:"type"`
+			} `json:"tree"`
+		}
+		if json.Unmarshal(body, &tree) != nil {
+			continue
+		}
+		var out []string
+		for _, e := range tree.Tree {
+			if e.Type == "blob" && strings.HasSuffix(strings.ToLower(e.Path), ext) {
+				segs := strings.Split(e.Path, "/")
+				for i := range segs {
+					segs[i] = url.PathEscape(segs[i])
+				}
+				out = append(out, "https://raw.githubusercontent.com/"+repo+"/"+branch+"/"+strings.Join(segs, "/"))
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return nil
+}
+
+// --- HTTP + OPML helpers shared by the RSS fetchers (was rssfetch.go) ---
+
+// listRepoOPML returns the repo-relative paths of every .opml file in a
+// GitHub repository (default branch), via the git-tree API.
+func listRepoOPML(repo string) ([]string, error) {
+	body, err := httpGet("https://api.github.com/repos/"+repo+"/git/trees/master?recursive=1", 15*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	var tree struct {
+		Tree []struct {
+			Path string `json:"path"`
+			Type string `json:"type"`
+		} `json:"tree"`
+	}
+	if err := json.Unmarshal(body, &tree); err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, e := range tree.Tree {
+		if e.Type == "blob" && strings.HasSuffix(e.Path, ".opml") {
+			out = append(out, e.Path)
+		}
+	}
+	return out, nil
+}
+
+// rawURL builds a raw.githubusercontent.com URL, percent-encoding each path
+// segment (the RSS repo has spaces and parentheses in filenames).
+func rawURL(repo, path string) string {
+	segs := strings.Split(path, "/")
+	for i := range segs {
+		segs[i] = url.PathEscape(segs[i])
+	}
+	return "https://raw.githubusercontent.com/" + repo + "/master/" + strings.Join(segs, "/")
+}
+
+// httpGet fetches a URL with a timeout and a 5 MB cap, following redirects.
+func httpGet(u string, timeout time.Duration) ([]byte, error) {
+	c := &http.Client{Timeout: timeout}
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	// A browser-like UA: many feed hosts reject unknown bot agents with 403,
+	// which would shrink the real-world corpus for no good reason.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 5<<20))
+}
+
+// extractXMLUrls pulls the xmlUrl="..." values out of an OPML document.
+func extractXMLUrls(opml []byte) []string {
+	var out []string
+	s := string(opml)
+	for {
+		i := strings.Index(s, "xmlUrl=")
+		if i < 0 {
+			break
+		}
+		s = s[i+len("xmlUrl="):]
+		if s == "" {
+			break
+		}
+		q := s[0]
+		if q != '"' && q != '\'' {
+			continue
+		}
+		j := strings.IndexByte(s[1:], q)
+		if j < 0 {
+			break
+		}
+		u := html.UnescapeString(s[1 : 1+j])
+		s = s[1+j:]
+		if strings.HasPrefix(u, "http") {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+// looksLikeXML reports whether a response body is plausibly an XML feed
+// (and not an HTML error/landing page), without fully parsing it.
+func looksLikeXML(b []byte) bool {
+	n := len(b)
+	if n > 256 {
+		n = 256
+	}
+	t := strings.TrimSpace(strings.TrimPrefix(string(b[:n]), "\ufeff"))
+	lt := strings.ToLower(t)
+	if strings.HasPrefix(lt, "<!doctype html") || strings.HasPrefix(lt, "<html") {
+		return false
+	}
+	return strings.HasPrefix(t, "<?xml") || strings.HasPrefix(t, "<rss") ||
+		strings.HasPrefix(t, "<feed") || strings.HasPrefix(t, "<rdf")
+}
+
+// sanitizeName turns a repo path into a flat, filesystem-safe filename.
+func sanitizeName(p string) string {
+	r := strings.NewReplacer("/", "_", " ", "_", "(", "", ")", "")
+	return r.Replace(p)
+}
+
+// --- W3C XSD test-suite download (was xsd.go) ---
+
+// xsdDir is the corpus subfolder for W3C XSD test-suite schema files.
+const xsdDir = "xsd"
+
+// xsdTestsRepo is the official W3C XML Schema test suite (see docs/REFERENCES.md).
+const xsdTestsRepo = "https://github.com/w3c/xsdtests"
+
+// downloadXSD shallow-clones the W3C XSD test suite and copies its .xsd schema
+// files into testing/corpus/xsd/ (flattened names, capped). The xsd-parse
+// harness compiles each and reports coverage of the supported subset — reported,
+// not gating, since the suite spans the whole language (and includes
+// deliberately-invalid schemas) while the front-end targets a subset.
+func downloadXSD() {
+	dst := filepath.Join(testingDir, xsdDir)
+	if entries, _ := os.ReadDir(dst); len(entries) > 0 {
+		fmt.Println("xsd: already present")
+		return
+	}
+	tmp, err := os.MkdirTemp("", "xsdtests-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "xsd:", err)
+		return
+	}
+	defer os.RemoveAll(tmp)
+	fmt.Println("xsd: cloning", xsdTestsRepo)
+	if err := exec.Command("git", "clone", "--depth", "1", xsdTestsRepo, tmp).Run(); err != nil {
+		fmt.Printf("xsd: clone failed (%v)\n", err)
+		return
+	}
+	os.MkdirAll(dst, 0o755)
+	const capN = 1000
+	n := 0
+	filepath.WalkDir(tmp, func(p string, e os.DirEntry, err error) error {
+		if err != nil || e.IsDir() || n >= capN {
+			return nil
+		}
+		if !strings.EqualFold(filepath.Ext(p), ".xsd") {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(tmp, p)
+		name := strings.ReplaceAll(rel, string(filepath.Separator), "__")
+		if os.WriteFile(filepath.Join(dst, name), b, 0o644) == nil {
+			n++
+		}
+		return nil
+	})
+	fmt.Printf("xsd: -> %d schema files\n", n)
 }

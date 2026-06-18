@@ -1,4 +1,4 @@
-package service
+package language
 
 // xsd.go — the XSD front-end (ADR 0008 Phase 4). An XSD is itself an XML
 // document, so it is parsed by xmile's own parser and the resulting Tag tree is
@@ -34,12 +34,12 @@ const xsdNS = "http://www.w3.org/2001/XMLSchema"
 // CompileXSD lowers an XSD into a FileDescriptorProto, one message per declared
 // element. Returns an error if the bytes are not a well-formed XSD or declare
 // no elements.
-func CompileXSD(xsd []byte, opts SchemaOptions) (*descriptorpb.FileDescriptorProto, error) {
-	p, err := Default()
-	if err != nil {
-		return nil, err
-	}
-	doc, err := p.Parse(string(xsd), false)
+//
+// parseXML parses an XSD-as-XML into the generic AST; the service package
+// supplies it (its grammar-driven parser) so this package never imports the
+// parser directly.
+func CompileXSD(xsd []byte, opts SchemaOptions, parseXML func(string) (*xmlpb.Xml, error)) (*descriptorpb.FileDescriptorProto, error) {
+	doc, err := parseXML(string(xsd))
 	if err != nil {
 		return nil, fmt.Errorf("not a well-formed XSD: %w", err)
 	}

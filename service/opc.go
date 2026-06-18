@@ -155,11 +155,11 @@ func parseContentTypes(b []byte) (*ContentTypes, error) {
 	if err != nil {
 		return nil, fmt.Errorf("[Content_Types].xml: %w", err)
 	}
-	for _, d := range xsdChildrenLocal(doc.GetRoot(), "Default") {
-		ct.Defaults[strings.ToLower(xsdAttr(d, "Extension"))] = xsdAttr(d, "ContentType")
+	for _, d := range opcChildren(doc.GetRoot(), "Default") {
+		ct.Defaults[strings.ToLower(opcAttr(d, "Extension"))] = opcAttr(d, "ContentType")
 	}
-	for _, o := range xsdChildrenLocal(doc.GetRoot(), "Override") {
-		ct.Overrides[xsdAttr(o, "PartName")] = xsdAttr(o, "ContentType")
+	for _, o := range opcChildren(doc.GetRoot(), "Override") {
+		ct.Overrides[opcAttr(o, "PartName")] = opcAttr(o, "ContentType")
 	}
 	return ct, nil
 }
@@ -175,12 +175,12 @@ func parseRels(b []byte, baseDir string) ([]*Relationship, error) {
 		return nil, err
 	}
 	var out []*Relationship
-	for _, r := range xsdChildrenLocal(doc.GetRoot(), "Relationship") {
+	for _, r := range opcChildren(doc.GetRoot(), "Relationship") {
 		rel := &Relationship{
-			ID:     xsdAttr(r, "Id"),
-			Type:   xsdAttr(r, "Type"),
-			Target: xsdAttr(r, "Target"),
-			Mode:   xsdAttr(r, "TargetMode"),
+			ID:     opcAttr(r, "Id"),
+			Type:   opcAttr(r, "Type"),
+			Target: opcAttr(r, "Target"),
+			Mode:   opcAttr(r, "TargetMode"),
 		}
 		if rel.Mode != "External" {
 			t := rel.Target
@@ -201,6 +201,44 @@ func isRelsPart(name string) bool { return strings.Contains(name, "/_rels/") }
 func relsNameFor(partName string) string {
 	dir, file := path.Split(partName)
 	return dir + "_rels/" + file + ".rels"
+}
+
+// --- Tag-tree helpers (OPC elements matched by local name) ---
+//
+// These mirror the local-name walkers in package service/language's XSD
+// front-end; opc.go keeps its own small copies so it stays in service without
+// reaching into that package's internals.
+
+// opcLocal returns an element's local name (the resolved local part, or the
+// part after any prefix).
+func opcLocal(t *xmlpb.Tag) string {
+	if ln := t.GetNamespace().GetLocalName(); ln != "" {
+		return ln
+	}
+	qname := t.GetName()
+	if i := strings.IndexByte(qname, ':'); i >= 0 {
+		return qname[i+1:]
+	}
+	return qname
+}
+
+func opcChildren(t *xmlpb.Tag, local string) []*xmlpb.Tag {
+	var out []*xmlpb.Tag
+	for _, ci := range t.GetContents() {
+		if c := ci.GetChild(); c != nil && opcLocal(c) == local {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func opcAttr(t *xmlpb.Tag, name string) string {
+	for _, a := range t.GetAttrs() {
+		if a.GetName() == name {
+			return a.GetValue()
+		}
+	}
+	return ""
 }
 
 // isXMLPart reports whether a part should be parsed as XML, from its content

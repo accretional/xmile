@@ -23,6 +23,7 @@ import (
 
 	"github.com/accretional/xmile/lex"
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
+	"github.com/accretional/xmile/service/language"
 )
 
 // ValidityError reports a well-formed document that violates a constraint in
@@ -61,8 +62,8 @@ const (
 
 type elemDecl struct {
 	kind  cmKind
-	mixed map[string]bool // cmMixed: the allowed child element names
-	model *particle       // cmElement: the content model tree
+	mixed map[string]bool    // cmMixed: the allowed child element names
+	model *language.Particle // cmElement: the content model tree
 }
 
 type attrDecl struct {
@@ -343,7 +344,7 @@ func parseElemDecl(cs *pb.ASTNode) *elemDecl {
 		}
 		return &elemDecl{kind: cmMixed, mixed: allowed}
 	case firstDescendant(cs, "children") != nil:
-		return &elemDecl{kind: cmElement, model: parseContentModel(leafText(firstDescendant(cs, "children")))}
+		return &elemDecl{kind: cmElement, model: language.ParseContentModel(leafText(firstDescendant(cs, "children")))}
 	}
 	return &elemDecl{kind: cmAny}
 }
@@ -490,7 +491,7 @@ func (v *validator) content(name string, ed *elemDecl, tag *xmlpb.Tag) error {
 		if nonSpaceCharData {
 			return invalidf("character data is not allowed in the element content of <%s>", name)
 		}
-		if !matchContentModel(ed.model, children) {
+		if !language.MatchContentModel(ed.model, children) {
 			return invalidf("content of <%s> does not match its declared content model", name)
 		}
 	}
@@ -621,95 +622,14 @@ func (v *validator) unparsedEntity(name string) bool {
 	return ok && ent.unparsed
 }
 
-// --- content-model matching (a regular expression over child element names) ---
-
-// matchContentModel reports whether the sequence of child element names is
-// accepted by the content model. It threads a set of reachable positions
-// through the particle tree (a small Thompson-style NFA), so it handles
-// arbitrary nesting, choices, sequences, and ?/*/+ occurrences.
-func matchContentModel(p *particle, names []string) bool {
-	ends := matchOcc(p, names, map[int]bool{0: true})
-	return ends[len(names)]
-}
-
-// matchOcc applies a particle's occurrence indicator (?/*/+ or none).
-func matchOcc(p *particle, names []string, starts map[int]bool) map[int]bool {
-	switch p.occ {
-	case '?':
-		return union(starts, matchOnce(p, names, starts))
-	case '*':
-		return closure(p, names, starts, true)
-	case '+':
-		return closure(p, names, starts, false)
-	default:
-		return matchOnce(p, names, starts)
+// firstName returns the value of the first Name node in n's subtree, or "".
+// (The content-model parser and matcher now live in package
+// service/language; this small CST helper stays here next to its callers.)
+func firstName(n *pb.ASTNode) string {
+	if nm := firstDescendant(n, "Name"); nm != nil {
+		return nm.GetValue()
 	}
-}
-
-// matchOnce matches exactly one instance of the particle (ignoring its own
-// occurrence indicator, which matchOcc has already handled).
-func matchOnce(p *particle, names []string, starts map[int]bool) map[int]bool {
-	if p.name != "" {
-		ends := map[int]bool{}
-		for s := range starts {
-			if s < len(names) && names[s] == p.name {
-				ends[s+1] = true
-			}
-		}
-		return ends
-	}
-	if p.choice {
-		ends := map[int]bool{}
-		for _, c := range p.children {
-			for e := range matchOcc(c, names, starts) {
-				ends[e] = true
-			}
-		}
-		return ends
-	}
-	cur := starts
-	for _, c := range p.children {
-		cur = matchOcc(c, names, cur)
-		if len(cur) == 0 {
-			break
-		}
-	}
-	return cur
-}
-
-// closure matches one-or-more (zeroOK=false) or zero-or-more (zeroOK=true)
-// repetitions of the particle, accumulating every reachable position.
-func closure(p *particle, names []string, starts map[int]bool, zeroOK bool) map[int]bool {
-	reached := map[int]bool{}
-	if zeroOK {
-		for s := range starts {
-			reached[s] = true
-		}
-	}
-	frontier := starts
-	for len(frontier) > 0 {
-		next := matchOnce(p, names, frontier)
-		newFront := map[int]bool{}
-		for e := range next {
-			if !reached[e] {
-				reached[e] = true
-				newFront[e] = true
-			}
-		}
-		frontier = newFront
-	}
-	return reached
-}
-
-func union(a, b map[int]bool) map[int]bool {
-	out := map[int]bool{}
-	for k := range a {
-		out[k] = true
-	}
-	for k := range b {
-		out[k] = true
-	}
-	return out
+	return ""
 }
 
 // --- small lexical helpers (XML S, Name, Nmtoken) over the generated table ---
