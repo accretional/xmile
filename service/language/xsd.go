@@ -62,15 +62,40 @@ func CompileXSD(xsd []byte, opts SchemaOptions, parseXML func(string) (*xmlpb.Xm
 	})
 }
 
+// xsdScope carries the top-level declarations and the element-declared predicate
+// that the content-model walk needs to resolve type=, group ref= and
+// attributeGroup ref= references. Named groups and attributeGroups are inlined
+// (Structures §3.7, §3.6) where referenced, transitively.
+type xsdScope struct {
+	complexTypes    map[string]*xmlpb.Tag
+	groups          map[string]*xmlpb.Tag // name -> <xs:group> definition
+	attributeGroups map[string]*xmlpb.Tag // name -> <xs:attributeGroup> definition
+	declared        func(string) bool
+}
+
 // xsdSchemaAST walks an <xs:schema> Tag tree into a gluon schema-AST (file →
 // rule* → body): one rule per element declaration (top-level or nested, first
 // binding), its body built from the element's type — an inline or named
 // complexType, or a simple type lowered to a `text` leaf.
 func xsdSchemaAST(schema *xmlpb.Tag, language string) (*pb.ASTDescriptor, error) {
-	complexTypes := map[string]*xmlpb.Tag{}
+	sc := &xsdScope{
+		complexTypes:    map[string]*xmlpb.Tag{},
+		groups:          map[string]*xmlpb.Tag{},
+		attributeGroups: map[string]*xmlpb.Tag{},
+	}
 	for _, ct := range xsdChildrenLocal(schema, "complexType") {
 		if n := xsdAttr(ct, "name"); n != "" {
-			complexTypes[n] = ct
+			sc.complexTypes[n] = ct
+		}
+	}
+	for _, g := range xsdChildrenLocal(schema, "group") {
+		if n := xsdAttr(g, "name"); n != "" {
+			sc.groups[n] = g
+		}
+	}
+	for _, ag := range xsdChildrenLocal(schema, "attributeGroup") {
+		if n := xsdAttr(ag, "name"); n != "" {
+			sc.attributeGroups[n] = ag
 		}
 	}
 
@@ -91,13 +116,13 @@ func xsdSchemaAST(schema *xmlpb.Tag, language string) (*pb.ASTDescriptor, error)
 	if len(names) == 0 {
 		return nil, fmt.Errorf("XSD declares no elements")
 	}
-	declared := func(n string) bool { _, ok := elems[n]; return ok }
+	sc.declared = func(n string) bool { _, ok := elems[n]; return ok }
 
 	sort.Strings(names)
 	file := &pb.ASTNode{Kind: compiler.KindFile}
 	for _, name := range names {
 		rule := &pb.ASTNode{Kind: compiler.KindRule, Value: name}
-		if body := xsdElementBody(elems[name], complexTypes, declared); body != nil {
+		if body := xsdElementBody(elems[name], sc); body != nil {
 			rule.Children = []*pb.ASTNode{body}
 		}
 		file.Children = append(file.Children, rule)
@@ -109,40 +134,69 @@ func xsdSchemaAST(schema *xmlpb.Tag, language string) (*pb.ASTDescriptor, error)
 // complexType, a named complexType referenced by type=, or — for a built-in or
 // named simple type, or no type — a `text` leaf (no body if the element is
 // declared with neither type nor content).
-func xsdElementBody(el *xmlpb.Tag, cts map[string]*xmlpb.Tag, declared func(string) bool) *pb.ASTNode {
+func xsdElementBody(el *xmlpb.Tag, sc *xsdScope) *pb.ASTNode {
 	if ct := xsdChildLocal(el, "complexType"); ct != nil {
-		return xsdComplexTypeBody(ct, declared)
+		return xsdComplexTypeBody(ct, sc)
 	}
 	ty := localName(xsdAttr(el, "type"))
 	if ty == "" {
 		return nil // empty element
 	}
-	if ct, ok := cts[ty]; ok {
-		return xsdComplexTypeBody(ct, declared)
+	if ct, ok := sc.complexTypes[ty]; ok {
+		return xsdComplexTypeBody(ct, sc)
 	}
 	return scalarNode("text") // built-in / named simple type → character content
 }
 
 // xsdComplexTypeBody lowers a complexType into its fields: attributes (string
-// fields), then either a `text` leaf (simpleContent) or the content-model group
-// (sequence / choice / all). complexContent/simpleContent extensions are
-// unwrapped to their container so derived attributes and particles are seen.
-func xsdComplexTypeBody(ct *xmlpb.Tag, declared func(string) bool) *pb.ASTNode {
+// fields, including those pulled in by attributeGroup ref=), then either a
+// `text` leaf (simpleContent) or the content-model group (sequence / choice /
+// all). complexContent/simpleContent extensions are unwrapped to their
+// container so derived attributes and particles are seen.
+func xsdComplexTypeBody(ct *xmlpb.Tag, sc *xsdScope) *pb.ASTNode {
 	container, simple := xsdContentContainer(ct)
-	var fields []*pb.ASTNode
-	for _, a := range xsdChildrenLocal(container, "attribute") {
-		if n := xsdAttr(a, "name"); n != "" {
-			fields = append(fields, scalarNode(n))
-		}
-	}
+	fields := xsdAttributeFields(container, sc, map[string]bool{})
 	if simple {
 		fields = append(fields, scalarNode("text"))
 		return seqOrSingle(fields)
 	}
 	if g := xsdGroup(container); g != nil {
-		fields = append(fields, xsdGroupFields(g, declared)...)
+		fields = append(fields, xsdGroupFields(g, sc, map[string]bool{})...)
 	}
 	return seqOrSingle(fields)
+}
+
+// xsdAttributeFields collects the string fields a container contributes through
+// its direct xs:attribute children and, transitively, the xs:attribute children
+// of any xs:attributeGroup it references (Structures §3.6.2.2). seen guards
+// against attributeGroup reference cycles.
+func xsdAttributeFields(container *xmlpb.Tag, sc *xsdScope, seen map[string]bool) []*pb.ASTNode {
+	var fields []*pb.ASTNode
+	for _, ci := range container.GetContents() {
+		c := ci.GetChild()
+		if c == nil {
+			continue
+		}
+		switch xsdLocal(c) {
+		case "attribute":
+			if n := xsdAttr(c, "name"); n != "" {
+				fields = append(fields, scalarNode(n))
+			}
+		case "attributeGroup":
+			ref := localName(xsdAttr(c, "ref"))
+			if ref == "" || seen[ref] {
+				continue // a definition (handled at top level) or a cycle
+			}
+			ag, ok := sc.attributeGroups[ref]
+			if !ok {
+				continue
+			}
+			seen[ref] = true
+			fields = append(fields, xsdAttributeFields(ag, sc, seen)...)
+			delete(seen, ref)
+		}
+	}
+	return fields
 }
 
 // xsdContentContainer returns the element whose direct children hold the content
@@ -173,13 +227,14 @@ func xsdContentContainer(ct *xmlpb.Tag) (container *xmlpb.Tag, simple bool) {
 // xsdGroupFields lowers a content-model group (sequence / choice / all) into the
 // fields it contributes, mirroring the DTD content-model lowering: a choice is a
 // oneof, a repeated group (maxOccurs > 1) a repeated wrapper, a sequence flat
-// ordered fields.
-func xsdGroupFields(g *xmlpb.Tag, declared func(string) bool) []*pb.ASTNode {
+// ordered fields. seen tracks the named groups currently being inlined so a
+// group reference cycle terminates (Structures §3.7.3).
+func xsdGroupFields(g *xmlpb.Tag, sc *xsdScope, seen map[string]bool) []*pb.ASTNode {
 	repeated := xsdRepeated(g)
 	if xsdLocal(g) == "choice" {
 		alt := &pb.ASTNode{Kind: compiler.KindAlternation, Value: choiceWrapperName}
 		for _, m := range xsdGroupMembers(g) {
-			alt.Children = append(alt.Children, xsdMemberField(m, declared))
+			alt.Children = append(alt.Children, xsdMemberFields(m, sc, seen)...)
 		}
 		if repeated {
 			return []*pb.ASTNode{repeatedOf(alt)}
@@ -189,7 +244,7 @@ func xsdGroupFields(g *xmlpb.Tag, declared func(string) bool) []*pb.ASTNode {
 	// sequence / all
 	var out []*pb.ASTNode
 	for _, m := range xsdGroupMembers(g) {
-		out = append(out, xsdMemberField(m, declared))
+		out = append(out, xsdMemberFields(m, sc, seen)...)
 	}
 	if repeated && len(out) > 1 {
 		return []*pb.ASTNode{repeatedOf(seqOrSingle(out))}
@@ -202,17 +257,53 @@ func xsdGroupFields(g *xmlpb.Tag, declared func(string) bool) []*pb.ASTNode {
 	return out
 }
 
-// xsdMemberField lowers one member of a group: a child element (by name or ref)
-// wrapped per its occurrence, or a nested group.
-func xsdMemberField(m *xmlpb.Tag, declared func(string) bool) *pb.ASTNode {
-	if xsdLocal(m) == "element" {
+// xsdMemberFields lowers one member of a group into the field(s) it contributes:
+// a child element (by name or ref) wrapped per its occurrence; a nested
+// sequence/choice/all group; or a named-group reference (<xs:group ref="G"/>),
+// whose members are inlined in place wrapped per the ref's occurrence.
+func xsdMemberFields(m *xmlpb.Tag, sc *xsdScope, seen map[string]bool) []*pb.ASTNode {
+	switch xsdLocal(m) {
+	case "element":
 		name := xsdAttr(m, "name")
 		if name == "" {
 			name = localName(xsdAttr(m, "ref"))
 		}
-		return xsdOccWrap(childField(name, declared), m)
+		return []*pb.ASTNode{xsdOccWrap(childField(name, sc.declared), m)}
+	case "group":
+		// A named-group reference: inline its single content-model group,
+		// guarding the cycle. At default occurrence (1..1) the members splice
+		// flat into the enclosing group, exactly as if written inline; an
+		// optional or repeated reference must wrap them so the occurrence
+		// applies to the group as a whole.
+		ref := localName(xsdAttr(m, "ref"))
+		if ref == "" || seen[ref] {
+			return nil
+		}
+		def, ok := sc.groups[ref]
+		if !ok {
+			return nil
+		}
+		inner := xsdGroup(def)
+		if inner == nil {
+			return nil
+		}
+		seen[ref] = true
+		fields := xsdGroupFields(inner, sc, seen)
+		delete(seen, ref)
+		if !xsdRepeated(m) && xsdAttr(m, "minOccurs") != "0" {
+			return fields // 1..1: splice members flat
+		}
+		if n := xsdOccWrap(seqOrSingle(fields), m); n != nil {
+			return []*pb.ASTNode{n}
+		}
+		return nil
+	default:
+		// A nested anonymous sequence/choice/all.
+		if n := xsdOccWrap(seqOrSingle(xsdGroupFields(m, sc, seen)), m); n != nil {
+			return []*pb.ASTNode{n}
+		}
+		return nil
 	}
-	return xsdOccWrap(seqOrSingle(xsdGroupFields(m, declared)), m)
 }
 
 // xsdOccWrap applies a particle's occurrence: maxOccurs > 1 → repeated,
@@ -314,13 +405,14 @@ func xsdGroup(container *xmlpb.Tag) *xmlpb.Tag {
 	return nil
 }
 
-// xsdGroupMembers returns a group's element and nested-group members in order.
+// xsdGroupMembers returns a group's element, nested-group, and named-group
+// reference (<xs:group ref=…/>) members in order.
 func xsdGroupMembers(g *xmlpb.Tag) []*xmlpb.Tag {
 	var out []*xmlpb.Tag
 	for _, ci := range g.GetContents() {
 		if c := ci.GetChild(); c != nil {
 			switch xsdLocal(c) {
-			case "element", "sequence", "choice", "all":
+			case "element", "sequence", "choice", "all", "group":
 				out = append(out, c)
 			}
 		}

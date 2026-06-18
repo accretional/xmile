@@ -8,6 +8,8 @@ package service
 import (
 	"strings"
 	"testing"
+
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // A small vocabulary exercising the supported XSD subset: a named complexType
@@ -79,6 +81,91 @@ func TestCompileXSDAndProject(t *testing.T) {
 	}
 	if n := msg.Get(books).List().Len(); n != 2 {
 		t.Fatalf("projected %d books, want 2", n)
+	}
+}
+
+// A vocabulary exercising named xs:group and xs:attributeGroup references, the
+// two most-used OOXML constructs. PersonType pulls its content model from a
+// named group (NameGroup, which itself references a nested group ContactGroup —
+// transitive inlining) and its attributes from a named attributeGroup
+// (IdentAttrs, which references another attributeGroup AuditAttrs). The fields
+// contributed by the group and the attributeGroup must surface on the projected
+// message exactly as if they had been written inline.
+const groupsXSD = `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="person" type="PersonType"/>
+  <xs:complexType name="PersonType">
+    <xs:sequence>
+      <xs:group ref="NameGroup"/>
+    </xs:sequence>
+    <xs:attributeGroup ref="IdentAttrs"/>
+  </xs:complexType>
+  <xs:group name="NameGroup">
+    <xs:sequence>
+      <xs:element name="first" type="xs:string"/>
+      <xs:element name="last" type="xs:string"/>
+      <xs:group ref="ContactGroup"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:group name="ContactGroup">
+    <xs:sequence>
+      <xs:element name="email" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:attributeGroup name="IdentAttrs">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attributeGroup ref="AuditAttrs"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="AuditAttrs">
+    <xs:attribute name="version" type="xs:string"/>
+  </xs:attributeGroup>
+</xs:schema>`
+
+const groupsXML = `<person id="p1" version="3">` +
+	`<first>Ada</first><last>Lovelace</last><email>ada@example.com</email></person>`
+
+func TestCompileXSDGroupAndAttributeGroup(t *testing.T) {
+	schema := xsdSchema(t, groupsXSD)
+	p, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.Process(groupsXML, schema, true)
+	if err != nil {
+		t.Fatalf("Process: %v", err)
+	}
+	if res.Document == nil {
+		t.Fatal("expected a typed tree, got none")
+	}
+	msg := res.Document.ProtoReflect()
+	if got := string(msg.Descriptor().Name()); got != "Person" {
+		t.Fatalf("root message = %q, want Person", got)
+	}
+	fields := msg.Descriptor().Fields()
+	// Element fields contributed by NameGroup (and the nested ContactGroup).
+	for _, f := range []string{"first", "last", "email"} {
+		if fields.ByName(protoreflect.Name(f)) == nil {
+			t.Errorf("Person has no %q field (named group not inlined)", f)
+		}
+	}
+	// Attribute fields contributed by IdentAttrs (and the nested AuditAttrs).
+	for _, f := range []string{"id", "version"} {
+		if fields.ByName(protoreflect.Name(f)) == nil {
+			t.Errorf("Person has no %q field (named attributeGroup not inlined)", f)
+		}
+	}
+	// The inlined fields are actually populated from the instance. The group's
+	// "first" element is a message with a character-content "text" leaf; the
+	// attributeGroup's "id"/"version" are direct string fields.
+	first := msg.Get(fields.ByName("first")).Message()
+	if got := first.Get(first.Descriptor().Fields().ByName("text")).String(); got != "Ada" {
+		t.Errorf("first/text = %q, want Ada", got)
+	}
+	if got := msg.Get(fields.ByName("id")).String(); got != "p1" {
+		t.Errorf("id = %q, want p1", got)
+	}
+	if got := msg.Get(fields.ByName("version")).String(); got != "3" {
+		t.Errorf("version = %q, want 3", got)
 	}
 }
 
