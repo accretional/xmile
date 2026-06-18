@@ -23,8 +23,14 @@ import (
 var formatMeta = map[string]struct {
 	nsExtensible bool
 	preValidate  func(*xmlpb.Xml) error
+	// open marks a partial vocabulary: a minimal schema for a large format (the
+	// OOXML packages, docx/xlsx) types its modeled markup and tolerates the rest,
+	// so every valid part projects without error. See projectOptions.open.
+	open bool
 }{
 	"rss-2.0": {nsExtensible: true, preValidate: validateRSS},
+	"docx":    {open: true},
+	"xlsx":    {open: true},
 }
 
 // langByExt maps a spec-file extension to its schema language.
@@ -59,6 +65,7 @@ func Format(name string) (*Schema, error) {
 		return nil, fmt.Errorf("format %q: %w", name, err)
 	}
 	schema.PreValidate = meta.preValidate
+	schema.Open = meta.open
 	formatCache.Store(name, schema)
 	return schema, nil
 }

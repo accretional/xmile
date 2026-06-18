@@ -423,29 +423,49 @@ func downloadXMLConf() (string, error) {
 	return filepath.Join(tmp, "xmlconf"), nil
 }
 
-// ooxmlRepos are OOXML fixture sources: one blob-filtered sparse subtree of
-// generated, well-formed reference files each. (Apache POI's test-data is
-// deliberately excluded — it mixes valid and intentionally-malformed files
-// without per-file expectations.)
+// ooxmlRepos are OOXML fixture sources: each is one blob-filtered sparse subtree
+// of generated or hand-authored, well-formed reference containers. Several repos
+// may target the same format so the corpus spans many producers (python-docx,
+// Word-authored mammoth fixtures, PHPWord readers; XlsxWriter for spreadsheets).
+// (Apache POI's test-data is deliberately excluded — it mixes valid and
+// intentionally-malformed files without per-file expectations.)
 var ooxmlRepos = []struct {
 	repo    string
+	tag     string // short, collision-safe filename prefix identifying the source
 	subdirs []string
 	format  string
 }{
-	{"https://github.com/python-openxml/python-docx", []string{"tests", "features"}, "docx"},
-	{"https://github.com/jmcnamara/XlsxWriter", []string{"xlsxwriter/test/comparison/xlsx_files"}, "xlsx"},
+	{"https://github.com/python-openxml/python-docx", "pydocx", []string{"tests", "features"}, "docx"},
+	{"https://github.com/mwilliamson/mammoth.js", "mammoth", []string{"test/test-data"}, "docx"},
+	{"https://github.com/PHPOffice/PHPWord", "phpword", []string{"samples/resources", "tests/PhpWordTests/_files/documents"}, "docx"},
+	{"https://github.com/jmcnamara/XlsxWriter", "xlsxw", []string{"xlsxwriter/test/comparison/xlsx_files"}, "xlsx"},
 }
 
 // downloadOOXML sparse-checks-out the OOXML fixture subtrees and copies their
 // containers into testing/corpus/<docx|xlsx>/valid/ (organized by file type,
-// not source). Best-effort: a source that fails is logged and skipped.
+// not source). A format's dir is fetched as a whole: if it already holds files
+// the format is left in place, otherwise every repo for that format is checked
+// out. Copied names are prefixed with the source tag so containers with the same
+// base name across repos (empty.docx, …) do not collide. Best-effort: a source
+// that fails is logged and skipped.
 func downloadOOXML() {
+	// Snapshot which formats were already populated before this run; a format's
+	// dir is fetched as a whole, so the presence decision is made once up front
+	// (not re-read after the first repo writes into the shared dir).
+	present := map[string]bool{}
 	for _, s := range ooxmlRepos {
-		dst := filepath.Join(testingDir, s.format, "valid")
-		if entries, _ := os.ReadDir(dst); len(entries) > 0 {
-			fmt.Printf("ooxml: %s already present\n", s.format)
-			continue
+		if entries, _ := os.ReadDir(filepath.Join(testingDir, s.format, "valid")); len(entries) > 0 {
+			if !present[s.format] {
+				fmt.Printf("ooxml: %s already present\n", s.format)
+			}
+			present[s.format] = true
 		}
+	}
+	for _, s := range ooxmlRepos {
+		if present[s.format] {
+			continue // dir was already populated before this run
+		}
+		dst := filepath.Join(testingDir, s.format, "valid")
 		tmp, err := os.MkdirTemp("", "ooxml-")
 		if err != nil {
 			continue
@@ -466,13 +486,13 @@ func downloadOOXML() {
 			if err != nil {
 				return nil
 			}
-			if os.WriteFile(filepath.Join(dst, filepath.Base(p)), b, 0o644) == nil {
+			if os.WriteFile(filepath.Join(dst, s.tag+"_"+filepath.Base(p)), b, 0o644) == nil {
 				n++
 			}
 			return nil
 		})
 		os.RemoveAll(tmp)
-		fmt.Printf("ooxml: %s -> %d files\n", s.format, n)
+		fmt.Printf("ooxml: %s/%s -> %d files\n", s.format, s.tag, n)
 	}
 }
 

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- xlsx.xsd — a minimal SpreadsheetML (.xlsx parts) vocabulary.
+
+     The level-2 spec for the SpreadsheetML parts xmile projects: a worksheet
+     (xl/worksheets/sheetN.xml), the workbook (xl/workbook.xml), and the shared
+     string table (xl/sharedStrings.xml). Like docx.xsd it is loaded with
+     Open=true, so the modeled core (cells, rows, sheet data, the sheet list, the
+     string table) is typed and everything else SpreadsheetML defines passes
+     through. Single self-contained file in the supported XSD subset.
+
+     Local element names only: SpreadsheetML parts use a default (unprefixed)
+     namespace, and the projector matches by local name regardless.
+
+     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1, SpreadsheetML
+     (see docs/REFERENCES.md). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <!-- Worksheet: the sheet's cell data (other parts pass through, open mode). -->
+  <xs:element name="worksheet">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="dimension" minOccurs="0"/>
+        <xs:element ref="sheetData" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="dimension">
+    <xs:complexType>
+      <xs:attribute name="ref" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Sheet data: the rows. -->
+  <xs:element name="sheetData">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="row" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Row: the cells, with the row index/span attributes. -->
+  <xs:element name="row">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="c" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="r" type="xs:string"/>
+      <xs:attribute name="spans" type="xs:string"/>
+      <xs:attribute name="ht" type="xs:string"/>
+      <xs:attribute name="customHeight" type="xs:string"/>
+      <xs:attribute name="hidden" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Cell: an optional formula, value, or inline string; reference / type /
+       style attributes. -->
+  <xs:element name="c">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="f" minOccurs="0"/>
+        <xs:element ref="v" minOccurs="0"/>
+        <xs:element ref="is" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="r" type="xs:string"/>
+      <xs:attribute name="t" type="xs:string"/>
+      <xs:attribute name="s" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Formula: the formula text plus type/ref/shared-index attributes. -->
+  <xs:element name="f">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="t" type="xs:string"/>
+          <xs:attribute name="ref" type="xs:string"/>
+          <xs:attribute name="si" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Value: the cell's stored value (text). -->
+  <xs:element name="v">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string"/>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Inline string: a rich-text run holding a <t>. -->
+  <xs:element name="is">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="t" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Workbook: the sheet list (other children pass through, open mode). -->
+  <xs:element name="workbook">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="sheets" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="sheets">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="sheet" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="sheet">
+    <xs:complexType>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="sheetId" type="xs:string"/>
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="state" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Shared string table: the unique strings. -->
+  <xs:element name="sst">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="si" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+      <xs:attribute name="uniqueCount" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- String item: a single shared string (a <t>). -->
+  <xs:element name="si">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="t" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Text: character content plus the optional xml:space attribute. Shared by
+       inline strings and the shared-string table. -->
+  <xs:element name="t">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="space" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

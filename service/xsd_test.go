@@ -42,6 +42,14 @@ const catalogXML = `<catalog owner="me">
 
 func xsdSchema(t *testing.T, xsd string) *Schema {
 	t.Helper()
+	return xsdSchemaOpen(t, xsd, false)
+}
+
+// xsdSchemaOpen compiles an XSD and links it into a Schema, optionally open (so
+// unmodeled markup — e.g. an xs:any wildcard's content — is tolerated rather
+// than reported as out-of-vocabulary).
+func xsdSchemaOpen(t *testing.T, xsd string, open bool) *Schema {
+	t.Helper()
 	fdp, err := CompileXSD([]byte(xsd), SchemaOptions{Package: "catalog"})
 	if err != nil {
 		t.Fatalf("CompileXSD: %v", err)
@@ -50,6 +58,7 @@ func xsdSchema(t *testing.T, xsd string) *Schema {
 	if err != nil {
 		t.Fatalf("link schema: %v", err)
 	}
+	schema.Open = open
 	return schema
 }
 

@@ -35,6 +35,10 @@ type Schema struct {
 	// descriptor can (e.g. RSS's "<rss version='2.0'> with exactly one
 	// <channel>"). Optional; nil means none.
 	PreValidate func(*xmlpb.Xml) error
+	// Open makes the schema partial: unmodeled markup is tolerated, not rejected,
+	// so a minimal schema for a large format (OOXML docx/xlsx) still accepts every
+	// valid document. See projectOptions.open.
+	Open bool
 }
 
 // Processed is the outcome of Process: the generic XML AST when no schema was
@@ -65,28 +69,57 @@ func (p *Parser) Process(src string, schema *Schema, validating bool) (*Processe
 	if err != nil {
 		return nil, err
 	}
-	if schema.PreValidate != nil {
-		if verr := schema.PreValidate(doc); verr != nil {
-			return nil, verr
+	msg, root, perr := schema.Project(doc)
+	if perr != nil {
+		return nil, perr
+	}
+	return &Processed{Document: msg, Root: root}, nil
+}
+
+// Project projects an already-parsed document into this schema's typed tree,
+// the projection half of Process without re-parsing. It is the entry the OPC
+// path uses: ProcessPackage has already parsed each part into the generic AST
+// (*xmlpb.Xml), so a part is projected against its format's Schema directly. The
+// root type is resolved by the root element's local name (as Process does);
+// out-of-vocabulary markup is a *ValidityError unless the schema is open (the
+// docx/xlsx case, where every valid part projects). It returns the typed message
+// and the resolved root element name.
+func (s *Schema) Project(x *xmlpb.Xml) (proto.Message, string, error) {
+	if s == nil {
+		return nil, "", &ValidityError{Msg: "nil schema"}
+	}
+	if s.PreValidate != nil {
+		if verr := s.PreValidate(x); verr != nil {
+			return nil, "", verr
 		}
 	}
-	root := doc.GetRoot()
+	root := x.GetRoot()
 	if root == nil {
-		return nil, &ValidityError{Msg: "document has no root element"}
+		return nil, "", &ValidityError{Msg: "document has no root element"}
 	}
-	md := schema.Root
-	if md == nil && schema.File != nil {
-		md = schema.File.Messages().ByName(protoreflect.Name(pascalName(root.GetName())))
+	md := s.Root
+	if md == nil && s.File != nil {
+		md = s.File.Messages().ByName(protoreflect.Name(pascalName(localElemName(root))))
 	}
 	if md == nil {
-		return nil, &ValidityError{Msg: fmt.Sprintf("schema has no type for root element <%s>", root.GetName())}
+		return nil, "", &ValidityError{Msg: fmt.Sprintf("schema has no type for root element <%s>", root.GetName())}
 	}
 	msg := dynamicpb.NewMessage(md)
-	_, unknown := project(root, md, msg, projectOptions{nsExtensible: schema.NSExtensible})
+	_, unknown := project(root, md, msg, projectOptions{nsExtensible: s.NSExtensible, open: s.Open})
 	if len(unknown) > 0 {
-		return nil, &ValidityError{Msg: fmt.Sprintf("out-of-vocabulary markup %v (extensions must be in a namespace)", dedupStrings(unknown))}
+		return nil, root.GetName(), &ValidityError{Msg: fmt.Sprintf("out-of-vocabulary markup %v (extensions must be in a namespace)", dedupStrings(unknown))}
 	}
-	return &Processed{Document: msg, Root: root.GetName()}, nil
+	return msg, root.GetName(), nil
+}
+
+// HasRoot reports whether the schema models a root element with the given local
+// name — the cheap test the OPC runner uses to pick which parts a format
+// projects (word/document.xml -> "document", a worksheet -> "worksheet").
+func (s *Schema) HasRoot(localName string) bool {
+	if s == nil || s.File == nil {
+		return false
+	}
+	return s.File.Messages().ByName(protoreflect.Name(pascalName(localName))) != nil
 }
 
 // CompileSchema compiles a metagrammar (DTD / EBNF vocabulary / XSD) and links

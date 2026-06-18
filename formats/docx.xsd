@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- docx.xsd — a minimal WordprocessingML (.docx main part) vocabulary.
+
+     This is the level-2 spec for the OOXML WordprocessingML main document part
+     (word/document.xml). It is deliberately partial: the format registry loads
+     it with Open=true, so the projector types the modeled markup (document /
+     body / paragraphs / runs / tables / common properties) and tolerates
+     everything else WordprocessingML defines. That keeps a single self-contained
+     file inside the supported XSD subset (element, complexType inline/named,
+     sequence/choice, attribute, occurrence, simpleContent extension) while still
+     giving real .docx parts meaningful typed structure.
+
+     Local element names only: the projector matches by local name, so the w:
+     prefix on real documents lines up with these unprefixed declarations.
+
+     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1, WordprocessingML
+     (see docs/REFERENCES.md). -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <!-- Root: the main document part. -->
+  <xs:element name="document">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="body" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Body: block-level content (paragraphs and tables), closed by sectPr. -->
+  <xs:element name="body">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element ref="p"/>
+          <xs:element ref="tbl"/>
+        </xs:choice>
+        <xs:element ref="sectPr" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Paragraph: optional properties then runs. -->
+  <xs:element name="p">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="pPr" minOccurs="0"/>
+        <xs:element ref="r" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Paragraph properties: the common core. -->
+  <xs:element name="pPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="pStyle" minOccurs="0"/>
+        <xs:element ref="jc" minOccurs="0"/>
+        <xs:element ref="spacing" minOccurs="0"/>
+        <xs:element ref="ind" minOccurs="0"/>
+        <xs:element ref="numPr" minOccurs="0"/>
+        <xs:element ref="rPr" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="pStyle">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="jc">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="spacing">
+    <xs:complexType>
+      <xs:attribute name="before" type="xs:string"/>
+      <xs:attribute name="after" type="xs:string"/>
+      <xs:attribute name="line" type="xs:string"/>
+      <xs:attribute name="lineRule" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ind">
+    <xs:complexType>
+      <xs:attribute name="left" type="xs:string"/>
+      <xs:attribute name="right" type="xs:string"/>
+      <xs:attribute name="firstLine" type="xs:string"/>
+      <xs:attribute name="hanging" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="numPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="ilvl" minOccurs="0"/>
+        <xs:element ref="numId" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ilvl">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="numId">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Run: optional properties then run content (text, breaks, tabs). -->
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="rPr" minOccurs="0"/>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element ref="t"/>
+          <xs:element ref="br"/>
+          <xs:element ref="tab"/>
+          <xs:element ref="cr"/>
+        </xs:choice>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Run properties: the common core. -->
+  <xs:element name="rPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="rStyle" minOccurs="0"/>
+        <xs:element ref="rFonts" minOccurs="0"/>
+        <xs:element ref="b" minOccurs="0"/>
+        <xs:element ref="i" minOccurs="0"/>
+        <xs:element ref="u" minOccurs="0"/>
+        <xs:element ref="color" minOccurs="0"/>
+        <xs:element ref="sz" minOccurs="0"/>
+        <xs:element ref="highlight" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="rStyle">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="rFonts">
+    <xs:complexType>
+      <xs:attribute name="ascii" type="xs:string"/>
+      <xs:attribute name="hAnsi" type="xs:string"/>
+      <xs:attribute name="cs" type="xs:string"/>
+      <xs:attribute name="eastAsia" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="b">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="i">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="u">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="color">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="sz">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="highlight">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Text: character content plus the optional xml:space attribute. -->
+  <xs:element name="t">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="space" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="br">
+    <xs:complexType>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="clear" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tab">
+    <xs:complexType/>
+  </xs:element>
+
+  <xs:element name="cr">
+    <xs:complexType/>
+  </xs:element>
+
+  <!-- Table: optional properties and grid, then rows. -->
+  <xs:element name="tbl">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tblPr" minOccurs="0"/>
+        <xs:element ref="tblGrid" minOccurs="0"/>
+        <xs:element ref="tr" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tblPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tblStyle" minOccurs="0"/>
+        <xs:element ref="tblW" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tblStyle">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tblW">
+    <xs:complexType>
+      <xs:attribute name="w" type="xs:string"/>
+      <xs:attribute name="type" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tblGrid">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="gridCol" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="gridCol">
+    <xs:complexType>
+      <xs:attribute name="w" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Table row: optional properties then cells. -->
+  <xs:element name="tr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="trPr" minOccurs="0"/>
+        <xs:element ref="tc" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="trPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="trHeight" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="trHeight">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+      <xs:attribute name="hRule" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Table cell: optional properties then block content (paragraphs, tables). -->
+  <xs:element name="tc">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tcPr" minOccurs="0"/>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element ref="p"/>
+          <xs:element ref="tbl"/>
+        </xs:choice>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tcPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tcW" minOccurs="0"/>
+        <xs:element ref="gridSpan" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="tcW">
+    <xs:complexType>
+      <xs:attribute name="w" type="xs:string"/>
+      <xs:attribute name="type" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="gridSpan">
+    <xs:complexType>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Section properties: page size and margins. -->
+  <xs:element name="sectPr">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="pgSz" minOccurs="0"/>
+        <xs:element ref="pgMar" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="pgSz">
+    <xs:complexType>
+      <xs:attribute name="w" type="xs:string"/>
+      <xs:attribute name="h" type="xs:string"/>
+      <xs:attribute name="orient" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="pgMar">
+    <xs:complexType>
+      <xs:attribute name="top" type="xs:string"/>
+      <xs:attribute name="right" type="xs:string"/>
+      <xs:attribute name="bottom" type="xs:string"/>
+      <xs:attribute name="left" type="xs:string"/>
+      <xs:attribute name="header" type="xs:string"/>
+      <xs:attribute name="footer" type="xs:string"/>
+      <xs:attribute name="gutter" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

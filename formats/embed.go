@@ -6,11 +6,13 @@
 // themselves (level 2) live here as data.
 //
 // A spec is looked up as "<name>.<ext>", where the extension selects the
-// language: .ebnf, .xsd, .dtd. A package format (e.g. an OPC .docx) is a
-// subdirectory of part schemas plus a manifest (added when wired).
+// language: .ebnf, .xsd, .dtd. An OPC package format (docx, xlsx) is a single
+// XSD over its part vocabulary, modeling the main part's element tree by local
+// name and loaded open (service.formatMeta), so the modeled core is typed and
+// the rest of the large format passes through.
 package formats
 
 import "embed"
 
-//go:embed *.ebnf
+//go:embed *.ebnf *.xsd
 var FS embed.FS

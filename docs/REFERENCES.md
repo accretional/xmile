@@ -6,14 +6,22 @@ XML syntax to keep in mind: https://www.w3schools.com/xml/xml_syntax.asp
 
 XML Schema Definition (XSD) Langauge spec: https://www.w3.org/TR/xmlschema-ref/
 
-The normative XSD parts the front-end (`service/xsd.go`) is built against:
-- XML Schema Part 1: Structures — https://www.w3.org/TR/xmlschema-1/ (elements, complex types, sequence/choice/all, attributes, occurrence)
-- XML Schema Part 2: Datatypes — https://www.w3.org/TR/xmlschema-2/ (built-in simple types; facets are validation, currently lowered to a string leaf)
-- W3C XML Schema test suite (official conformance corpus, `.xsd` test files) — https://github.com/w3c/xsdtests — fetched by `go run ./testing xsd`; the `xsd-parse` harness compiles each and reports coverage of the supported subset (reported, not gating).
+The normative XSD parts the front-end (`service/language/xsd.go`) is built against:
+- XML Schema Part 1: Structures — https://www.w3.org/TR/xmlschema-1/ (elements, complex types, sequence/choice/all, attributes, occurrence, groups/attribute groups, wildcards, substitution groups, derivation extension/restriction, import/include)
+- XML Schema Part 2: Datatypes — https://www.w3.org/TR/xmlschema-2/ (built-in simple types; facets and union/list are validation concerns, currently lowered to a string leaf)
+- W3C XML Schema test suite (official conformance corpus, `.xsd` test files) — https://github.com/w3c/xsdtests — fetched by `go run ./testing fetch`; the corpus runner (`go run ./testing`) compiles each and reports coverage of the supported subset (reported, not gating).
 
 Office Open XML / OPC packages (DOCX, XLSX) — the package layer (`service/opc.go`) is built against:
 - ECMA-376, Office Open XML File Formats (official standard) — https://ecma-international.org/publications-and-standards/standards/ecma-376/
 - Open Packaging Conventions = ECMA-376 **Part 2** (the ZIP package, `[Content_Types].xml`, and `_rels` relationship graph — format-agnostic, shared by .docx/.xlsx/.pptx)
 - WordprocessingML (.docx) and SpreadsheetML (.xlsx) part vocabularies = ECMA-376 **Part 1** (Fundamentals and Markup Language Reference)
 - Mirrored as ISO/IEC 29500 (the OPC half is ISO/IEC 29500-2)
+
+The level-2 part vocabularies are first-class `formats/` specs that ride the
+compile→project path (like `rss-2.0`), authored against ECMA-376 Part 1 /
+ISO/IEC 29500-1 in the supported XSD subset and loaded *open* so a minimal
+schema still accepts every valid part (the modeled core is typed, the rest
+passes through):
+- `formats/docx.xsd` — WordprocessingML main document part (`word/document.xml`): `document`, `body`, `p`/`pPr`, `r`/`rPr`, `t`, tables (`tbl`/`tr`/`tc` and their properties), and `sectPr`. ECMA-376 Part 1 / ISO/IEC 29500-1 §17 (WordprocessingML).
+- `formats/xlsx.xsd` — SpreadsheetML parts: `worksheet`/`sheetData`/`row`/`c` (with `v`/`f`/`is`), the workbook sheet list (`workbook`/`sheets`/`sheet`), and the shared string table (`sst`/`si`/`t`). ECMA-376 Part 1 / ISO/IEC 29500-1 §18 (SpreadsheetML).
 

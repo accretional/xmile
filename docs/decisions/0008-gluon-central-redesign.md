@@ -15,19 +15,29 @@
   [gluon-upstream.md](../gluon-upstream.md)).
 
 **Implementation status (Phases 1–5 shipped).** What was built deviates from the
-original plan in two deliberate, recorded ways: (1) the canonical schema-dialect
+original plan in three deliberate, recorded ways: (1) the canonical schema-dialect
 `ASTDescriptor` with `occurs`/`facet`/`identity` kinds + lowering-view + hook
 side-table (Phase 1) was *not* built — instead `Schema{File, Root, NSExtensible,
-PreValidate}` (`service/process.go`) carries the compiled descriptor plus a thin
-structural pre-check; the full constraint-IR stays deferred (§11). (2) The DTD
+PreValidate, Open}` (`service/process.go`) carries the compiled descriptor plus a
+thin structural pre-check; the full constraint-IR stays deferred (§11). (2) The DTD
 document validator (`validate.go`) is preserved intact and reached *through*
 `Process`, rather than re-expressed via the IR, to protect the 100% W3C corpus
-gate (§11). Shipped and green: the generic projection engine (`engine.go`), the
-unified `Documents.Process` + `Schemas.Compile` service, the XSD front-end
-(`xsd.go`, 89.8% of the W3C XSD suite within the supported subset), and the OPC
-package layer (`opc.go`, ~1000 docx/xlsx packages). Phase 6 (instances as
-`ASTNode`) remains optional/deferred. ADRs 0004/0006/0007 are superseded in part
-(see §8).
+gate (§11). (3) Large formats (OOXML docx/xlsx) are modeled by a **minimal,
+open schema** (`Schema.Open`): the format spec in `formats/*.xsd` types only the
+core elements, and the generic walk *tolerates* unmodeled markup instead of
+rejecting it (`projectOptions.open`, `engine.go`). This is what lets a small spec
+accept *every* valid container — modeled markup is projected and typed, the rest
+passes through, and the full untyped tree is always available from a no-schema
+parse. It is a partial-projection contract, **not** a raw catch-all field on the
+typed message; nothing is silently dropped that the no-schema AST does not already
+hold. Shipped and green: the generic projection engine (`engine.go`), the unified
+`Documents.Process` + `Schemas.Compile` service, the full XSD front-end (`xsd.go`:
+groups, attribute groups, wildcards, substitution groups, derivation
+extension/restriction, union/list, import/include; 90.0% of the W3C XSD suite
+compiles within the supported subset), and the OPC package layer (`opc.go`, ~1060
+docx/xlsx packages from three producers, every part parsed + projected). Phase 6
+(instances as `ASTNode`) remains optional/deferred. ADRs 0004/0006/0007 are
+superseded in part (see §8).
 
 ---
 

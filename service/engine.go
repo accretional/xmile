@@ -28,6 +28,13 @@ type projectOptions struct {
 	// namespaced child/attribute with no matching field is reported as unknown
 	// like any other — the right default for a closed vocabulary (a DTD).
 	nsExtensible bool
+	// open makes the schema partial: an element/attribute with no matching field
+	// is tolerated (skipped) rather than reported as unknown — even in the
+	// vocabulary's own namespace. This is how a *minimal* schema for a large
+	// format (OOXML docx/xlsx) accepts every valid document: the modeled markup
+	// is projected and typed, the rest passes through. The full, untyped tree is
+	// always available from a no-schema parse.
+	open bool
 }
 
 // project walks a parsed Tag tree against a schema descriptor, filling msg.
@@ -46,9 +53,9 @@ func project(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protoreflect
 		case opts.nsExtensible && a.GetNamespace().GetNamespaceUri() != "":
 			foreign = append(foreign, "@"+name) // namespaced extension attribute
 		default:
-			if f := scalarField(md, name); f != nil {
+			if f := scalarField(md, localAttrName(a)); f != nil {
 				msg.Set(f, protoreflect.ValueOfString(a.GetValue()))
-			} else {
+			} else if !opts.open {
 				unknown = append(unknown, tag.GetName()+"@"+name)
 			}
 		}
@@ -74,9 +81,11 @@ func project(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protoreflect
 			foreign = append(foreign, child.GetName()) // namespaced extension element
 			continue
 		}
-		cd, cm, ok := placeChild(md, msg, child.GetName())
+		cd, cm, ok := placeChild(md, msg, localElemName(child))
 		if !ok {
-			unknown = append(unknown, tag.GetName()+">"+child.GetName())
+			if !opts.open {
+				unknown = append(unknown, tag.GetName()+">"+child.GetName())
+			}
 			continue
 		}
 		f, u := project(child, cd, cm, opts)
@@ -84,6 +93,32 @@ func project(tag *xmlpb.Tag, md protoreflect.MessageDescriptor, msg protoreflect
 		unknown = append(unknown, u...)
 	}
 	return foreign, unknown
+}
+
+// localElemName / localAttrName return the local part of an element / attribute
+// name — the resolved local name when namespaces were applied, else the part
+// after any prefix. Projection matches by local name so a namespaced vocabulary
+// (OOXML's w:p, w:r, …) lines up with its descriptor's local-named messages,
+// while an unprefixed vocabulary (RSS, a DTD) is unchanged (local == full name).
+func localElemName(t *xmlpb.Tag) string {
+	if ln := t.GetNamespace().GetLocalName(); ln != "" {
+		return ln
+	}
+	return afterColon(t.GetName())
+}
+
+func localAttrName(a *xmlpb.Attribute) string {
+	if ln := a.GetNamespace().GetLocalName(); ln != "" {
+		return ln
+	}
+	return afterColon(a.GetName())
+}
+
+func afterColon(s string) string {
+	if i := strings.IndexByte(s, ':'); i >= 0 {
+		return s[i+1:]
+	}
+	return s
 }
 
 // textField returns md's string `text` field (a leaf's character content), or

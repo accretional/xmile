@@ -17,13 +17,14 @@ package service
 // generated message from a parsed Tag) stays here, next to the engine it uses.
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
-
-	"fmt"
 
 	pb "github.com/accretional/gluon/v2/pb"
 
@@ -50,19 +51,59 @@ func CompileGrammar(ebnf []byte, opts SchemaOptions) (*descriptorpb.FileDescript
 	return language.CompileGrammar(ebnf, opts)
 }
 
-// CompileXSD lowers an XSD into a FileDescriptorProto. See language.CompileXSD;
-// this wrapper injects parseXMLForSchema, the grammar-driven XML parser.
+// XSDResolver resolves an xs:import / xs:include schemaLocation to the bytes of
+// the referenced schema. It is an alias to the language package's type, so the
+// two are interchangeable. See language.XSDResolver.
+type XSDResolver = language.XSDResolver
+
+// CompileXSD lowers a single self-contained XSD into a FileDescriptorProto. See
+// language.CompileXSD; this wrapper injects parseXMLForSchema (the grammar-driven
+// XML parser) and the default resolver (which resolves nothing, so a stray
+// xs:import / xs:include of an unreachable location is skipped gracefully). Use
+// CompileXSDWithResolver to supply a resolver for a multi-file schema set.
 func CompileXSD(xsd []byte, opts SchemaOptions) (*descriptorpb.FileDescriptorProto, error) {
-	return language.CompileXSD(xsd, opts, parseXMLForSchema)
+	return language.CompileXSD(xsd, opts, parseXMLForSchema, defaultXSDResolver)
+}
+
+// CompileXSDWithResolver lowers an XSD into a FileDescriptorProto, resolving its
+// xs:import / xs:include targets through resolve (e.g. fileXSDResolver for a
+// schema set on disk). A nil resolver resolves nothing.
+func CompileXSDWithResolver(xsd []byte, opts SchemaOptions, resolve XSDResolver) (*descriptorpb.FileDescriptorProto, error) {
+	return language.CompileXSD(xsd, opts, parseXMLForSchema, resolve)
 }
 
 // CompileSource lowers a metagrammar into a FileDescriptorProto, dispatching on
 // the schema language: DTD, an EBNF element vocabulary (the default), or XSD.
 // It is the single entry the Schemas.Compile RPC and the Documents.Process
 // compile-then-use path share. See language.CompileSource; this wrapper injects
-// both grammar-driven parsers.
+// both grammar-driven parsers and the default (no-op) XSD resolver.
 func CompileSource(src []byte, lang xmlpb.SchemaLanguage, opts SchemaOptions) (*descriptorpb.FileDescriptorProto, error) {
-	return language.CompileSource(src, lang, opts, parseExternalSubset, parseXMLForSchema)
+	return language.CompileSource(src, lang, opts, parseExternalSubset, parseXMLForSchema, defaultXSDResolver)
+}
+
+// defaultXSDResolver resolves nothing: every xs:import / xs:include is reported
+// unresolved, so CompileXSD skips it gracefully. This is the right default for a
+// single self-contained schema (and the RPC/CLI path, where no base directory is
+// known) — a schema that imports the XML namespace or an unreachable URL still
+// compiles on its own declarations. A caller with a schema set on disk passes
+// its own file-based resolver to CompileXSDWithResolver (e.g. one that reads a
+// schemaLocation relative to a base directory); the testing harness's
+// flatSiblingResolver is one such, resolving against the flattened corpus.
+func defaultXSDResolver(location string) ([]byte, error) {
+	return nil, fmt.Errorf("xsd import/include %q unresolved (no resolver configured)", location)
+}
+
+// FileXSDResolver returns a resolver that reads an xs:import / xs:include
+// schemaLocation as a file relative to baseDir, for compiling a schema set on
+// disk via CompileXSDWithResolver. A non-local location (a URL) or an unreadable
+// file is reported unresolved, so CompileXSD skips it gracefully.
+func FileXSDResolver(baseDir string) XSDResolver {
+	return func(location string) ([]byte, error) {
+		if location == "" || strings.Contains(location, "://") {
+			return nil, fmt.Errorf("not a local schema location: %q", location)
+		}
+		return os.ReadFile(filepath.Join(baseDir, filepath.FromSlash(location)))
+	}
 }
 
 // parseExternalSubset parses a bare external-subset DTD into its CST.

@@ -124,13 +124,15 @@ func CompileGrammar(ebnf []byte, opts SchemaOptions) (*descriptorpb.FileDescript
 // Schemas.Compile RPC and the Documents.Process compile-then-use path share.
 //
 // parseDTD and parseXML are injected so this package never imports the parser
-// (CompileDTD needs the DTD parser, CompileXSD the XML parser).
-func CompileSource(src []byte, language xmlpb.SchemaLanguage, opts SchemaOptions, parseDTD func(string) (*pb.ASTNode, error), parseXML func(string) (*xmlpb.Xml, error)) (*descriptorpb.FileDescriptorProto, error) {
+// (CompileDTD needs the DTD parser, CompileXSD the XML parser); resolve, when
+// non-nil, lets a compiled XSD pull in its xs:import / xs:include targets (it is
+// ignored by the DTD and EBNF front-ends).
+func CompileSource(src []byte, language xmlpb.SchemaLanguage, opts SchemaOptions, parseDTD func(string) (*pb.ASTNode, error), parseXML func(string) (*xmlpb.Xml, error), resolve XSDResolver) (*descriptorpb.FileDescriptorProto, error) {
 	switch language {
 	case xmlpb.SchemaLanguage_DTD:
 		return CompileDTD(src, opts, parseDTD)
 	case xmlpb.SchemaLanguage_XSD:
-		return CompileXSD(src, opts, parseXML)
+		return CompileXSD(src, opts, parseXML, resolve)
 	default: // EBNF_VOCAB / unspecified
 		return CompileGrammar(src, opts)
 	}

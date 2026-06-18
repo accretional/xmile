@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/accretional/xmile/service"
@@ -123,6 +124,11 @@ func runChecks() bool {
 
 	fmt.Println("\n[opc] docx/xlsx packages (gates):")
 	if !checkOPC() {
+		gateFail = true
+	}
+
+	fmt.Println("\n[opc-vocab] docx/xlsx part projection (gates):")
+	if !checkOPCVocab() {
 		gateFail = true
 	}
 
@@ -335,6 +341,91 @@ func checkOPC() bool {
 	return failed == 0
 }
 
+// --- OPC vocab projection: project each package's modeled parts, gates ---
+//
+// The companion to checkOPC's well-formedness gate: docx/xlsx are now first-class
+// formats/ specs that ride the compile->project path. For each valid package we
+// project every part whose root local-name the format models (word/document.xml
+// -> document, a worksheet -> worksheet, workbook -> workbook, sharedStrings ->
+// sst) against the open docx/xlsx Schema. Open mode guarantees a valid part
+// projects without error once the schema compiles and the root type exists, so a
+// projection failure is a real regression — this GATES (0 failures).
+func checkOPCVocab() bool {
+	docx, derr := service.Format("docx")
+	xlsx, xerr := service.Format("xlsx")
+	if derr != nil || xerr != nil {
+		fmt.Printf("  cannot load docx/xlsx formats: %v %v\n", derr, xerr)
+		return false
+	}
+
+	var totalPkgs, totalParts, failed int
+	for _, label := range []string{"docx", "xlsx"} {
+		schema := docx
+		if label == "xlsx" {
+			schema = xlsx
+		}
+		var files []string
+		for _, pat := range []string{
+			filepath.Join(testingDir, label, "*."+label),
+			filepath.Join(testingDir, label, "valid", "*."+label),
+		} {
+			m, _ := filepath.Glob(pat)
+			files = append(files, m...)
+		}
+		sort.Strings(files)
+
+		lp, lf := 0, 0
+		bar := progress.New(label+" project", len(files))
+		for _, fp := range files {
+			bar.Inc()
+			data, err := os.ReadFile(fp)
+			if err != nil {
+				continue
+			}
+			totalPkgs++
+			pkg, perr := service.ProcessPackage(data)
+			if perr != nil {
+				// Well-formedness is checkOPC's gate; a package that fails to
+				// unpack there cannot be projected here. Count it as a failure so
+				// the two gates agree.
+				failed++
+				lf++
+				fmt.Printf("  [FAIL] %s: unpack: %v\n", filepath.Base(fp), perr)
+				continue
+			}
+			for _, pt := range pkg.Parts {
+				root := pt.Document.GetRoot()
+				if root == nil {
+					continue
+				}
+				if !schema.HasRoot(localOf(root.GetName())) {
+					continue // an unmodeled part (styles, theme, …)
+				}
+				if _, _, e := schema.Project(pt.Document); e != nil {
+					failed++
+					lf++
+					fmt.Printf("  [FAIL] %s part %s: %v\n", filepath.Base(fp), pt.Name, e)
+					continue
+				}
+				lp++
+				totalParts++
+			}
+		}
+		bar.Finish()
+		fmt.Printf("  %s: %d packages, %d parts projected, %d failed\n", label, len(files), lp, lf)
+	}
+	fmt.Printf("  opc-vocab TOTAL %d packages, %d parts projected, %d failed\n", totalPkgs, totalParts, failed)
+	return failed == 0
+}
+
+// localOf returns the local part of a possibly-prefixed element name.
+func localOf(qname string) string {
+	if i := strings.IndexByte(qname, ':'); i >= 0 {
+		return qname[i+1:]
+	}
+	return qname
+}
+
 // --- XSD suite: CompileXSD over the W3C suite, reported ---
 
 func checkXSD() {
@@ -363,8 +454,31 @@ func compileXSDOne(fp string) (ok bool) {
 	if err != nil {
 		return false
 	}
-	_, err = service.CompileXSD(b, service.SchemaOptions{Package: "t"})
+	_, err = service.CompileXSDWithResolver(b, service.SchemaOptions{Package: "t"}, flatSiblingResolver(fp))
 	return err == nil
+}
+
+// flatSiblingResolver resolves an xs:import / xs:include schemaLocation against
+// the *flattened* corpus layout downloadXSD produces: a schema fetched from
+// suite/sub/ipo.xsd lands as "suite__sub__ipo.xsd", and its
+// schemaLocation="address.xsd" sibling lands as "suite__sub__address.xsd". So a
+// location is resolved by swapping the compiling file's last "__"-segment for
+// the (slash-flattened) location, then reading that sibling. A location that
+// escapes the corpus or is unreadable returns an error, so CompileXSD skips it.
+func flatSiblingResolver(fp string) service.XSDResolver {
+	dir := filepath.Dir(fp)
+	base := filepath.Base(fp)
+	prefix := ""
+	if i := strings.LastIndex(base, "__"); i >= 0 {
+		prefix = base[:i+len("__")]
+	}
+	return func(location string) ([]byte, error) {
+		if location == "" || strings.Contains(location, "://") {
+			return nil, fmt.Errorf("not a local schema location: %q", location)
+		}
+		flat := strings.ReplaceAll(filepath.ToSlash(location), "/", "__")
+		return os.ReadFile(filepath.Join(dir, prefix+flat))
+	}
 }
 
 // --- helpers ---
