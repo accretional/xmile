@@ -61,12 +61,12 @@ func TestCompileXSDAndProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Process: %v", err)
 	}
-	if res.Typed == nil {
+	if res.Document == nil {
 		t.Fatal("expected a typed tree, got none")
 	}
 	// The root message is named after the root element; both books and their
 	// fields must be present.
-	msg := res.Typed.ProtoReflect()
+	msg := res.Document.ProtoReflect()
 	if got := string(msg.Descriptor().Name()); got != "Catalog" {
 		t.Fatalf("root message = %q, want Catalog", got)
 	}

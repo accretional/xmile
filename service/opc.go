@@ -36,7 +36,7 @@ type Package struct {
 type Part struct {
 	Name        string          // absolute part name, e.g. "/word/document.xml"
 	ContentType string          // resolved from [Content_Types].xml
-	Document    *xmlpb.Document // the parsed generic AST
+	Document    *xmlpb.Xml      // the parsed generic AST
 	Rels        []*Relationship // the part's relationships (<dir>/_rels/<file>.rels)
 }
 

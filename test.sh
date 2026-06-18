@@ -12,13 +12,6 @@ if [ -z "$(ls -A testing/corpus/xml/not-wf 2>/dev/null || true)" ]; then
   go run ./testing
 fi
 
-# Ensure the RSS 0.91 corpus for the schema-compile harness (independent of the
-# main corpus, so it is fetched even when the rest is already cached).
-if [ -z "$(ls -A testing/corpus/rss0.91 2>/dev/null || true)" ]; then
-  echo "[test] fetching rss 0.91 corpus"
-  go run ./testing rss0.91
-fi
-
 # Ensure the large real-world RSS 2.0 corpus for the rss-parse harness. Fetched
 # once (thousands of live feeds) then cached; gitignored like the rest.
 if [ -z "$(ls -A testing/corpus/rss2.0 2>/dev/null || true)" ]; then
@@ -41,9 +34,6 @@ go test ./...
 
 echo "[test] corpus report:"
 go run ./testing/xml-parse
-
-echo "[test] schema-compile (DTD -> proto -> parse rss 0.91 corpus):"
-go run ./testing/schema-compile
 
 echo "[test] rss-parse (rss.ebnf -> proto -> parse rss 2.0 corpus):"
 go run ./testing/rss-parse

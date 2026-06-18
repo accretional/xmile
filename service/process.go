@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
-	rsspb "github.com/accretional/xmile/proto/pb/rss"
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
@@ -35,15 +34,16 @@ type Schema struct {
 	// PreValidate enforces structural constraints neither the grammar nor the
 	// descriptor can (e.g. RSS's "<rss version='2.0'> with exactly one
 	// <channel>"). Optional; nil means none.
-	PreValidate func(*xmlpb.Document) error
+	PreValidate func(*xmlpb.Xml) error
 }
 
 // Processed is the outcome of Process: the generic XML AST when no schema was
 // given (the loosest projection), or the typed message when a schema was.
-// Exactly one field is set.
+// Exactly one of Document / Typed is set; Root is the root element's name (the
+// key under which the typed tree is presented).
 type Processed struct {
-	Document *xmlpb.Document
-	Typed    proto.Message
+	Document proto.Message
+	Root     string
 }
 
 // Process parses src and, given a schema, projects it into that vocabulary's
@@ -86,27 +86,7 @@ func (p *Parser) Process(src string, schema *Schema, validating bool) (*Processe
 	if len(unknown) > 0 {
 		return nil, &ValidityError{Msg: fmt.Sprintf("out-of-vocabulary markup %v (extensions must be in a namespace)", dedupStrings(unknown))}
 	}
-	return &Processed{Typed: msg}, nil
-}
-
-// Format resolves a registered format name to its Schema. "" returns (nil, nil)
-// — generic XML. Unknown names are an error. Registered formats are the typed
-// vocabularies xmile ships with a committed proto (today: RSS 2.0).
-func Format(name string) (*Schema, error) {
-	switch name {
-	case "":
-		return nil, nil
-	case "rss-2.0", "rss":
-		md := (&rsspb.Rss{}).ProtoReflect().Descriptor()
-		return &Schema{
-			File:         md.ParentFile(),
-			Root:         md,
-			NSExtensible: true,
-			PreValidate:  validateRSS,
-		}, nil
-	default:
-		return nil, fmt.Errorf("unknown format %q", name)
-	}
+	return &Processed{Document: msg, Root: root.GetName()}, nil
 }
 
 // CompileSchema compiles a metagrammar (DTD / EBNF vocabulary / XSD) and links

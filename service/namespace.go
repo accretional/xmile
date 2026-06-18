@@ -30,7 +30,7 @@ const (
 // checkNamespaces resolves and validates namespaces over the whole document:
 // the element tree plus the processing-instruction targets in the prolog and
 // epilog (a colon in a PI target is not namespace-well-formed).
-func checkNamespaces(doc *xmlpb.Document, is11 bool) error {
+func checkNamespaces(doc *xmlpb.Xml, is11 bool) error {
 	for _, m := range doc.GetPrologMisc() {
 		if err := checkPITarget(m.GetPi()); err != nil {
 			return err

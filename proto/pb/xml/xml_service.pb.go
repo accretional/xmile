@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -389,11 +390,10 @@ type ProcessResponse struct {
 	// Types that are valid to be assigned to Result:
 	//
 	//	*ProcessResponse_Document
-	//	*ProcessResponse_Typed
 	//	*ProcessResponse_Error
 	Result        isProcessResponse_Result `protobuf_oneof:"result"`
-	Verdict       Verdict                  `protobuf:"varint,4,opt,name=verdict,proto3,enum=xml.Verdict" json:"verdict,omitempty"`
-	Diagnostics   []*Diagnostic            `protobuf:"bytes,5,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"` // soft conformance (severity WARNING)
+	Verdict       Verdict                  `protobuf:"varint,3,opt,name=verdict,proto3,enum=xml.Verdict" json:"verdict,omitempty"`
+	Diagnostics   []*Diagnostic            `protobuf:"bytes,4,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"` // soft conformance (severity WARNING)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -435,19 +435,10 @@ func (x *ProcessResponse) GetResult() isProcessResponse_Result {
 	return nil
 }
 
-func (x *ProcessResponse) GetDocument() *Document {
+func (x *ProcessResponse) GetDocument() *structpb.Struct {
 	if x != nil {
 		if x, ok := x.Result.(*ProcessResponse_Document); ok {
 			return x.Document
-		}
-	}
-	return nil
-}
-
-func (x *ProcessResponse) GetTyped() *TypedTree {
-	if x != nil {
-		if x, ok := x.Result.(*ProcessResponse_Typed); ok {
-			return x.Typed
 		}
 	}
 	return nil
@@ -481,20 +472,14 @@ type isProcessResponse_Result interface {
 }
 
 type ProcessResponse_Document struct {
-	Document *Document `protobuf:"bytes,1,opt,name=document,proto3,oneof"` // no schema: the generic XML AST
-}
-
-type ProcessResponse_Typed struct {
-	Typed *TypedTree `protobuf:"bytes,2,opt,name=typed,proto3,oneof"` // a schema: the projected typed tree, self-describing
+	Document *structpb.Struct `protobuf:"bytes,1,opt,name=document,proto3,oneof"` // a schema: the projected AST, keyed by the root element (e.g. {"rss": {...}})
 }
 
 type ProcessResponse_Error struct {
-	Error *ProcessError `protobuf:"bytes,3,opt,name=error,proto3,oneof"` // refusal
+	Error *ProcessError `protobuf:"bytes,2,opt,name=error,proto3,oneof"` // refusal
 }
 
 func (*ProcessResponse_Document) isProcessResponse_Result() {}
-
-func (*ProcessResponse_Typed) isProcessResponse_Result() {}
 
 func (*ProcessResponse_Error) isProcessResponse_Result() {}
 
@@ -550,70 +535,6 @@ func (x *ProcessError) GetReason() string {
 	return ""
 }
 
-// TypedTree carries a projected message plus the descriptor needed to decode it,
-// so a dynamic (runtime-compiled) vocabulary's tree is self-describing on the
-// wire: the client links `schema` with protodesc and unmarshals `message` into a
-// dynamicpb message of `root_message`.
-type TypedTree struct {
-	state         protoimpl.MessageState            `protogen:"open.v1"`
-	Schema        *descriptorpb.FileDescriptorProto `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
-	RootMessage   string                            `protobuf:"bytes,2,opt,name=root_message,json=rootMessage,proto3" json:"root_message,omitempty"`
-	Message       []byte                            `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TypedTree) Reset() {
-	*x = TypedTree{}
-	mi := &file_xml_service_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TypedTree) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TypedTree) ProtoMessage() {}
-
-func (x *TypedTree) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TypedTree.ProtoReflect.Descriptor instead.
-func (*TypedTree) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *TypedTree) GetSchema() *descriptorpb.FileDescriptorProto {
-	if x != nil {
-		return x.Schema
-	}
-	return nil
-}
-
-func (x *TypedTree) GetRootMessage() string {
-	if x != nil {
-		return x.RootMessage
-	}
-	return ""
-}
-
-func (x *TypedTree) GetMessage() []byte {
-	if x != nil {
-		return x.Message
-	}
-	return nil
-}
-
 type CompileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Source        []byte                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
@@ -627,7 +548,7 @@ type CompileRequest struct {
 
 func (x *CompileRequest) Reset() {
 	*x = CompileRequest{}
-	mi := &file_xml_service_proto_msgTypes[5]
+	mi := &file_xml_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +560,7 @@ func (x *CompileRequest) String() string {
 func (*CompileRequest) ProtoMessage() {}
 
 func (x *CompileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[5]
+	mi := &file_xml_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +573,7 @@ func (x *CompileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileRequest.ProtoReflect.Descriptor instead.
 func (*CompileRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{5}
+	return file_xml_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CompileRequest) GetSource() []byte {
@@ -703,7 +624,7 @@ type CompileResponse struct {
 
 func (x *CompileResponse) Reset() {
 	*x = CompileResponse{}
-	mi := &file_xml_service_proto_msgTypes[6]
+	mi := &file_xml_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +636,7 @@ func (x *CompileResponse) String() string {
 func (*CompileResponse) ProtoMessage() {}
 
 func (x *CompileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[6]
+	mi := &file_xml_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +649,7 @@ func (x *CompileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
 func (*CompileResponse) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{6}
+	return file_xml_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CompileResponse) GetResult() isCompileResponse_Result {
@@ -776,7 +697,7 @@ var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a\txml.proto\x1a google/protobuf/descriptor.proto\"O\n" +
+	"\x11xml_service.proto\x12\x03xml\x1a google/protobuf/descriptor.proto\x1a\x1cgoogle/protobuf/struct.proto\"O\n" +
 	"\n" +
 	"Diagnostic\x12)\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\r.xml.SeverityR\bseverity\x12\x16\n" +
@@ -786,21 +707,16 @@ const file_xml_service_proto_rawDesc = "" +
 	"\x06format\x18\x02 \x01(\tH\x00R\x06format\x12/\n" +
 	"\acompile\x18\x03 \x01(\v2\x13.xml.CompileRequestH\x00R\acompile\x12\x1d\n" +
 	"\x04mode\x18\x04 \x01(\x0e2\t.xml.ModeR\x04modeB\b\n" +
-	"\x06schema\"\xf6\x01\n" +
-	"\x0fProcessResponse\x12+\n" +
-	"\bdocument\x18\x01 \x01(\v2\r.xml.DocumentH\x00R\bdocument\x12&\n" +
-	"\x05typed\x18\x02 \x01(\v2\x0e.xml.TypedTreeH\x00R\x05typed\x12)\n" +
-	"\x05error\x18\x03 \x01(\v2\x11.xml.ProcessErrorH\x00R\x05error\x12&\n" +
-	"\averdict\x18\x04 \x01(\x0e2\f.xml.VerdictR\averdict\x121\n" +
-	"\vdiagnostics\x18\x05 \x03(\v2\x0f.xml.DiagnosticR\vdiagnosticsB\b\n" +
+	"\x06schema\"\xd8\x01\n" +
+	"\x0fProcessResponse\x125\n" +
+	"\bdocument\x18\x01 \x01(\v2\x17.google.protobuf.StructH\x00R\bdocument\x12)\n" +
+	"\x05error\x18\x02 \x01(\v2\x11.xml.ProcessErrorH\x00R\x05error\x12&\n" +
+	"\averdict\x18\x03 \x01(\x0e2\f.xml.VerdictR\averdict\x121\n" +
+	"\vdiagnostics\x18\x04 \x03(\v2\x0f.xml.DiagnosticR\vdiagnosticsB\b\n" +
 	"\x06result\"N\n" +
 	"\fProcessError\x12&\n" +
 	"\averdict\x18\x01 \x01(\x0e2\f.xml.VerdictR\averdict\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x86\x01\n" +
-	"\tTypedTree\x12<\n" +
-	"\x06schema\x18\x01 \x01(\v2$.google.protobuf.FileDescriptorProtoR\x06schema\x12!\n" +
-	"\froot_message\x18\x02 \x01(\tR\vrootMessage\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\fR\amessage\"\xaf\x01\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xaf\x01\n" +
 	"\x0eCompileRequest\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\fR\x06source\x12/\n" +
 	"\blanguage\x18\x02 \x01(\x0e2\x13.xml.SchemaLanguageR\blanguage\x12\x18\n" +
@@ -850,7 +766,7 @@ func file_xml_service_proto_rawDescGZIP() []byte {
 }
 
 var file_xml_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_xml_service_proto_goTypes = []any{
 	(Verdict)(0),                             // 0: xml.Verdict
 	(Severity)(0),                            // 1: xml.Severity
@@ -860,34 +776,31 @@ var file_xml_service_proto_goTypes = []any{
 	(*ProcessRequest)(nil),                   // 5: xml.ProcessRequest
 	(*ProcessResponse)(nil),                  // 6: xml.ProcessResponse
 	(*ProcessError)(nil),                     // 7: xml.ProcessError
-	(*TypedTree)(nil),                        // 8: xml.TypedTree
-	(*CompileRequest)(nil),                   // 9: xml.CompileRequest
-	(*CompileResponse)(nil),                  // 10: xml.CompileResponse
-	(*Document)(nil),                         // 11: xml.Document
-	(*descriptorpb.FileDescriptorProto)(nil), // 12: google.protobuf.FileDescriptorProto
+	(*CompileRequest)(nil),                   // 8: xml.CompileRequest
+	(*CompileResponse)(nil),                  // 9: xml.CompileResponse
+	(*structpb.Struct)(nil),                  // 10: google.protobuf.Struct
+	(*descriptorpb.FileDescriptorProto)(nil), // 11: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
 	1,  // 0: xml.Diagnostic.severity:type_name -> xml.Severity
-	9,  // 1: xml.ProcessRequest.compile:type_name -> xml.CompileRequest
+	8,  // 1: xml.ProcessRequest.compile:type_name -> xml.CompileRequest
 	2,  // 2: xml.ProcessRequest.mode:type_name -> xml.Mode
-	11, // 3: xml.ProcessResponse.document:type_name -> xml.Document
-	8,  // 4: xml.ProcessResponse.typed:type_name -> xml.TypedTree
-	7,  // 5: xml.ProcessResponse.error:type_name -> xml.ProcessError
-	0,  // 6: xml.ProcessResponse.verdict:type_name -> xml.Verdict
-	4,  // 7: xml.ProcessResponse.diagnostics:type_name -> xml.Diagnostic
-	0,  // 8: xml.ProcessError.verdict:type_name -> xml.Verdict
-	12, // 9: xml.TypedTree.schema:type_name -> google.protobuf.FileDescriptorProto
-	3,  // 10: xml.CompileRequest.language:type_name -> xml.SchemaLanguage
-	12, // 11: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
-	5,  // 12: xml.Documents.Process:input_type -> xml.ProcessRequest
-	9,  // 13: xml.Schemas.Compile:input_type -> xml.CompileRequest
-	6,  // 14: xml.Documents.Process:output_type -> xml.ProcessResponse
-	10, // 15: xml.Schemas.Compile:output_type -> xml.CompileResponse
-	14, // [14:16] is the sub-list for method output_type
-	12, // [12:14] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	10, // 3: xml.ProcessResponse.document:type_name -> google.protobuf.Struct
+	7,  // 4: xml.ProcessResponse.error:type_name -> xml.ProcessError
+	0,  // 5: xml.ProcessResponse.verdict:type_name -> xml.Verdict
+	4,  // 6: xml.ProcessResponse.diagnostics:type_name -> xml.Diagnostic
+	0,  // 7: xml.ProcessError.verdict:type_name -> xml.Verdict
+	3,  // 8: xml.CompileRequest.language:type_name -> xml.SchemaLanguage
+	11, // 9: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
+	5,  // 10: xml.Documents.Process:input_type -> xml.ProcessRequest
+	8,  // 11: xml.Schemas.Compile:input_type -> xml.CompileRequest
+	6,  // 12: xml.Documents.Process:output_type -> xml.ProcessResponse
+	9,  // 13: xml.Schemas.Compile:output_type -> xml.CompileResponse
+	12, // [12:14] is the sub-list for method output_type
+	10, // [10:12] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_xml_service_proto_init() }
@@ -895,17 +808,15 @@ func file_xml_service_proto_init() {
 	if File_xml_service_proto != nil {
 		return
 	}
-	file_xml_proto_init()
 	file_xml_service_proto_msgTypes[1].OneofWrappers = []any{
 		(*ProcessRequest_Format)(nil),
 		(*ProcessRequest_Compile)(nil),
 	}
 	file_xml_service_proto_msgTypes[2].OneofWrappers = []any{
 		(*ProcessResponse_Document)(nil),
-		(*ProcessResponse_Typed)(nil),
 		(*ProcessResponse_Error)(nil),
 	}
-	file_xml_service_proto_msgTypes[6].OneofWrappers = []any{
+	file_xml_service_proto_msgTypes[5].OneofWrappers = []any{
 		(*CompileResponse_File)(nil),
 		(*CompileResponse_Error)(nil),
 	}
@@ -915,7 +826,7 @@ func file_xml_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_service_proto_rawDesc), len(file_xml_service_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

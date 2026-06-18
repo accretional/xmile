@@ -1,47 +1,36 @@
 package service
 
-// rss.go — RSS 2.0 parsing as "generic XML AST + walk against RSS".
-//
-// A feed is parsed by the universal XML parser into the homogeneous Tag tree
-// (Parser.Parse), then walked against the typed rss.proto AST compiled from
-// lang/rss.ebnf (CompileGrammar). The walk is namespace-aware: RSS 2.0 core
-// elements are unprefixed (the spec puts them in no namespace), so a
-// namespace-qualified element/attribute is a tolerated extension and an
-// unprefixed unknown one is invalid — the one place the namespace-extensibility
-// rule is enforced, since a CFG cannot express it. The remaining
-// context-sensitive constraints (version, required children, item title-or-
-// description) live in validateRSS, also not the grammar.
+// rss.go — RSS 2.0's irreducible, CFG-inexpressible semantics: the structural
+// pre-check (validateRSS, wired in as the "rss-2.0" format's PreValidate hook),
+// the soft conformance rules (RSSConformance), and a typed-feed convenience
+// (ParseRSS, RSSItemCount). RSS's *structure* is data — formats/rss-2.0.ebnf,
+// compiled on demand by the format registry; only what a grammar cannot say
+// lives here (the namespace-extensibility rule is the registry's nsExtensible
+// flag; the version/<channel> rule is validateRSS).
 
 import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
 
-	rsspb "github.com/accretional/xmile/proto/pb/rss"
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
-// ParseRSS parses RSS 2.0 source: it parses the bytes as XML (well-formedness
-// and namespaces), enforces the RSS-2.0 constraints a CFG cannot, and walks the
-// resulting Tag tree into the typed rss.Rss AST (proto/pb/rss, generated from
-// lang/rss.ebnf). The error is *WFError when the bytes are not well-formed XML,
-// or *ValidityError when they are well-formed but not valid RSS 2.0 (wrong
-// root/version, missing required children, or an unprefixed out-of-vocabulary
-// element). Namespace-qualified extensions are tolerated, never rejected.
-func ParseRSS(p *Parser, src string) (*rsspb.Rss, error) {
-	doc, err := p.Parse(src, false)
+// ParseRSS parses RSS 2.0 source and projects it into the typed RSS AST compiled
+// on demand from formats/rss-2.0.ebnf — a thin convenience over Format("rss-2.0")
+// + Process. The error is *WFError (not well-formed XML) or *ValidityError
+// (well-formed but not valid RSS 2.0). The result is a dynamic proto message;
+// read it by reflection (e.g. RSSItemCount).
+func ParseRSS(p *Parser, src string) (proto.Message, error) {
+	schema, err := Format("rss-2.0")
 	if err != nil {
-		return nil, err // *WFError
+		return nil, err
 	}
-	if verr := validateRSS(doc); verr != nil {
-		return nil, verr // *ValidityError
+	res, err := p.Process(src, schema, true)
+	if err != nil {
+		return nil, err
 	}
-	out := &rsspb.Rss{}
-	_, unknown := project(doc.GetRoot(), out.ProtoReflect().Descriptor(), out.ProtoReflect(), projectOptions{nsExtensible: true})
-	if len(unknown) > 0 {
-		return nil, &ValidityError{Msg: fmt.Sprintf("not RSS 2.0: out-of-vocabulary markup %v (extensions must be in a namespace)", dedupStrings(unknown))}
-	}
-	return out, nil
+	return res.Document, nil
 }
 
 // validateRSS enforces the *structural* RSS-2.0 constraints no CFG can express,
@@ -50,7 +39,7 @@ func ParseRSS(p *Parser, src string) (*rsspb.Rss, error) {
 // violation is a hard *ValidityError. Softer required-content rules (which
 // real-world feeds routinely bend) are reported by RSSConformance, not enforced
 // here — mirroring how the real-world corpora are reported, not gated.
-func validateRSS(doc *xmlpb.Document) error {
+func validateRSS(doc *xmlpb.Xml) error {
 	root := doc.GetRoot()
 	if root == nil {
 		return &ValidityError{Msg: "not RSS: document has no root element"}
@@ -78,7 +67,7 @@ func validateRSS(doc *xmlpb.Document) error {
 // least a title or description) but that real feeds commonly violate. They are
 // warnings, not parse failures: a reader still uses the feed. Empty when the
 // feed is fully conformant.
-func RSSConformance(doc *xmlpb.Document) []string {
+func RSSConformance(doc *xmlpb.Xml) []string {
 	var warn []string
 	channels := childElems(doc.GetRoot(), "channel")
 	if len(channels) != 1 {

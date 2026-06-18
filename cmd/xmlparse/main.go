@@ -62,9 +62,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, perr)
 		os.Exit(1)
 	}
-	if res.Document != nil {
-		fmt.Print(prototext.Format(res.Document))
-		return
-	}
-	fmt.Print(prototext.Format(res.Typed))
+	fmt.Print(prototext.Format(res.Document))
 }

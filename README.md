@@ -42,15 +42,18 @@ grpcurl -plaintext \
 ```json
 {
   "document": {
-    "root": { "name": "a", "attrs": [{"name": "x", "value": "1"}], "contents": [{"text": "hi"}] }
+    "xml": {
+      "root": { "name": "a", "attrs": [{"name": "x", "value": "1"}], "contents": [{"text": "hi"}] }
+    }
   },
   "verdict": "WELL_FORMED"
 }
 ```
 
-A `format` (or an inline `compile`) projects into that vocabulary's typed tree;
-the reply is self-describing (`schema` is the descriptor, `message` the
-base64-serialized typed message):
+`document` is always a single structure keyed by the vocabulary — `"xml"` for a
+generic parse, the root element for a projected format. A `format` (or an inline
+`compile`) projects into that vocabulary; the schema itself is `Schemas.Compile`'s
+job, not repeated here:
 
 ```bash
 grpcurl -plaintext \
@@ -61,7 +64,16 @@ grpcurl -plaintext \
 ```
 ```json
 {
-  "typed": { "schema": { "name": "rss.proto", "package": "rss", "...": "..." }, "rootMessage": "Rss", "message": "Cg..." },
+  "document": {
+    "rss": {
+      "version": "2.0",
+      "channel": { "alt1": [
+        { "title": { "text": "T" } },
+        { "link": { "text": "L" } },
+        { "description": { "text": "D" } }
+      ] }
+    }
+  },
   "verdict": "VALID"
 }
 ```

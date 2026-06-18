@@ -17,15 +17,15 @@ type projector struct {
 	p          *Parser
 	info       *dtdInfo
 	is11       bool
-	ents       map[string]string                // entity name -> resolved text (attr values)
-	entContent map[string][]*xmlpb.ContentItem  // entity name -> expanded content items (memo)
-	expanding  map[string]bool                  // recursion guard for entity expansion
+	ents       map[string]string               // entity name -> resolved text (attr values)
+	entContent map[string][]*xmlpb.ContentItem // entity name -> expanded content items (memo)
+	expanding  map[string]bool                 // recursion guard for entity expansion
 }
 
 // projectDocument projects a well-formed CST into the xml.proto AST. It
 // references grammar rule names (the CST node kinds) but encodes no grammar
 // rules — those live in lang/xml.ebnf.
-func projectDocument(p *Parser, root *pb.ASTNode, info *dtdInfo, is11 bool) *xmlpb.Document {
+func projectDocument(p *Parser, root *pb.ASTNode, info *dtdInfo, is11 bool) *xmlpb.Xml {
 	pr := &projector{
 		p:          p,
 		info:       info,
@@ -34,7 +34,7 @@ func projectDocument(p *Parser, root *pb.ASTNode, info *dtdInfo, is11 bool) *xml
 		entContent: map[string][]*xmlpb.ContentItem{},
 		expanding:  map[string]bool{},
 	}
-	doc := &xmlpb.Document{}
+	doc := &xmlpb.Xml{}
 	if prolog := directChild(root, "prolog"); prolog != nil {
 		doc.XmlDecl = projectXMLDecl(prolog)
 		doc.PrologMisc = projectMiscs(prolog)

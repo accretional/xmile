@@ -41,10 +41,6 @@ func main() {
 	// `go run ./testing rss0.91` / `rss2.0` fetch only that vocabulary's corpus
 	// (used by the schema-compile and rss-parse harnesses) without re-running
 	// the full corpus build.
-	if len(os.Args) > 1 && os.Args[1] == rss091Dir {
-		downloadRSS091()
-		return
-	}
 	if len(os.Args) > 1 && os.Args[1] == rss2Dir {
 		downloadRSS2()
 		return

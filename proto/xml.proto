@@ -17,8 +17,8 @@ option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 // (Validation may materialize DTD default attribute values into the tree,
 // but those appear as ordinary attributes; the AST records no provenance.)
 
-// Document is the root of a parsed XML document.
-message Document {
+// Xml is the root of a parsed XML document.
+message Xml {
   // <?xml version="1.0" encoding="…" standalone="…"?>, if present.
   XmlDecl xml_decl = 1;
 

@@ -22,8 +22,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Document is the root of a parsed XML document.
-type Document struct {
+// Xml is the root of a parsed XML document.
+type Xml struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// <?xml version="1.0" encoding="…" standalone="…"?>, if present.
 	XmlDecl *XmlDecl `protobuf:"bytes,1,opt,name=xml_decl,json=xmlDecl,proto3" json:"xml_decl,omitempty"`
@@ -41,20 +41,20 @@ type Document struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Document) Reset() {
-	*x = Document{}
+func (x *Xml) Reset() {
+	*x = Xml{}
 	mi := &file_xml_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Document) String() string {
+func (x *Xml) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Document) ProtoMessage() {}
+func (*Xml) ProtoMessage() {}
 
-func (x *Document) ProtoReflect() protoreflect.Message {
+func (x *Xml) ProtoReflect() protoreflect.Message {
 	mi := &file_xml_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -66,40 +66,40 @@ func (x *Document) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Document.ProtoReflect.Descriptor instead.
-func (*Document) Descriptor() ([]byte, []int) {
+// Deprecated: Use Xml.ProtoReflect.Descriptor instead.
+func (*Xml) Descriptor() ([]byte, []int) {
 	return file_xml_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Document) GetXmlDecl() *XmlDecl {
+func (x *Xml) GetXmlDecl() *XmlDecl {
 	if x != nil {
 		return x.XmlDecl
 	}
 	return nil
 }
 
-func (x *Document) GetDoctype() *dtd.Doctype {
+func (x *Xml) GetDoctype() *dtd.Doctype {
 	if x != nil {
 		return x.Doctype
 	}
 	return nil
 }
 
-func (x *Document) GetPrologMisc() []*Misc {
+func (x *Xml) GetPrologMisc() []*Misc {
 	if x != nil {
 		return x.PrologMisc
 	}
 	return nil
 }
 
-func (x *Document) GetRoot() *Tag {
+func (x *Xml) GetRoot() *Tag {
 	if x != nil {
 		return x.Root
 	}
 	return nil
 }
 
-func (x *Document) GetEpilogMisc() []*Misc {
+func (x *Xml) GetEpilogMisc() []*Misc {
 	if x != nil {
 		return x.EpilogMisc
 	}
@@ -633,8 +633,8 @@ var File_xml_proto protoreflect.FileDescriptor
 
 const file_xml_proto_rawDesc = "" +
 	"\n" +
-	"\txml.proto\x12\x03xml\x1a\tdtd.proto\"\xd1\x01\n" +
-	"\bDocument\x12'\n" +
+	"\txml.proto\x12\x03xml\x1a\tdtd.proto\"\xcc\x01\n" +
+	"\x03Xml\x12'\n" +
 	"\bxml_decl\x18\x01 \x01(\v2\f.xml.XmlDeclR\axmlDecl\x12&\n" +
 	"\adoctype\x18\x02 \x01(\v2\f.dtd.DoctypeR\adoctype\x12*\n" +
 	"\vprolog_misc\x18\x03 \x03(\v2\t.xml.MiscR\n" +
@@ -691,7 +691,7 @@ func file_xml_proto_rawDescGZIP() []byte {
 
 var file_xml_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_xml_proto_goTypes = []any{
-	(*Document)(nil),    // 0: xml.Document
+	(*Xml)(nil),         // 0: xml.Xml
 	(*XmlDecl)(nil),     // 1: xml.XmlDecl
 	(*Tag)(nil),         // 2: xml.Tag
 	(*Attribute)(nil),   // 3: xml.Attribute
@@ -702,11 +702,11 @@ var file_xml_proto_goTypes = []any{
 	(*dtd.Doctype)(nil), // 8: dtd.Doctype
 }
 var file_xml_proto_depIdxs = []int32{
-	1,  // 0: xml.Document.xml_decl:type_name -> xml.XmlDecl
-	8,  // 1: xml.Document.doctype:type_name -> dtd.Doctype
-	7,  // 2: xml.Document.prolog_misc:type_name -> xml.Misc
-	2,  // 3: xml.Document.root:type_name -> xml.Tag
-	7,  // 4: xml.Document.epilog_misc:type_name -> xml.Misc
+	1,  // 0: xml.Xml.xml_decl:type_name -> xml.XmlDecl
+	8,  // 1: xml.Xml.doctype:type_name -> dtd.Doctype
+	7,  // 2: xml.Xml.prolog_misc:type_name -> xml.Misc
+	2,  // 3: xml.Xml.root:type_name -> xml.Tag
+	7,  // 4: xml.Xml.epilog_misc:type_name -> xml.Misc
 	5,  // 5: xml.Tag.namespace:type_name -> xml.Namespace
 	3,  // 6: xml.Tag.attrs:type_name -> xml.Attribute
 	4,  // 7: xml.Tag.contents:type_name -> xml.ContentItem

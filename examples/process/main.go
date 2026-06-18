@@ -46,7 +46,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("\n== 2. typed RSS 2.0 AST ==")
-	fmt.Print(prototext.Format(res.Typed))
+	fmt.Print(prototext.Format(res.Document))
 
 	// 3. Compile a DTD into a schema, then project a document against it
 	//    (the compile-then-use path; the same works for XSD and EBNF).
@@ -62,7 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("\n== 3. document projected against a compiled DTD schema ==")
-	fmt.Print(prototext.Format(res.Typed))
+	fmt.Print(prototext.Format(res.Document))
 
 	// 4. Unpack an OPC package (built in-memory here; normally a .docx/.xlsx).
 	pkg, err := service.ProcessPackage(samplePackage())

@@ -77,7 +77,7 @@ func (p *Parser) ParseCST(src string) (*pb.ASTDescriptor, error) {
 // document must have a DTD and satisfy it (a validating processor).
 //
 // Namespaces are applied integrally in both modes.
-func (p *Parser) Parse(src string, validating bool) (*xmlpb.Document, error) {
+func (p *Parser) Parse(src string, validating bool) (*xmlpb.Xml, error) {
 	return p.parse(src, validating, true)
 }
 
@@ -85,7 +85,7 @@ func (p *Parser) Parse(src string, validating bool) (*xmlpb.Document, error) {
 // entity-replacement well-formedness reparse uses checkNS=false: a fragment is
 // checked out of its namespace context, where an in-scope prefix would look
 // undeclared.
-func (p *Parser) parse(src string, validating, checkNS bool) (*xmlpb.Document, error) {
+func (p *Parser) parse(src string, validating, checkNS bool) (*xmlpb.Xml, error) {
 	src = normalizeEncoding(src)
 	src = decodeDeclaredEncoding(src)
 	is11 := detectVersion(src)

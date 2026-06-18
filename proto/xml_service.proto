@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package xml;
 
-import "xml.proto";
 import "google/protobuf/descriptor.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 
@@ -67,27 +67,16 @@ message ProcessRequest {
 
 message ProcessResponse {
   oneof result {
-    Document document = 1;   // no schema: the generic XML AST
-    TypedTree typed = 2;     // a schema: the projected typed tree, self-describing
-    ProcessError error = 3;  // refusal
+    google.protobuf.Struct document = 1;  // a schema: the projected AST, keyed by the root element (e.g. {"rss": {...}})
+    ProcessError error = 2;            // refusal
   }
-  Verdict verdict = 4;
-  repeated Diagnostic diagnostics = 5;  // soft conformance (severity WARNING)
+  Verdict verdict = 3;
+  repeated Diagnostic diagnostics = 4;  // soft conformance (severity WARNING)
 }
 
 message ProcessError {
   Verdict verdict = 1;
   string reason = 2;
-}
-
-// TypedTree carries a projected message plus the descriptor needed to decode it,
-// so a dynamic (runtime-compiled) vocabulary's tree is self-describing on the
-// wire: the client links `schema` with protodesc and unmarshals `message` into a
-// dynamicpb message of `root_message`.
-message TypedTree {
-  google.protobuf.FileDescriptorProto schema = 1;
-  string root_message = 2;
-  bytes message = 3;
 }
 
 // Schemas is the type-level service: a metagrammar -> a proto descriptor.

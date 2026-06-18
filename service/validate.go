@@ -235,7 +235,7 @@ func defaultLegal(d *attrDecl) bool {
 // undeclared attributes are left verbatim. It runs in both modes (it is
 // projection, not validation), using the DTD as parsed (parameter entities
 // undeclared here are simply not seen).
-func normalizeAttrTypes(doc *xmlpb.Document, dtdRoot *pb.ASTNode) {
+func normalizeAttrTypes(doc *xmlpb.Xml, dtdRoot *pb.ASTNode) {
 	types := attrTypeMap(dtdRoot)
 	if len(types) == 0 {
 		return
@@ -405,7 +405,7 @@ type validator struct {
 
 // validate checks a projected document against its DTD model and returns the
 // first validity violation, or nil if the document is valid.
-func validate(doc *xmlpb.Document, m *dtdModel, is11 bool) error {
+func validate(doc *xmlpb.Xml, m *dtdModel, is11 bool) error {
 	if m.declErr != nil {
 		return m.declErr
 	}
