@@ -69,6 +69,24 @@ func (s *DocumentsServer) Process(_ context.Context, req *xmlpb.ProcessRequest) 
 	}, nil
 }
 
+// Generate serializes the generic XML AST in the request back to a document. The
+// request carries the typed Xml tree directly (not a Struct), so a format's typed
+// projection — a read-only view that may have dropped unmodeled markup — cannot
+// be passed: only the lossless generic AST round-trips.
+func (s *DocumentsServer) Generate(_ context.Context, req *xmlpb.GenerateRequest) (*xmlpb.GenerateResponse, error) {
+	out, err := Generate(req.GetDocument())
+	if err != nil {
+		return generateErr(err.Error()), nil
+	}
+	return &xmlpb.GenerateResponse{Result: &xmlpb.GenerateResponse_Source{Source: out}}, nil
+}
+
+func generateErr(reason string) *xmlpb.GenerateResponse {
+	return &xmlpb.GenerateResponse{
+		Result: &xmlpb.GenerateResponse_Error{Error: &xmlpb.GenerateError{Reason: reason}},
+	}
+}
+
 // resolveSchema turns the request's schema selector into a *Schema: a registered
 // format, an inline metagrammar compile, or nil (generic XML).
 func (s *DocumentsServer) resolveSchema(req *xmlpb.ProcessRequest) (*Schema, error) {

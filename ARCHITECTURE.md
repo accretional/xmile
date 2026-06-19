@@ -3,7 +3,9 @@
 One XML engine; formats are data. Two gRPC services:
 **`Schemas.Compile`** turns a format spec into a proto descriptor (type-level);
 **`Documents.Process`** parses a document and projects it into a vocabulary's
-typed tree (instance-level). Generic XML is just the loosest schema.
+typed tree (instance-level), and **`Documents.Generate`** is its inverse —
+serialize the generic XML AST back to a document. Generic XML is just the
+loosest schema.
 
 ```
                          LEVELS
@@ -77,6 +79,17 @@ Process{ compile:{ language: DTD, source:"…note dtd…" }, source: "<note>hi</
 ```
 Process{ format:"rss-2.0", source:<rss version="2.0"><bogus/></rss> }
  ▶ { error:{ verdict: INVALID, reason:"out-of-vocabulary markup …" }, verdict: INVALID }
+```
+
+**Generate** — the inverse of Process: serialize the generic `Xml` AST back to a
+document (no schema, no reflection — a walk over the Tag tree plus escaping; the
+DOCTYPE is re-emitted from its concrete-syntax tree). Faithful at the infoset
+level, so `parse(Generate(parse(b))) == parse(b)`. Only the *generic* AST
+round-trips — a format's typed projection is a read-only view, so Generate takes
+the `Xml` tree, not a typed message:
+```
+Generate{ document: { root:{ name:"a", attrs:[{name:"x",value:"1"}], contents:[{text:"hi"}] } } }
+ ▶ { source: '<a x="1">hi</a>' }
 ```
 
 ## OPC packages (docx/xlsx)

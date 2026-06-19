@@ -19,16 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Documents_Process_FullMethodName = "/xml.Documents/Process"
+	Documents_Process_FullMethodName  = "/xml.Documents/Process"
+	Documents_Generate_FullMethodName = "/xml.Documents/Generate"
 )
 
 // DocumentsClient is the client API for Documents service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Documents is the instance-level service: bytes (+ optional schema) -> result.
+// Documents is the instance-level service: bytes (+ optional schema) -> result,
+// and the reverse — an AST -> bytes.
 type DocumentsClient interface {
 	Process(ctx context.Context, in *ProcessRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
+	// Generate is the inverse of Process: it serializes the generic XML AST back
+	// to a document. It walks the homogeneous Tag tree (no schema, no reflection)
+	// and re-escapes character data, so parse(Generate(parse(b))) == parse(b).
+	Generate(ctx context.Context, in *GenerateRequest, opts ...grpc.CallOption) (*GenerateResponse, error)
 }
 
 type documentsClient struct {
@@ -49,13 +55,28 @@ func (c *documentsClient) Process(ctx context.Context, in *ProcessRequest, opts 
 	return out, nil
 }
 
+func (c *documentsClient) Generate(ctx context.Context, in *GenerateRequest, opts ...grpc.CallOption) (*GenerateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateResponse)
+	err := c.cc.Invoke(ctx, Documents_Generate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DocumentsServer is the server API for Documents service.
 // All implementations must embed UnimplementedDocumentsServer
 // for forward compatibility.
 //
-// Documents is the instance-level service: bytes (+ optional schema) -> result.
+// Documents is the instance-level service: bytes (+ optional schema) -> result,
+// and the reverse — an AST -> bytes.
 type DocumentsServer interface {
 	Process(context.Context, *ProcessRequest) (*ProcessResponse, error)
+	// Generate is the inverse of Process: it serializes the generic XML AST back
+	// to a document. It walks the homogeneous Tag tree (no schema, no reflection)
+	// and re-escapes character data, so parse(Generate(parse(b))) == parse(b).
+	Generate(context.Context, *GenerateRequest) (*GenerateResponse, error)
 	mustEmbedUnimplementedDocumentsServer()
 }
 
@@ -68,6 +89,9 @@ type UnimplementedDocumentsServer struct{}
 
 func (UnimplementedDocumentsServer) Process(context.Context, *ProcessRequest) (*ProcessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Process not implemented")
+}
+func (UnimplementedDocumentsServer) Generate(context.Context, *GenerateRequest) (*GenerateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Generate not implemented")
 }
 func (UnimplementedDocumentsServer) mustEmbedUnimplementedDocumentsServer() {}
 func (UnimplementedDocumentsServer) testEmbeddedByValue()                   {}
@@ -108,6 +132,24 @@ func _Documents_Process_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Documents_Generate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DocumentsServer).Generate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Documents_Generate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DocumentsServer).Generate(ctx, req.(*GenerateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Documents_ServiceDesc is the grpc.ServiceDesc for Documents service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -118,6 +160,10 @@ var Documents_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Process",
 			Handler:    _Documents_Process_Handler,
+		},
+		{
+			MethodName: "Generate",
+			Handler:    _Documents_Generate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

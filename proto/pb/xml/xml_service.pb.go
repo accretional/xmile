@@ -535,6 +535,180 @@ func (x *ProcessError) GetReason() string {
 	return ""
 }
 
+// GenerateRequest carries the generic XML AST to serialize. It is the typed Xml
+// tree, not a free-form Struct: only the lossless generic AST round-trips, so a
+// format's typed projection — a read-only view that may have dropped unmodeled
+// markup — is not even representable here.
+type GenerateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Document      *Xml                   `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateRequest) Reset() {
+	*x = GenerateRequest{}
+	mi := &file_xml_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateRequest) ProtoMessage() {}
+
+func (x *GenerateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateRequest.ProtoReflect.Descriptor instead.
+func (*GenerateRequest) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GenerateRequest) GetDocument() *Xml {
+	if x != nil {
+		return x.Document
+	}
+	return nil
+}
+
+type GenerateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Result:
+	//
+	//	*GenerateResponse_Source
+	//	*GenerateResponse_Error
+	Result        isGenerateResponse_Result `protobuf_oneof:"result"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateResponse) Reset() {
+	*x = GenerateResponse{}
+	mi := &file_xml_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateResponse) ProtoMessage() {}
+
+func (x *GenerateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateResponse.ProtoReflect.Descriptor instead.
+func (*GenerateResponse) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GenerateResponse) GetResult() isGenerateResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *GenerateResponse) GetSource() []byte {
+	if x != nil {
+		if x, ok := x.Result.(*GenerateResponse_Source); ok {
+			return x.Source
+		}
+	}
+	return nil
+}
+
+func (x *GenerateResponse) GetError() *GenerateError {
+	if x != nil {
+		if x, ok := x.Result.(*GenerateResponse_Error); ok {
+			return x.Error
+		}
+	}
+	return nil
+}
+
+type isGenerateResponse_Result interface {
+	isGenerateResponse_Result()
+}
+
+type GenerateResponse_Source struct {
+	Source []byte `protobuf:"bytes,1,opt,name=source,proto3,oneof"` // the serialized XML document
+}
+
+type GenerateResponse_Error struct {
+	Error *GenerateError `protobuf:"bytes,2,opt,name=error,proto3,oneof"` // refusal (e.g. a typed tree, or a malformed AST)
+}
+
+func (*GenerateResponse_Source) isGenerateResponse_Result() {}
+
+func (*GenerateResponse_Error) isGenerateResponse_Result() {}
+
+type GenerateError struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateError) Reset() {
+	*x = GenerateError{}
+	mi := &file_xml_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateError) ProtoMessage() {}
+
+func (x *GenerateError) ProtoReflect() protoreflect.Message {
+	mi := &file_xml_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateError.ProtoReflect.Descriptor instead.
+func (*GenerateError) Descriptor() ([]byte, []int) {
+	return file_xml_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GenerateError) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type CompileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Source        []byte                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
@@ -548,7 +722,7 @@ type CompileRequest struct {
 
 func (x *CompileRequest) Reset() {
 	*x = CompileRequest{}
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -560,7 +734,7 @@ func (x *CompileRequest) String() string {
 func (*CompileRequest) ProtoMessage() {}
 
 func (x *CompileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[4]
+	mi := &file_xml_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -573,7 +747,7 @@ func (x *CompileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileRequest.ProtoReflect.Descriptor instead.
 func (*CompileRequest) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{4}
+	return file_xml_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CompileRequest) GetSource() []byte {
@@ -624,7 +798,7 @@ type CompileResponse struct {
 
 func (x *CompileResponse) Reset() {
 	*x = CompileResponse{}
-	mi := &file_xml_service_proto_msgTypes[5]
+	mi := &file_xml_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -636,7 +810,7 @@ func (x *CompileResponse) String() string {
 func (*CompileResponse) ProtoMessage() {}
 
 func (x *CompileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_xml_service_proto_msgTypes[5]
+	mi := &file_xml_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,7 +823,7 @@ func (x *CompileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompileResponse.ProtoReflect.Descriptor instead.
 func (*CompileResponse) Descriptor() ([]byte, []int) {
-	return file_xml_service_proto_rawDescGZIP(), []int{5}
+	return file_xml_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CompileResponse) GetResult() isCompileResponse_Result {
@@ -697,7 +871,7 @@ var File_xml_service_proto protoreflect.FileDescriptor
 
 const file_xml_service_proto_rawDesc = "" +
 	"\n" +
-	"\x11xml_service.proto\x12\x03xml\x1a google/protobuf/descriptor.proto\x1a\x1cgoogle/protobuf/struct.proto\"O\n" +
+	"\x11xml_service.proto\x12\x03xml\x1a google/protobuf/descriptor.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\txml.proto\"O\n" +
 	"\n" +
 	"Diagnostic\x12)\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\r.xml.SeverityR\bseverity\x12\x16\n" +
@@ -716,7 +890,15 @@ const file_xml_service_proto_rawDesc = "" +
 	"\x06result\"N\n" +
 	"\fProcessError\x12&\n" +
 	"\averdict\x18\x01 \x01(\x0e2\f.xml.VerdictR\averdict\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xaf\x01\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"7\n" +
+	"\x0fGenerateRequest\x12$\n" +
+	"\bdocument\x18\x01 \x01(\v2\b.xml.XmlR\bdocument\"b\n" +
+	"\x10GenerateResponse\x12\x18\n" +
+	"\x06source\x18\x01 \x01(\fH\x00R\x06source\x12*\n" +
+	"\x05error\x18\x02 \x01(\v2\x12.xml.GenerateErrorH\x00R\x05errorB\b\n" +
+	"\x06result\"'\n" +
+	"\rGenerateError\x12\x16\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\"\xaf\x01\n" +
 	"\x0eCompileRequest\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\fR\x06source\x12/\n" +
 	"\blanguage\x18\x02 \x01(\x0e2\x13.xml.SchemaLanguageR\blanguage\x12\x18\n" +
@@ -747,9 +929,10 @@ const file_xml_service_proto_rawDesc = "" +
 	"\x03DTD\x10\x01\x12\x0e\n" +
 	"\n" +
 	"EBNF_VOCAB\x10\x02\x12\a\n" +
-	"\x03XSD\x10\x032A\n" +
+	"\x03XSD\x10\x032z\n" +
 	"\tDocuments\x124\n" +
-	"\aProcess\x12\x13.xml.ProcessRequest\x1a\x14.xml.ProcessResponse2?\n" +
+	"\aProcess\x12\x13.xml.ProcessRequest\x1a\x14.xml.ProcessResponse\x127\n" +
+	"\bGenerate\x12\x14.xml.GenerateRequest\x1a\x15.xml.GenerateResponse2?\n" +
 	"\aSchemas\x124\n" +
 	"\aCompile\x12\x13.xml.CompileRequest\x1a\x14.xml.CompileResponseB1Z/github.com/accretional/xmile/proto/pb/xml;xmlpbb\x06proto3"
 
@@ -766,7 +949,7 @@ func file_xml_service_proto_rawDescGZIP() []byte {
 }
 
 var file_xml_service_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_xml_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_xml_service_proto_goTypes = []any{
 	(Verdict)(0),                             // 0: xml.Verdict
 	(Severity)(0),                            // 1: xml.Severity
@@ -776,31 +959,39 @@ var file_xml_service_proto_goTypes = []any{
 	(*ProcessRequest)(nil),                   // 5: xml.ProcessRequest
 	(*ProcessResponse)(nil),                  // 6: xml.ProcessResponse
 	(*ProcessError)(nil),                     // 7: xml.ProcessError
-	(*CompileRequest)(nil),                   // 8: xml.CompileRequest
-	(*CompileResponse)(nil),                  // 9: xml.CompileResponse
-	(*structpb.Struct)(nil),                  // 10: google.protobuf.Struct
-	(*descriptorpb.FileDescriptorProto)(nil), // 11: google.protobuf.FileDescriptorProto
+	(*GenerateRequest)(nil),                  // 8: xml.GenerateRequest
+	(*GenerateResponse)(nil),                 // 9: xml.GenerateResponse
+	(*GenerateError)(nil),                    // 10: xml.GenerateError
+	(*CompileRequest)(nil),                   // 11: xml.CompileRequest
+	(*CompileResponse)(nil),                  // 12: xml.CompileResponse
+	(*structpb.Struct)(nil),                  // 13: google.protobuf.Struct
+	(*Xml)(nil),                              // 14: xml.Xml
+	(*descriptorpb.FileDescriptorProto)(nil), // 15: google.protobuf.FileDescriptorProto
 }
 var file_xml_service_proto_depIdxs = []int32{
 	1,  // 0: xml.Diagnostic.severity:type_name -> xml.Severity
-	8,  // 1: xml.ProcessRequest.compile:type_name -> xml.CompileRequest
+	11, // 1: xml.ProcessRequest.compile:type_name -> xml.CompileRequest
 	2,  // 2: xml.ProcessRequest.mode:type_name -> xml.Mode
-	10, // 3: xml.ProcessResponse.document:type_name -> google.protobuf.Struct
+	13, // 3: xml.ProcessResponse.document:type_name -> google.protobuf.Struct
 	7,  // 4: xml.ProcessResponse.error:type_name -> xml.ProcessError
 	0,  // 5: xml.ProcessResponse.verdict:type_name -> xml.Verdict
 	4,  // 6: xml.ProcessResponse.diagnostics:type_name -> xml.Diagnostic
 	0,  // 7: xml.ProcessError.verdict:type_name -> xml.Verdict
-	3,  // 8: xml.CompileRequest.language:type_name -> xml.SchemaLanguage
-	11, // 9: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
-	5,  // 10: xml.Documents.Process:input_type -> xml.ProcessRequest
-	8,  // 11: xml.Schemas.Compile:input_type -> xml.CompileRequest
-	6,  // 12: xml.Documents.Process:output_type -> xml.ProcessResponse
-	9,  // 13: xml.Schemas.Compile:output_type -> xml.CompileResponse
-	12, // [12:14] is the sub-list for method output_type
-	10, // [10:12] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	14, // 8: xml.GenerateRequest.document:type_name -> xml.Xml
+	10, // 9: xml.GenerateResponse.error:type_name -> xml.GenerateError
+	3,  // 10: xml.CompileRequest.language:type_name -> xml.SchemaLanguage
+	15, // 11: xml.CompileResponse.file:type_name -> google.protobuf.FileDescriptorProto
+	5,  // 12: xml.Documents.Process:input_type -> xml.ProcessRequest
+	8,  // 13: xml.Documents.Generate:input_type -> xml.GenerateRequest
+	11, // 14: xml.Schemas.Compile:input_type -> xml.CompileRequest
+	6,  // 15: xml.Documents.Process:output_type -> xml.ProcessResponse
+	9,  // 16: xml.Documents.Generate:output_type -> xml.GenerateResponse
+	12, // 17: xml.Schemas.Compile:output_type -> xml.CompileResponse
+	15, // [15:18] is the sub-list for method output_type
+	12, // [12:15] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_xml_service_proto_init() }
@@ -808,6 +999,7 @@ func file_xml_service_proto_init() {
 	if File_xml_service_proto != nil {
 		return
 	}
+	file_xml_proto_init()
 	file_xml_service_proto_msgTypes[1].OneofWrappers = []any{
 		(*ProcessRequest_Format)(nil),
 		(*ProcessRequest_Compile)(nil),
@@ -817,6 +1009,10 @@ func file_xml_service_proto_init() {
 		(*ProcessResponse_Error)(nil),
 	}
 	file_xml_service_proto_msgTypes[5].OneofWrappers = []any{
+		(*GenerateResponse_Source)(nil),
+		(*GenerateResponse_Error)(nil),
+	}
+	file_xml_service_proto_msgTypes[8].OneofWrappers = []any{
 		(*CompileResponse_File)(nil),
 		(*CompileResponse_Error)(nil),
 	}
@@ -826,7 +1022,7 @@ func file_xml_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_xml_service_proto_rawDesc), len(file_xml_service_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   6,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

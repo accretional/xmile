@@ -75,7 +75,11 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
     `document` is one Struct keyed by vocabulary: {xml:…} | {rss:…} | {note:…} | …
   verdict: NOT_WELL_FORMED | WELL_FORMED | VALID | INVALID | CANNOT_VALIDATE
   Schemas.Compile(source, language) -> FileDescriptorProto   (DTD | EBNF | XSD)
-  (cmd/xmlserve serves both; cmd/xmlparse is a CLI: -schema <format>, -validate)
+  Documents.Generate(Xml) -> bytes   (the inverse of Process: serialize the
+    generic XML AST back to a document; parse(Generate(parse(b))) == parse(b).
+    Takes the typed Xml tree — only the lossless generic AST round-trips; a
+    format's typed projection is a read-only view, so it is not a Generate input.)
+  (cmd/xmlserve serves all; cmd/xmlparse: doc -> AST; cmd/xmlgenerate: doc -> AST -> doc)
 ```
 
 ## Architecture
@@ -130,6 +134,17 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
   irreducible, CFG-inexpressible semantics: for RSS 2.0 that is `service/rss.go`
   (`validateRSS` — the `version`/`<channel>` pre-check wired in as the format's
   `PreValidate`; `RSSConformance` soft rules; the `ParseRSS` convenience).
+- **Generate is the inverse of Process.** `Generate(*xmlpb.Xml)` (`service/
+  generate.go`) serializes the generic XML AST back to bytes — a plain recursive
+  walk over the concrete `Tag`/`Attribute`/`ContentItem` tree plus XML escaping
+  (no schema, no reflection), and one generic CST-unparse of the DOCTYPE that
+  re-emits each `dtd` message's stripped keywords (`dtdpb.MessagePrefix`) and its
+  string leaves in field order. It is faithful at the infoset level
+  (`parse(Generate(parse(b))) == parse(b)`; not byte-identical — entity spelling,
+  quote style, encoding and insignificant whitespace are not recorded). Only the
+  *generic* AST round-trips, so `Documents.Generate` takes the typed `Xml` tree,
+  not a Struct — a format's typed projection is a read-only view that may drop
+  unmodeled markup and is, by type, not a generate input. CLI: `cmd/xmlgenerate`.
 - **OPC packages are a layer over the parser.** A `.docx`/`.xlsx` is an OPC ZIP
   of XML parts plus `[Content_Types].xml` and a relationship graph;
   `ProcessPackage` (`service/opc.go`) unpacks it, parses each XML part through
@@ -162,6 +177,11 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
   - **xsd — reported.** Compiles the W3C XSD test suite with `CompileXSD` and
     reports coverage of the supported subset (the suite spans full XSD and
     includes deliberately-invalid schemas, so it does not gate).
+  - **generate — gates.** For every well-formed `xml/` doc: parse, serialize via
+    the `Documents.Generate` RPC, re-parse, and assert the AST is unchanged
+    (`parse(Generate(parse(b))) == parse(b)`, at the canonical infoset — text
+    runs coalesced, encoding normalized to UTF-8). `service/generate_test.go` is
+    the self-contained companion.
 - The corpus is fetched and organized by file type via `go run ./testing` (or
   `go run ./testing fetch` to rebuild only the corpus). Corpora are gitignored.
 - The XML corpus is the applicable subset (XML 1.0 5th edition and 1.1, plus
@@ -183,6 +203,7 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
 | `proto/xml_service.proto` | hand-written `Documents` + `Schemas` services |
 | `proto/dtd.proto`, `proto/pb/**`, `lang/dtd.fdset` | generated |
 | `service/process.go` | `Process` (unified entry) + `Schema` value |
+| `service/generate.go` | `Generate` (inverse of Process): serialize the `Xml` AST -> bytes |
 | `service/engine.go` | generic schema-driven projection walk (`project`) |
 | `service/language/` | schema-language front-ends: `CompileDTD`/`CompileGrammar`/`CompileXSD`/`CompileSource` |
 | `service/schema.go` | thin wrappers injecting parser deps into the front-ends + projection helpers |
@@ -193,6 +214,7 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
 | `service/` (rest) | parser, well-formedness, namespaces, DTD validity |
 | `formats/` | format specs as data (`rss-2.0.ebnf`, `docx.xsd`, `xlsx.xsd`), compiled on demand |
 | `cmd/xmlparse/` | CLI: file/stdin -> AST (`-schema <format>`, `-validate`, `-cst`) |
+| `cmd/xmlgenerate/` | CLI: file/stdin -> AST -> regenerated document (round-trips through Generate) |
 | `cmd/xmlserve/` | gRPC server (Documents + Schemas) |
 | `examples/process/` | runnable client example against the services |
 | `testing/main.go` | one corpus runner (gates xml + opc; reports rss + xsd) |

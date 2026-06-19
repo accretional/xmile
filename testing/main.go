@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,6 +27,9 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
+	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 	"github.com/accretional/xmile/service"
 	"github.com/accretional/xmile/testing/progress"
 )
@@ -135,7 +139,136 @@ func runChecks() bool {
 	fmt.Println("\n[xsd] W3C XSD suite -> CompileXSD (reported):")
 	checkXSD()
 
+	fmt.Println("\n[generate] AST -> document round-trip over corpus/xml (gates):")
+	if !checkGenerate() {
+		gateFail = true
+	}
+
 	return gateFail
+}
+
+// --- Generate: parse -> generate -> parse fixed point, through the RPC ---
+
+// checkGenerate verifies the Documents.Generate RPC is a faithful inverse of the
+// parser over every well-formed xml corpus document: parse(b) yields the AST,
+// Generate (the RPC) serializes it back, and parsing that output yields an equal
+// AST — i.e. parse(Generate(parse(b))) == parse(b). Equality is at the canonical
+// infoset level (the contract is infoset-equivalent, not byte-identical):
+// consecutive character-data runs are coalesced (entity/char-reference expansion
+// splits one run into several items, which Generate cannot and need not
+// reproduce) and the encoding declaration is normalized (Generate emits UTF-8).
+// Not-well-formed inputs are skipped; any other mismatch, or a generated document
+// that fails to re-parse, GATES.
+func checkGenerate() bool {
+	var files []string
+	for _, v := range verdictDirs {
+		m, _ := filepath.Glob(filepath.Join(testingDir, "xml", v, "*.xml"))
+		files = append(files, m...)
+	}
+	sort.Strings(files)
+	if len(files) == 0 {
+		fmt.Println("  (no xml corpus — run: go run ./testing fetch)")
+		return true
+	}
+
+	p, err := service.Default()
+	if err != nil {
+		fmt.Printf("  cannot start parser: %v\n", err)
+		return false
+	}
+	srv, err := service.NewDocumentsServer()
+	if err != nil {
+		fmt.Printf("  cannot start Documents server: %v\n", err)
+		return false
+	}
+	ctx := context.Background()
+
+	roundTripped, skipped, failed := 0, 0, 0
+	bar := progress.New("generate", len(files))
+	for _, fp := range files {
+		bar.Inc()
+		b, err := os.ReadFile(fp)
+		if err != nil {
+			continue
+		}
+		// Parse to the AST. A document the parser rejects (not-wf) has nothing to
+		// generate, so it is skipped, not failed.
+		x1, perr := p.Parse(string(b), false)
+		if perr != nil {
+			skipped++
+			continue
+		}
+		// Serialize the AST back through the RPC, then re-parse it.
+		g, err := srv.Generate(ctx, &xmlpb.GenerateRequest{Document: x1})
+		if err != nil || g.GetError() != nil {
+			failed++
+			fmt.Printf("  [FAIL] %s: generate: %v %s\n", filepath.Base(fp), err, g.GetError().GetReason())
+			continue
+		}
+		x2, perr := p.Parse(string(g.GetSource()), false)
+		if perr != nil {
+			failed++
+			fmt.Printf("  [FAIL] %s: generated document does not re-parse: %v\n", filepath.Base(fp), perr)
+			continue
+		}
+		if !proto.Equal(canonicalXML(x1), canonicalXML(x2)) {
+			failed++
+			fmt.Printf("  [FAIL] %s: round-trip AST differs\n", filepath.Base(fp))
+			continue
+		}
+		roundTripped++
+	}
+	bar.Finish()
+	fmt.Printf("  generate: %d round-tripped, %d skipped (not-wf), %d failed\n", roundTripped, skipped, failed)
+	return failed == 0
+}
+
+// canonicalXML reduces an Xml AST to its canonical infoset form for round-trip
+// comparison: the encoding declaration is cleared (Generate always emits UTF-8)
+// and each element's content has consecutive character-data items coalesced and
+// empty ones dropped (reference expansion splits a run into several text items;
+// the coalesced run is the single character-data item the infoset defines).
+func canonicalXML(x *xmlpb.Xml) *xmlpb.Xml {
+	c, _ := proto.Clone(x).(*xmlpb.Xml)
+	if d := c.GetXmlDecl(); d != nil {
+		d.Encoding = ""
+	}
+	coalesceText(c.GetRoot())
+	return c
+}
+
+func coalesceText(t *xmlpb.Tag) {
+	if t == nil {
+		return
+	}
+	var out []*xmlpb.ContentItem
+	for _, ci := range t.GetContents() {
+		switch it := ci.GetItem().(type) {
+		case *xmlpb.ContentItem_Text:
+			if n := len(out); n > 0 {
+				if prev, ok := out[n-1].GetItem().(*xmlpb.ContentItem_Text); ok {
+					prev.Text += it.Text
+					continue
+				}
+			}
+			out = append(out, ci)
+		case *xmlpb.ContentItem_Child:
+			coalesceText(it.Child)
+			out = append(out, ci)
+		default:
+			out = append(out, ci)
+		}
+	}
+	// Drop empty character-data items (a reference to an empty entity leaves one);
+	// they carry no content and Generate emits nothing for them.
+	final := out[:0]
+	for _, ci := range out {
+		if txt, ok := ci.GetItem().(*xmlpb.ContentItem_Text); ok && txt.Text == "" {
+			continue
+		}
+		final = append(final, ci)
+	}
+	t.Contents = final
 }
 
 // --- XML conformance: the base parser over corpus/xml, validating, 100% gate ---

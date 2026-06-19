@@ -4,6 +4,7 @@ package xml;
 
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/struct.proto";
+import "xml.proto";
 
 option go_package = "github.com/accretional/xmile/proto/pb/xml;xmlpb";
 
@@ -48,9 +49,14 @@ enum Mode {
   VALIDATE = 1;      // enforce validity (the DTD for generic XML; vocabulary coverage for a schema)
 }
 
-// Documents is the instance-level service: bytes (+ optional schema) -> result.
+// Documents is the instance-level service: bytes (+ optional schema) -> result,
+// and the reverse — an AST -> bytes.
 service Documents {
   rpc Process(ProcessRequest) returns (ProcessResponse);
+  // Generate is the inverse of Process: it serializes the generic XML AST back
+  // to a document. It walks the homogeneous Tag tree (no schema, no reflection)
+  // and re-escapes character data, so parse(Generate(parse(b))) == parse(b).
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
 }
 
 message ProcessRequest {
@@ -77,6 +83,25 @@ message ProcessResponse {
 message ProcessError {
   Verdict verdict = 1;
   string reason = 2;
+}
+
+// GenerateRequest carries the generic XML AST to serialize. It is the typed Xml
+// tree, not a free-form Struct: only the lossless generic AST round-trips, so a
+// format's typed projection — a read-only view that may have dropped unmodeled
+// markup — is not even representable here.
+message GenerateRequest {
+  Xml document = 1;
+}
+
+message GenerateResponse {
+  oneof result {
+    bytes source = 1;        // the serialized XML document
+    GenerateError error = 2; // refusal (e.g. a typed tree, or a malformed AST)
+  }
+}
+
+message GenerateError {
+  string reason = 1;
 }
 
 // Schemas is the type-level service: a metagrammar -> a proto descriptor.
