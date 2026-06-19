@@ -10,7 +10,7 @@ record: `docs/decisions/` (ADR 0008).
 ## Quick run
 
 ```bash
-bash LET_IT_RIP.sh  # setup + build + test (full corpus; takes a while) + a live demo
+bash LET_IT_RIP.sh  # setup + build + test (full corpus; takes a while)
 bash serve.sh       # setup + build + serve the gRPC services on :50051
 ```
 
