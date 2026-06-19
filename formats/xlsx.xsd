@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- xlsx.xsd — a minimal SpreadsheetML (.xlsx parts) vocabulary.
+<!-- xlsx.xsd — a partial vocabulary for the XML parts of a .xlsx package.
 
-     The level-2 spec for the SpreadsheetML parts xmile projects: a worksheet
-     (xl/worksheets/sheetN.xml), the workbook (xl/workbook.xml), and the shared
-     string table (xl/sharedStrings.xml). Like docx.xsd it is loaded with
-     Open=true, so the modeled core (cells, rows, sheet data, the sheet list, the
-     string table) is typed and everything else SpreadsheetML defines passes
-     through. Single self-contained file in the supported XSD subset.
+     The level-2 spec for the parts a real .xlsx normally carries (one descriptor,
+     a message per part root, routed by root local name): the SpreadsheetML
+     workbook and worksheets, the shared string table, the style sheet
+     (xl/styles.xml), tables, comments, the calc chain and chart sheets, plus the
+     shared OOXML parts a spreadsheet package also includes — the DrawingML theme,
+     the docProps core/extended properties, and (recognized at the root only, as
+     their DrawingML/ChartML bodies are out of scope) worksheet drawings and
+     charts. A part whose root is not modeled is left untyped.
 
-     Local element names only: SpreadsheetML parts use a default (unprefixed)
-     namespace, and the projector matches by local name regardless.
+     Like docx.xsd it is loaded with Open=true, so the modeled markup is typed and
+     everything else passes through. Single self-contained file in the supported
+     XSD subset.
 
-     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1, SpreadsheetML
-     (see docs/REFERENCES.md). -->
+     Local element names only: the projector matches by local name, so the
+     unprefixed SpreadsheetML names and the a: / cp: / dc: prefixes on the shared
+     parts line up with these declarations.
+
+     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1 — SpreadsheetML (§18) & DrawingML
+     theme (§20); ISO/IEC 29500-2 §11/§15 (core & extended properties).
+     See docs/REFERENCES.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
   <!-- Worksheet: the sheet's cell data (other parts pass through, open mode). -->
@@ -157,5 +165,446 @@
       </xs:simpleContent>
     </xs:complexType>
   </xs:element>
+
+  <!-- ================================================================= -->
+  <!-- Companion parts. Each root matches a part's root element by local  -->
+  <!-- name. All partial + open: common markup typed, the rest tolerated. -->
+  <!-- ================================================================= -->
+
+  <!-- xl/styles.xml: <styleSheet> — number formats, fonts, fills, borders, and
+       the cell-format records the cells' s= attribute indexes into. -->
+  <xs:element name="styleSheet">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="numFmts" minOccurs="0"/>
+        <xs:element ref="fonts" minOccurs="0"/>
+        <xs:element ref="fills" minOccurs="0"/>
+        <xs:element ref="borders" minOccurs="0"/>
+        <xs:element ref="cellStyleXfs" minOccurs="0"/>
+        <xs:element ref="cellXfs" minOccurs="0"/>
+        <xs:element ref="cellStyles" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="numFmts">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="numFmt" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="numFmt">
+    <xs:complexType>
+      <xs:attribute name="numFmtId" type="xs:string"/>
+      <xs:attribute name="formatCode" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="fonts">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="font" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="font">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="b" minOccurs="0"/>
+        <xs:element ref="i" minOccurs="0"/>
+        <xs:element ref="sz" minOccurs="0"/>
+        <xs:element ref="color" minOccurs="0"/>
+        <xs:element ref="name" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="b">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="i">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="sz">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="color">
+    <xs:complexType>
+      <xs:attribute name="rgb" type="xs:string"/>
+      <xs:attribute name="theme" type="xs:string"/>
+      <xs:attribute name="indexed" type="xs:string"/>
+      <xs:attribute name="tint" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="name">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <xs:element name="fills">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="fill" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="fill">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="patternFill" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="patternFill">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="fgColor" minOccurs="0"/>
+        <xs:element ref="bgColor" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="patternType" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="fgColor">
+    <xs:complexType>
+      <xs:attribute name="rgb" type="xs:string"/>
+      <xs:attribute name="theme" type="xs:string"/>
+      <xs:attribute name="indexed" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="bgColor">
+    <xs:complexType>
+      <xs:attribute name="rgb" type="xs:string"/>
+      <xs:attribute name="theme" type="xs:string"/>
+      <xs:attribute name="indexed" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="borders">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="border" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="border">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="left" minOccurs="0"/>
+        <xs:element ref="right" minOccurs="0"/>
+        <xs:element ref="top" minOccurs="0"/>
+        <xs:element ref="bottom" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="left">
+    <xs:complexType><xs:attribute name="style" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="right">
+    <xs:complexType><xs:attribute name="style" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="top">
+    <xs:complexType><xs:attribute name="style" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="bottom">
+    <xs:complexType><xs:attribute name="style" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- Cell-format records: cellXfs is what a cell's s= attribute indexes into. -->
+  <xs:element name="cellStyleXfs">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="xf" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="cellXfs">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="xf" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="xf">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="alignment" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="numFmtId" type="xs:string"/>
+      <xs:attribute name="fontId" type="xs:string"/>
+      <xs:attribute name="fillId" type="xs:string"/>
+      <xs:attribute name="borderId" type="xs:string"/>
+      <xs:attribute name="xfId" type="xs:string"/>
+      <xs:attribute name="applyFont" type="xs:string"/>
+      <xs:attribute name="applyNumberFormat" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="alignment">
+    <xs:complexType>
+      <xs:attribute name="horizontal" type="xs:string"/>
+      <xs:attribute name="vertical" type="xs:string"/>
+      <xs:attribute name="wrapText" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="cellStyles">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="cellStyle" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="cellStyle">
+    <xs:complexType>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="xfId" type="xs:string"/>
+      <xs:attribute name="builtinId" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- xl/tables/tableN.xml: <table> — a defined table over a cell range. -->
+  <xs:element name="table">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="autoFilter" minOccurs="0"/>
+        <xs:element ref="tableColumns" minOccurs="0"/>
+        <xs:element ref="tableStyleInfo" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="displayName" type="xs:string"/>
+      <xs:attribute name="ref" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="autoFilter">
+    <xs:complexType><xs:attribute name="ref" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="tableColumns">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="tableColumn" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="count" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="tableColumn">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="tableStyleInfo">
+    <xs:complexType>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="showRowStripes" type="xs:string"/>
+      <xs:attribute name="showColumnStripes" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- xl/commentsN.xml: <comments> — cell comments and their authors. -->
+  <xs:element name="comments">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="authors" minOccurs="0"/>
+        <xs:element ref="commentList" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="authors">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="author" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="author" type="xs:string"/>
+  <xs:element name="commentList">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="comment" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="comment">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="text" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="ref" type="xs:string"/>
+      <xs:attribute name="authorId" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <!-- A comment's rich text: a sequence of <t> runs (the <r> wrappers, if any,
+       pass through open). -->
+  <xs:element name="text">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="t" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- xl/calcChain.xml: <calcChain> — the cell calculation order. Its <c> cell
+       references reuse the worksheet cell's local name, so they pass through
+       (open) rather than being re-modeled here. -->
+  <xs:element name="calcChain">
+    <xs:complexType/>
+  </xs:element>
+
+  <!-- xl/chartsheets/sheetN.xml: <chartsheet> — a sheet that is a single chart. -->
+  <xs:element name="chartsheet">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="sheetViews" minOccurs="0"/>
+        <xs:element ref="pageMargins" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="sheetViews">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="sheetView" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="sheetView">
+    <xs:complexType>
+      <xs:attribute name="workbookViewId" type="xs:string"/>
+      <xs:attribute name="zoomScale" type="xs:string"/>
+      <xs:attribute name="tabSelected" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="pageMargins">
+    <xs:complexType>
+      <xs:attribute name="left" type="xs:string"/>
+      <xs:attribute name="right" type="xs:string"/>
+      <xs:attribute name="top" type="xs:string"/>
+      <xs:attribute name="bottom" type="xs:string"/>
+      <xs:attribute name="header" type="xs:string"/>
+      <xs:attribute name="footer" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- xl/drawings/drawingN.xml (<xdr:wsDr>) and xl/charts/chartN.xml
+       (<c:chartSpace>): recognized at the root only — their full DrawingML /
+       ChartML bodies are out of scope, so the contents pass through (open). -->
+  <xs:element name="wsDr">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="chartSpace">
+    <xs:complexType/>
+  </xs:element>
+
+  <!-- ================================================================= -->
+  <!-- Shared OOXML parts (same as docx.xsd): the DrawingML theme and the -->
+  <!-- docProps core/extended properties a spreadsheet package carries.   -->
+  <!-- ================================================================= -->
+
+  <!-- xl/theme/themeN.xml: <a:theme> (DrawingML) — color and font schemes. -->
+  <xs:element name="theme">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="themeElements" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="themeElements">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="clrScheme" minOccurs="0"/>
+        <xs:element ref="fontScheme" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="clrScheme">
+    <xs:complexType><xs:attribute name="name" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="fontScheme">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="majorFont" minOccurs="0"/>
+        <xs:element ref="minorFont" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="majorFont">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="latin" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="minorFont">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="latin" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="latin">
+    <xs:complexType><xs:attribute name="typeface" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- docProps/core.xml: <cp:coreProperties> — Dublin Core document metadata. -->
+  <xs:element name="coreProperties">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="title" minOccurs="0"/>
+        <xs:element ref="subject" minOccurs="0"/>
+        <xs:element ref="creator" minOccurs="0"/>
+        <xs:element ref="keywords" minOccurs="0"/>
+        <xs:element ref="description" minOccurs="0"/>
+        <xs:element ref="lastModifiedBy" minOccurs="0"/>
+        <xs:element ref="revision" minOccurs="0"/>
+        <xs:element ref="created" minOccurs="0"/>
+        <xs:element ref="modified" minOccurs="0"/>
+        <xs:element ref="category" minOccurs="0"/>
+        <xs:element ref="contentStatus" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="title" type="xs:string"/>
+  <xs:element name="subject" type="xs:string"/>
+  <xs:element name="creator" type="xs:string"/>
+  <xs:element name="keywords" type="xs:string"/>
+  <xs:element name="description" type="xs:string"/>
+  <xs:element name="lastModifiedBy" type="xs:string"/>
+  <xs:element name="revision" type="xs:string"/>
+  <xs:element name="created" type="xs:string"/>
+  <xs:element name="modified" type="xs:string"/>
+  <xs:element name="category" type="xs:string"/>
+  <xs:element name="contentStatus" type="xs:string"/>
+
+  <!-- docProps/app.xml: <Properties> (extended properties). Text leaves. -->
+  <xs:element name="Properties">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="Template" minOccurs="0"/>
+        <xs:element ref="TotalTime" minOccurs="0"/>
+        <xs:element ref="Pages" minOccurs="0"/>
+        <xs:element ref="Words" minOccurs="0"/>
+        <xs:element ref="Characters" minOccurs="0"/>
+        <xs:element ref="Application" minOccurs="0"/>
+        <xs:element ref="DocSecurity" minOccurs="0"/>
+        <xs:element ref="Company" minOccurs="0"/>
+        <xs:element ref="AppVersion" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Template" type="xs:string"/>
+  <xs:element name="TotalTime" type="xs:string"/>
+  <xs:element name="Pages" type="xs:string"/>
+  <xs:element name="Words" type="xs:string"/>
+  <xs:element name="Characters" type="xs:string"/>
+  <xs:element name="Application" type="xs:string"/>
+  <xs:element name="DocSecurity" type="xs:string"/>
+  <xs:element name="Company" type="xs:string"/>
+  <xs:element name="AppVersion" type="xs:string"/>
 
 </xs:schema>
