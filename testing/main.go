@@ -75,6 +75,9 @@ func ensureCorpus() {
 	if empty("xsd") {
 		downloadXSD()
 	}
+	if empty(docxCorpusDir) {
+		downloadDocxCorpus()
+	}
 }
 
 // fetchAll (re)builds the whole corpus.
@@ -83,6 +86,7 @@ func fetchAll() {
 	downloadRSS2()
 	classifyRSS2()
 	downloadXSD()
+	downloadDocxCorpus()
 }
 
 func empty(sub string) bool {
@@ -135,6 +139,9 @@ func runChecks() bool {
 	if !checkOPCVocab() {
 		gateFail = true
 	}
+
+	fmt.Println("\n[docx-web] real-world docx corpus (reported):")
+	checkDocxCorpus()
 
 	fmt.Println("\n[xsd] W3C XSD suite -> CompileXSD (reported):")
 	checkXSD()
@@ -549,6 +556,60 @@ func checkOPCVocab() bool {
 	}
 	fmt.Printf("  opc-vocab TOTAL %d packages, %d parts projected, %d failed\n", totalPkgs, totalParts, failed)
 	return failed == 0
+}
+
+// --- docx-web: real-world docx corpus, reported (not gating) ---
+
+// checkDocxCorpus runs ProcessPackage over the real-world docx-web corpus
+// (superdoc-dev/docx-corpus) and reports the parse rate. It does NOT gate: these
+// are messy documents scraped from the public web, so a malformed package is an
+// expectation, not a parser bug — the curated docx/ set is the deterministic
+// gate. Modeled parts are projected against the open docx schema as an extra
+// signal of how much real-world WordprocessingML the format types.
+func checkDocxCorpus() {
+	files, _ := filepath.Glob(filepath.Join(testingDir, docxCorpusDir, "*.docx"))
+	if len(files) == 0 {
+		fmt.Println("  (no docx-web corpus — run: go run ./testing fetch)")
+		return
+	}
+	sort.Strings(files)
+	schema, _ := service.Format("docx")
+
+	var parsed, failed, parts, projected int
+	bar := progress.New("docx-web", len(files))
+	for _, fp := range files {
+		bar.Inc()
+		data, err := os.ReadFile(fp)
+		if err != nil {
+			continue
+		}
+		pkg, perr := service.ProcessPackage(data)
+		if perr != nil {
+			failed++
+			if failed <= 10 { // surface the messy ones; these don't gate
+				fmt.Printf("  [warn] %s: %v\n", filepath.Base(fp), perr)
+			}
+			continue
+		}
+		parsed++
+		if schema == nil {
+			continue
+		}
+		for _, pt := range pkg.Parts {
+			root := pt.Document.GetRoot()
+			if root == nil || !schema.HasRoot(localOf(root.GetName())) {
+				continue
+			}
+			parts++
+			if _, _, e := schema.Project(pt.Document); e == nil {
+				projected++
+			}
+		}
+	}
+	bar.Finish()
+	rate := 100 * float64(parsed) / float64(len(files))
+	fmt.Printf("  docx-web: %d packages, %d parsed (%.1f%%), %d failed, %d/%d modeled parts projected\n",
+		len(files), parsed, rate, failed, projected, parts)
 }
 
 // localOf returns the local part of a possibly-prefixed element name.

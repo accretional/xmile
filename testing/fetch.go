@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -858,4 +859,102 @@ func downloadXSD() {
 		return nil
 	})
 	fmt.Printf("xsd: -> %d schema files\n", n)
+}
+
+// --- Real-world docx corpus (superdoc-dev/docx-corpus) ---
+
+// docxCorpusDir is the corpus subfolder for real-world .docx files scraped from
+// the public web by the superdoc-dev/docx-corpus project. Unlike the curated
+// docx/ set (python-docx / mammoth / PHPWord, which gate), these are messy
+// real-world documents, so the runner reports their parse rate rather than
+// gating on it — the docx analogue of the rss2.0 set.
+const docxCorpusDir = "docx-web"
+
+// docxManifestURL lists every document in the dataset as a direct download URL
+// (the files are not in the GitHub repo, which holds only the scraping
+// pipeline; they are served from docxcorp.us). See docs/REFERENCES.md.
+const docxManifestURL = "https://api.docxcorp.us/manifest"
+
+const (
+	docxCorpusCap         = 2000
+	docxCorpusConcurrency = 32
+	docxFetchTimeout      = 20 * time.Second
+)
+
+// downloadDocxCorpus fetches a sample of the superdoc-dev/docx-corpus dataset
+// (736K+ real .docx files from Common Crawl) into testing/corpus/docx-web/. It
+// reads the manifest (a hash-sorted list of download URLs, so a prefix is an
+// unbiased sample), takes the first docxCorpusCap, and fetches them
+// concurrently, keeping each response whose magic is the ZIP/OPC signature.
+// Idempotent: a populated corpus is left untouched.
+func downloadDocxCorpus() {
+	dst := filepath.Join(testingDir, docxCorpusDir)
+	if e, _ := os.ReadDir(dst); len(e) > 0 {
+		fmt.Println("docx-web: corpus already present")
+		return
+	}
+	body, err := httpGet(docxManifestURL, 60*time.Second)
+	if err != nil {
+		fmt.Printf("docx-web: could not fetch manifest (%v) — skipping\n", err)
+		return
+	}
+	var urls []string
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "http") {
+			urls = append(urls, line)
+			if len(urls) >= docxCorpusCap {
+				break
+			}
+		}
+	}
+	if len(urls) == 0 {
+		fmt.Println("docx-web: manifest empty — skipping")
+		return
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		fmt.Println("docx-web:", err)
+		return
+	}
+	fmt.Printf("docx-web: %d candidate URLs; fetching with %d workers...\n", len(urls), docxCorpusConcurrency)
+	n := fetchDocxInto(dst, urls)
+	fmt.Printf("docx-web: %d .docx -> corpus/%s/ (from %d candidates)\n", n, docxCorpusDir, len(urls))
+}
+
+// fetchDocxInto downloads urls concurrently and writes each response that begins
+// with the ZIP local-file-header magic (PK\x03\x04 — the OPC container) to dst,
+// named after the URL's basename. Returns the count written.
+func fetchDocxInto(dst string, urls []string) int {
+	var written, attempts int64
+	var wg sync.WaitGroup
+	ch := make(chan string)
+	worker := func() {
+		defer wg.Done()
+		for u := range ch {
+			if k := atomic.AddInt64(&attempts, 1); k%500 == 0 {
+				fmt.Printf("docx-web: %d/%d tried, %d kept\n", k, len(urls), atomic.LoadInt64(&written))
+			}
+			body, err := httpGet(u, docxFetchTimeout)
+			if err != nil || len(body) < 4 || string(body[:4]) != "PK\x03\x04" {
+				continue
+			}
+			name := path.Base(u)
+			if name == "" || name == "." || name == "/" {
+				continue
+			}
+			if os.WriteFile(filepath.Join(dst, name), body, 0o644) == nil {
+				atomic.AddInt64(&written, 1)
+			}
+		}
+	}
+	for range docxCorpusConcurrency {
+		wg.Add(1)
+		go worker()
+	}
+	for _, u := range urls {
+		ch <- u
+	}
+	close(ch)
+	wg.Wait()
+	return int(written)
 }

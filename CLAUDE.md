@@ -174,6 +174,11 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
   - **opc / opc-vocab — gates.** `ProcessPackage` over the docx/xlsx corpus:
     every package must unpack and every XML part parse, and every modeled part
     must project against its `open` format schema.
+  - **docx-web — reported.** `ProcessPackage` over a sample of the real-world
+    superdoc-dev/docx-corpus (`testing/corpus/docx-web`, ~2000 web-scraped
+    `.docx`); reports the parse rate and modeled-part projection. Not gating —
+    these are messy public-web documents, so a malformed package (e.g. an empty
+    part) is expected, not a parser bug; the curated docx/ set is the gate.
   - **xsd — reported.** Compiles the W3C XSD test suite with `CompileXSD` and
     reports coverage of the supported subset (the suite spans full XSD and
     includes deliberately-invalid schemas, so it does not gate).

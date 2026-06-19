@@ -25,11 +25,12 @@ folder name is the expected outcome for every file inside it.
 
 ```
 corpus/
-  xml/    valid/  invalid/  not-wf/    # W3C XML Conformance Test Suite (gates, 100%)
-  rss/    valid/  not-wf/              # awesome-rss-feeds OPML + the live feeds they list
-  rss2.0/   invalid/                   # real RSS 2.0 feeds; invalid/ = genuine spec violations (reported)
-  docx/   valid/                       # real .docx packages from several producers (gates)
-  xlsx/   valid/                       # real .xlsx packages (gates)
+  xml/      valid/  invalid/  not-wf/  # W3C XML Conformance Test Suite (gates, 100%)
+  rss/      valid/  not-wf/            # awesome-rss-feeds OPML + the live feeds they list
+  rss2.0/     invalid/                 # real RSS 2.0 feeds; invalid/ = genuine spec violations (reported)
+  docx/     valid/                     # real .docx packages from several producers (gates)
+  xlsx/     valid/                     # real .xlsx packages (gates)
+  docx-web/                            # ~2000 web-scraped .docx (superdoc-dev/docx-corpus; reported)
   xsd/                                 # W3C XML Schema test suite (.xsd schemas; reported)
 ```
 
@@ -40,6 +41,7 @@ corpus/
 | `xml/` | [W3C XML Conformance Test Suite](https://www.w3.org/XML/Test/xmlts20130923.zip) (`xmlts20130923.zip`) | classified by the suite's own manifests (`TYPE` attribute) |
 | `docx/` | [python-openxml/python-docx](https://github.com/python-openxml/python-docx) (`tests`, `features`), [mwilliamson/mammoth.js](https://github.com/mwilliamson/mammoth.js) (`test/test-data`), [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord) (`samples/resources`, reader fixtures) | real WordprocessingML packages from several producers; copied names are prefixed by source so same-named containers don't collide |
 | `xlsx/` | [jmcnamara/XlsxWriter](https://github.com/jmcnamara/XlsxWriter) (`xlsxwriter/test/comparison/xlsx_files`) | real OOXML SpreadsheetML packages |
+| `docx-web/` | [superdoc-dev/docx-corpus](https://github.com/superdoc-dev/docx-corpus) via its `/manifest` (docxcorp.us) | a 2000-doc sample of 736K+ real `.docx` scraped from the public web (Common Crawl); reported, not gating |
 | `rss/` | [plenaryapp/awesome-rss-feeds](https://github.com/plenaryapp/awesome-rss-feeds) OPML + the live feeds they list | routed valid/not-wf by Go's `encoding/xml` (plus a charset reader and a misplaced-`<?xml?>` check, to match libxml2) |
 | `rss2.0/` | [plenaryapp/awesome-rss-feeds](https://github.com/plenaryapp/awesome-rss-feeds) + [kilimchoi/engineering-blogs](https://github.com/kilimchoi/engineering-blogs) OPML and the [tfederman/fountain-of-rss](https://github.com/tfederman/fountain-of-rss) TSV catalog | thousands of live feeds, kept only when well-formed and `version="2.0"`; the runner's `rss-2.0` check compiles `formats/rss-2.0.ebnf` and projects them |
 | `xsd/` | [w3c/xsdtests](https://github.com/w3c/xsdtests) (official W3C XML Schema test suite) | `.xsd` schema files (flattened names, capped); the runner compiles each with `CompileXSD` and reports coverage of the supported subset |
