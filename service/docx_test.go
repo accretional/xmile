@@ -105,6 +105,110 @@ func TestDocxProjection(t *testing.T) {
 	}
 }
 
+// TestDocxCompanionParts covers the parts a real .docx carries besides the main
+// document — styles, fontTable, settings, numbering, headers/footers, notes, the
+// DrawingML theme, and the docProps core/extended properties. Each must be a
+// modeled root (so the OPC layer routes the part to it) and project its common
+// markup typed, while open mode tolerates the rest.
+func TestDocxCompanionParts(t *testing.T) {
+	schema, err := Format("docx")
+	if err != nil {
+		t.Fatalf("Format(docx): %v", err)
+	}
+	p, err := Default()
+	if err != nil {
+		t.Fatalf("Default: %v", err)
+	}
+
+	// Every companion part root the survey found in a regular .docx is modeled.
+	for _, root := range []string{
+		"styles", "fonts", "settings", "webSettings", "numbering",
+		"hdr", "ftr", "footnotes", "endnotes", "theme",
+		"coreProperties", "Properties",
+	} {
+		if !schema.HasRoot(root) {
+			t.Errorf("docx schema does not model companion root %q", root)
+		}
+	}
+
+	// styles.xml: a paragraph style with a display name, plus doc defaults. The
+	// trailing <w:unknownStyleBit/> is unmodeled and must be tolerated.
+	styles := `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	  <w:docDefaults><w:rPrDefault><w:rPr><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>
+	  <w:style w:type="paragraph" w:styleId="Heading1">
+	    <w:name w:val="heading 1"/>
+	    <w:basedOn w:val="Normal"/>
+	    <w:rPr><w:b/></w:rPr>
+	    <w:unknownStyleBit/>
+	  </w:style>
+	</w:styles>`
+	sm := projectPart(t, p, schema, styles, "w:styles")
+	style := typedChild(t, sm, "Style")
+	if got := stringField(style, "type"); got != "paragraph" {
+		t.Errorf("style type = %q, want paragraph", got)
+	}
+	if got := stringField(typedChild(t, style, "Name"), "val"); got != "heading 1" {
+		t.Errorf("style name val = %q, want %q", got, "heading 1")
+	}
+	if typedChild(t, typedChild(t, style, "RPr"), "B") == nil {
+		t.Error("style run properties missing <w:b/>")
+	}
+
+	// numbering.xml: an abstract definition (a level) and a concrete instance.
+	numbering := `<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	  <w:abstractNum w:abstractNumId="0">
+	    <w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl>
+	  </w:abstractNum>
+	  <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+	</w:numbering>`
+	nm := projectPart(t, p, schema, numbering, "w:numbering")
+	lvl := typedChild(t, typedChild(t, nm, "AbstractNum"), "Lvl")
+	if got := stringField(lvl, "ilvl"); got != "0" {
+		t.Errorf("lvl ilvl = %q, want 0", got)
+	}
+	if got := stringField(typedChild(t, lvl, "NumFmt"), "val"); got != "decimal" {
+		t.Errorf("numFmt val = %q, want decimal", got)
+	}
+	// <w:abstractNumId> is an element here (in <w:num>), distinct from the
+	// attribute of the same name on <w:abstractNum>.
+	if got := stringField(typedChild(t, typedChild(t, nm, "Num"), "AbstractNumId"), "val"); got != "0" {
+		t.Errorf("num abstractNumId val = %q, want 0", got)
+	}
+
+	// docProps/core.xml: Dublin Core metadata, each child a text leaf.
+	core := `<cp:coreProperties
+	    xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+	    xmlns:dc="http://purl.org/dc/elements/1.1/">
+	  <dc:title>My Title</dc:title>
+	  <dc:creator>Ada</dc:creator>
+	</cp:coreProperties>`
+	cm := projectPart(t, p, schema, core, "cp:coreProperties")
+	if got := stringField(typedChild(t, cm, "Title"), "text"); got != "My Title" {
+		t.Errorf("core title text = %q, want %q", got, "My Title")
+	}
+	if got := stringField(typedChild(t, cm, "Creator"), "text"); got != "Ada" {
+		t.Errorf("core creator text = %q, want Ada", got)
+	}
+}
+
+// projectPart parses a standalone part and projects it against the schema,
+// asserting the root key matches and projection does not error (open mode).
+func projectPart(t *testing.T, p *Parser, schema *Schema, src, wantRoot string) protoreflect.Message {
+	t.Helper()
+	x, err := p.Parse(src, false)
+	if err != nil {
+		t.Fatalf("parse %s: %v", wantRoot, err)
+	}
+	msg, root, perr := schema.Project(x)
+	if perr != nil {
+		t.Fatalf("project %s (open mode should tolerate unmodeled markup): %v", wantRoot, perr)
+	}
+	if root != wantRoot {
+		t.Errorf("root = %q, want %q", root, wantRoot)
+	}
+	return msg.ProtoReflect()
+}
+
 // typedChild returns the first child message of msg typed typeName, descending
 // transparently through any choice-wrapper field (the repeated Entry messages
 // the XSD <xs:choice> lowering produces, whose oneof holds the real variant). It

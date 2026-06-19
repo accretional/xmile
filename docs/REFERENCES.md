@@ -22,6 +22,6 @@ compile→project path (like `rss-2.0`), authored against ECMA-376 Part 1 /
 ISO/IEC 29500-1 in the supported XSD subset and loaded *open* so a minimal
 schema still accepts every valid part (the modeled core is typed, the rest
 passes through):
-- `formats/docx.xsd` — WordprocessingML main document part (`word/document.xml`): `document`, `body`, `p`/`pPr`, `r`/`rPr`, `t`, tables (`tbl`/`tr`/`tc` and their properties), and `sectPr`. ECMA-376 Part 1 / ISO/IEC 29500-1 §17 (WordprocessingML).
+- `formats/docx.xsd` — the XML parts a real `.docx` carries (one descriptor, a message per part root, routed by root local name): the WordprocessingML main document (`document`/`body`/`p`/`r`/`t`/tables/`sectPr`) and its companions — `styles`, `fonts` (fontTable), `settings`, `webSettings`, `numbering`, `hdr`/`ftr`, `footnotes`/`endnotes` — plus the shared OOXML parts a Word package also includes: the DrawingML `theme` and the docProps `coreProperties`/`Properties`. ECMA-376 Part 1 / ISO/IEC 29500-1 §17 (WordprocessingML) & §20 (DrawingML theme); ISO/IEC 29500-2 §11/§15 (core & extended properties).
 - `formats/xlsx.xsd` — SpreadsheetML parts: `worksheet`/`sheetData`/`row`/`c` (with `v`/`f`/`is`), the workbook sheet list (`workbook`/`sheets`/`sheet`), and the shared string table (`sst`/`si`/`t`). ECMA-376 Part 1 / ISO/IEC 29500-1 §18 (SpreadsheetML).
 

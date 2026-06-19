@@ -1,20 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- docx.xsd — a minimal WordprocessingML (.docx main part) vocabulary.
+<!-- docx.xsd — a partial vocabulary for the XML parts of a .docx package.
 
-     This is the level-2 spec for the OOXML WordprocessingML main document part
-     (word/document.xml). It is deliberately partial: the format registry loads
-     it with Open=true, so the projector types the modeled markup (document /
-     body / paragraphs / runs / tables / common properties) and tolerates
-     everything else WordprocessingML defines. That keeps a single self-contained
-     file inside the supported XSD subset (element, complexType inline/named,
-     sequence/choice, attribute, occurrence, simpleContent extension) while still
-     giving real .docx parts meaningful typed structure.
+     This is the level-2 spec for the parts a real .docx normally carries:
+     the WordprocessingML main document and its companions (styles, fontTable,
+     settings, webSettings, numbering, headers/footers, foot/endnotes) plus the
+     shared OOXML parts a Word package also includes (the DrawingML theme and the
+     docProps core/extended properties). One compiled descriptor holds a message
+     per part root, so the OPC layer routes each part to its type by root local
+     name (w:styles -> styles, a:theme -> theme, cp:coreProperties ->
+     coreProperties, …); a part whose root is not modeled is left untyped.
 
-     Local element names only: the projector matches by local name, so the w:
-     prefix on real documents lines up with these unprefixed declarations.
+     It is deliberately partial: the format registry loads it with Open=true, so
+     the projector types the modeled markup and tolerates everything else the
+     formats define. That keeps a single self-contained file inside the supported
+     XSD subset (element, complexType inline/named, sequence/choice, attribute,
+     occurrence, simpleContent extension) while still giving real .docx parts
+     meaningful typed structure.
 
-     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1, WordprocessingML
-     (see docs/REFERENCES.md). -->
+     Local element names only: the projector matches by local name, so the w: / a:
+     / cp: / dc: prefixes on real documents line up with these unprefixed
+     declarations.
+
+     Spec: ECMA-376 Part 1 / ISO-IEC 29500-1 — WordprocessingML (§17), DrawingML
+     theme (§20), and the OPC/OOXML core + extended properties (ISO/IEC 29500-2
+     §11, §15). See docs/REFERENCES.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
   <!-- Root: the main document part. -->
@@ -358,5 +367,404 @@
       <xs:attribute name="gutter" type="xs:string"/>
     </xs:complexType>
   </xs:element>
+
+  <!-- ================================================================= -->
+  <!-- Companion parts. Each root below matches a part's root element by  -->
+  <!-- local name; many reuse the body vocabulary above (pPr, rPr, p,     -->
+  <!-- tbl). All partial + open: common markup typed, the rest tolerated. -->
+  <!-- ================================================================= -->
+
+  <!-- word/styles.xml (and stylesWithEffects.xml): <w:styles>. -->
+  <xs:element name="styles">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="docDefaults" minOccurs="0"/>
+        <xs:element ref="style" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="docDefaults">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="rPrDefault" minOccurs="0"/>
+        <xs:element ref="pPrDefault" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="rPrDefault">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="rPr" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="pPrDefault">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="pPr" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- A style definition: properties plus the paragraph/run defaults it sets. -->
+  <xs:element name="style">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="name" minOccurs="0"/>
+        <xs:element ref="basedOn" minOccurs="0"/>
+        <xs:element ref="next" minOccurs="0"/>
+        <xs:element ref="uiPriority" minOccurs="0"/>
+        <xs:element ref="qFormat" minOccurs="0"/>
+        <xs:element ref="pPr" minOccurs="0"/>
+        <xs:element ref="rPr" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="styleId" type="xs:string"/>
+      <xs:attribute name="default" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="name">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="basedOn">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="next">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="uiPriority">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="qFormat">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- word/fontTable.xml: <w:fonts>. -->
+  <xs:element name="fonts">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="font" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="font">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="panose1" minOccurs="0"/>
+        <xs:element ref="charset" minOccurs="0"/>
+        <xs:element ref="family" minOccurs="0"/>
+        <xs:element ref="pitch" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="panose1">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="charset">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="family">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="pitch">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- word/settings.xml: <w:settings>. -->
+  <xs:element name="settings">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="zoom" minOccurs="0"/>
+        <xs:element ref="proofState" minOccurs="0"/>
+        <xs:element ref="defaultTabStop" minOccurs="0"/>
+        <xs:element ref="characterSpacingControl" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="zoom">
+    <xs:complexType>
+      <xs:attribute name="percent" type="xs:string"/>
+      <xs:attribute name="val" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="proofState">
+    <xs:complexType>
+      <xs:attribute name="spelling" type="xs:string"/>
+      <xs:attribute name="grammar" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="defaultTabStop">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="characterSpacingControl">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- word/webSettings.xml: <w:webSettings>. -->
+  <xs:element name="webSettings">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="optimizeForBrowser" minOccurs="0"/>
+        <xs:element ref="allowPNG" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="optimizeForBrowser">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="allowPNG">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- word/numbering.xml: <w:numbering> — abstract definitions and instances. -->
+  <xs:element name="numbering">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="abstractNum" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="num" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="abstractNum">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="multiLevelType" minOccurs="0"/>
+        <xs:element ref="lvl" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="abstractNumId" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="multiLevelType">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <xs:element name="lvl">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="start" minOccurs="0"/>
+        <xs:element ref="numFmt" minOccurs="0"/>
+        <xs:element ref="lvlText" minOccurs="0"/>
+        <xs:element ref="lvlJc" minOccurs="0"/>
+        <xs:element ref="pPr" minOccurs="0"/>
+        <xs:element ref="rPr" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="ilvl" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="start">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="numFmt">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="lvlText">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+  <xs:element name="lvlJc">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <xs:element name="num">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="abstractNumId" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="numId" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- An element (in <w:num>), distinct from <w:abstractNum>'s attribute of the
+       same name — they land on different message types, so both are modeled. -->
+  <xs:element name="abstractNumId">
+    <xs:complexType><xs:attribute name="val" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- word/header*.xml and footer*.xml: <w:hdr> / <w:ftr> — block content. -->
+  <xs:element name="hdr">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="p"/>
+        <xs:element ref="tbl"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ftr">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="p"/>
+        <xs:element ref="tbl"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- word/footnotes.xml / endnotes.xml: each note holds block content. -->
+  <xs:element name="footnotes">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="footnote" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="footnote">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="p"/>
+        <xs:element ref="tbl"/>
+      </xs:choice>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="id" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="endnotes">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="endnote" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="endnote">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="p"/>
+        <xs:element ref="tbl"/>
+      </xs:choice>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="id" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- word/theme/theme*.xml: <a:theme> (DrawingML) — color and font schemes. -->
+  <xs:element name="theme">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="themeElements" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="themeElements">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="clrScheme" minOccurs="0"/>
+        <xs:element ref="fontScheme" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="clrScheme">
+    <xs:complexType><xs:attribute name="name" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <xs:element name="fontScheme">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="majorFont" minOccurs="0"/>
+        <xs:element ref="minorFont" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="majorFont">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="latin" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="minorFont">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="latin" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="latin">
+    <xs:complexType><xs:attribute name="typeface" type="xs:string"/></xs:complexType>
+  </xs:element>
+
+  <!-- docProps/core.xml: <cp:coreProperties> — Dublin Core document metadata.
+       Each child is character content (a text leaf). -->
+  <xs:element name="coreProperties">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="title" minOccurs="0"/>
+        <xs:element ref="subject" minOccurs="0"/>
+        <xs:element ref="creator" minOccurs="0"/>
+        <xs:element ref="keywords" minOccurs="0"/>
+        <xs:element ref="description" minOccurs="0"/>
+        <xs:element ref="lastModifiedBy" minOccurs="0"/>
+        <xs:element ref="revision" minOccurs="0"/>
+        <xs:element ref="created" minOccurs="0"/>
+        <xs:element ref="modified" minOccurs="0"/>
+        <xs:element ref="category" minOccurs="0"/>
+        <xs:element ref="contentStatus" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="title" type="xs:string"/>
+  <xs:element name="subject" type="xs:string"/>
+  <xs:element name="creator" type="xs:string"/>
+  <xs:element name="keywords" type="xs:string"/>
+  <xs:element name="description" type="xs:string"/>
+  <xs:element name="lastModifiedBy" type="xs:string"/>
+  <xs:element name="revision" type="xs:string"/>
+  <xs:element name="created" type="xs:string"/>
+  <xs:element name="modified" type="xs:string"/>
+  <xs:element name="category" type="xs:string"/>
+  <xs:element name="contentStatus" type="xs:string"/>
+
+  <!-- docProps/app.xml: <Properties> (extended properties). Text leaves. -->
+  <xs:element name="Properties">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="Template" minOccurs="0"/>
+        <xs:element ref="TotalTime" minOccurs="0"/>
+        <xs:element ref="Pages" minOccurs="0"/>
+        <xs:element ref="Words" minOccurs="0"/>
+        <xs:element ref="Characters" minOccurs="0"/>
+        <xs:element ref="Application" minOccurs="0"/>
+        <xs:element ref="DocSecurity" minOccurs="0"/>
+        <xs:element ref="Lines" minOccurs="0"/>
+        <xs:element ref="Paragraphs" minOccurs="0"/>
+        <xs:element ref="Company" minOccurs="0"/>
+        <xs:element ref="CharactersWithSpaces" minOccurs="0"/>
+        <xs:element ref="AppVersion" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Template" type="xs:string"/>
+  <xs:element name="TotalTime" type="xs:string"/>
+  <xs:element name="Pages" type="xs:string"/>
+  <xs:element name="Words" type="xs:string"/>
+  <xs:element name="Characters" type="xs:string"/>
+  <xs:element name="Application" type="xs:string"/>
+  <xs:element name="DocSecurity" type="xs:string"/>
+  <xs:element name="Lines" type="xs:string"/>
+  <xs:element name="Paragraphs" type="xs:string"/>
+  <xs:element name="Company" type="xs:string"/>
+  <xs:element name="CharactersWithSpaces" type="xs:string"/>
+  <xs:element name="AppVersion" type="xs:string"/>
 
 </xs:schema>
