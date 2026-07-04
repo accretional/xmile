@@ -59,6 +59,13 @@ func expandPEs(dtd string) (string, bool) {
 			complete = false
 		}
 		dtd = out
+		// Nested parameter entities can double the body each round; cap the
+		// expanded size so a small DTD cannot blow up memory (a validating-mode
+		// analogue of the general-entity budget). Past the cap we cannot soundly
+		// validate, so report incomplete rather than continue.
+		if len(dtd) > maxPEExpansionBytes {
+			return dtd, false
+		}
 		if !changed {
 			break
 		}

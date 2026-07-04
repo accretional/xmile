@@ -60,7 +60,7 @@ func resolvedTextEntities(info *dtdInfo) map[string]string {
 		if ent.external {
 			continue
 		}
-		expanded, err := info.expandValue(name, map[string]bool{})
+		expanded, err := info.expandValueCapped(name, map[string]bool{})
 		if err != nil {
 			continue
 		}
@@ -360,7 +360,7 @@ func (pr *projector) entityContentItems(name string) []*xmlpb.ContentItem {
 	if pr.expanding[name] { // guarded; recursion is already a WF error
 		return nil
 	}
-	expanded, err := pr.info.expandValue(name, map[string]bool{})
+	expanded, err := pr.info.expandValueCapped(name, map[string]bool{})
 	if err != nil {
 		return []*xmlpb.ContentItem{textItem("&" + name + ";")}
 	}

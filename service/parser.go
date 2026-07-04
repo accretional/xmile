@@ -94,6 +94,12 @@ func (p *Parser) parse(src string, validating, checkNS bool) (*xmlpb.Xml, error)
 	if off := firstIllegalChar(src, is11); off >= 0 {
 		return nil, &WFError{Msg: "illegal XML character", Offset: int32(off)}
 	}
+	// Reject pathologically deep nesting before the recursive parser runs: past
+	// this bound it would overflow the goroutine stack — an unrecoverable crash,
+	// not an error (see limits.go).
+	if nestingDepthExceeds(src, MaxNestingDepth) {
+		return nil, &WFError{Msg: fmt.Sprintf("document nesting exceeds the maximum depth of %d (possible denial-of-service)", MaxNestingDepth)}
+	}
 	src = normalizeLineEnds(src, is11)
 	cst, err := p.ParseCST(src)
 	if err != nil {

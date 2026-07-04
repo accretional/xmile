@@ -392,11 +392,26 @@ const xmlconfURL = "https://www.w3.org/XML/Test/xmlts20130923.zip"
 // temporary directory and returns the path to its xmlconf/ root. The caller
 // classifies the test files out of it into testing/corpus/xml/<verdict>/ and
 // removes the temp dir; the raw suite is not part of the corpus.
+//
+// The W3C endpoint intermittently 403s non-browser clients; set XMLCONF_ZIP to a
+// locally-cached copy of the suite zip to run the conformance gate offline or
+// when the download is blocked.
 func downloadXMLConf() (string, error) {
-	fmt.Println("w3c:  downloading", xmlconfURL)
-	b, err := httpGet(xmlconfURL, 120*time.Second)
-	if err != nil {
-		return "", fmt.Errorf("download xmlconf: %w", err)
+	var b []byte
+	if cached := os.Getenv("XMLCONF_ZIP"); cached != "" {
+		fmt.Println("w3c:  using cached", cached)
+		data, err := os.ReadFile(cached)
+		if err != nil {
+			return "", fmt.Errorf("read cached xmlconf: %w", err)
+		}
+		b = data
+	} else {
+		fmt.Println("w3c:  downloading", xmlconfURL)
+		data, err := httpGet(xmlconfURL, 120*time.Second)
+		if err != nil {
+			return "", fmt.Errorf("download xmlconf: %w", err)
+		}
+		b = data
 	}
 	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
 	if err != nil {

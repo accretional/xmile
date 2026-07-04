@@ -160,7 +160,8 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
 
 - **Two gates.** `go test ./...` is self-contained — `service/*_test.go`
   (`conformance_test.go`, `rss_test.go`, `opc_test.go`, `xsd_test.go`,
-  `docx_test.go`, `xsd_structural_test.go`) carry their own samples, so unit
+  `docx_test.go`, `xsd_structural_test.go`, `hardening_test.go` — the
+  resource-limit DoS gates) carry their own samples, so unit
   testing needs nothing fetched. The full corpus is gated by one runner
   (`go run ./testing`, run by `test.sh`), which fetches the corpus on first run
   and parses every format's docs through the service.
@@ -224,5 +225,6 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
 | `examples/process/` | runnable client example against the services |
 | `testing/main.go` | one corpus runner (gates xml + opc; reports rss + xsd) |
 | `testing/fetch.go` | one corpus fetcher (W3C XML suite, OOXML, RSS, W3C XSD suite) |
-| `docs/decisions/` | ADRs (0008 = current architecture) |
+| `docs/decisions/` | ADRs (0008 = current architecture; 0009 = resource limits) |
+| `service/limits.go` | DoS guards: nesting-depth + entity-expansion caps (ADR 0009) |
 | `ARCHITECTURE.md`, `docs/REFERENCES.md` | data-flow overview + official spec sources |
