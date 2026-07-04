@@ -19,6 +19,10 @@ package service
 
 import (
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -74,10 +78,11 @@ func validateRSS(doc *xmlpb.Xml) error {
 }
 
 // RSSConformance returns the soft RSS-2.0 conformance warnings for a parsed
-// feed — rules the spec states ("required" channel children; an item needs at
-// least a title or description) but that real feeds commonly violate. They are
-// warnings, not parse failures: a reader still uses the feed. Empty when the
-// feed is fully conformant.
+// feed — rules the spec states but that real feeds commonly violate: the
+// "required" channel children; an item needs a title or description; <link>/
+// <url> are http(s) URLs; <pubDate>/<lastBuildDate> are RFC-822 dates; <image>
+// width <= 144 and height <= 400. They are warnings, not parse failures: a
+// reader still uses the feed. Empty when the feed is fully conformant.
 func RSSConformance(doc *xmlpb.Xml) []string {
 	var warn []string
 	channels := childElems(doc.GetRoot(), "channel")
@@ -90,9 +95,89 @@ func RSSConformance(doc *xmlpb.Xml) []string {
 			warn = append(warn, fmt.Sprintf("<channel> is missing the required <%s>", req))
 		}
 	}
+	warn = append(warn, checkRSSLinks(ch, "<channel>", "link")...)
+	warn = append(warn, checkRSSDates(ch, "<channel>", "pubDate", "lastBuildDate")...)
+	for _, img := range childElems(ch, "image") {
+		warn = append(warn, checkImageDim(img, "width", 144)...)
+		warn = append(warn, checkImageDim(img, "height", 400)...)
+		warn = append(warn, checkRSSLinks(img, "<image>", "url", "link")...)
+	}
 	for i, item := range childElems(ch, "item") {
+		label := fmt.Sprintf("<item> #%d", i+1)
 		if len(childElems(item, "title")) == 0 && len(childElems(item, "description")) == 0 {
-			warn = append(warn, fmt.Sprintf("<item> #%d has neither <title> nor <description>", i+1))
+			warn = append(warn, label+" has neither <title> nor <description>")
+		}
+		warn = append(warn, checkRSSLinks(item, label, "link")...)
+		warn = append(warn, checkRSSDates(item, label, "pubDate")...)
+	}
+	return warn
+}
+
+// rfc822Layouts are the RFC-822 date forms RSS <pubDate>/<lastBuildDate> use
+// (per the spec, https://www.rssboard.org/rss-profile#data-types-datetime):
+// four-digit year, optional weekday, optional seconds, numeric or named zone.
+var rfc822Layouts = []string{
+	"Mon, 02 Jan 2006 15:04:05 -0700",
+	"Mon, 02 Jan 2006 15:04:05 MST",
+	"Mon, 02 Jan 2006 15:04 -0700",
+	"Mon, 02 Jan 2006 15:04 MST",
+	"02 Jan 2006 15:04:05 -0700",
+	"02 Jan 2006 15:04:05 MST",
+	"02 Jan 2006 15:04 -0700",
+	"02 Jan 2006 15:04 MST",
+}
+
+func validRFC822(s string) bool {
+	for _, l := range rfc822Layouts {
+		if _, err := time.Parse(l, s); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// checkRSSLinks warns when a named URL-valued child of tag is present but not an
+// absolute http/https URL (an RSS <link>/<url> is a web URL).
+func checkRSSLinks(tag *xmlpb.Tag, label string, names ...string) []string {
+	var warn []string
+	for _, name := range names {
+		for _, e := range childElems(tag, name) {
+			v := strings.TrimSpace(gatherText(e))
+			if v == "" {
+				continue
+			}
+			if u, err := url.Parse(v); err != nil || !u.IsAbs() || (u.Scheme != "http" && u.Scheme != "https") {
+				warn = append(warn, fmt.Sprintf("%s <%s> %q is not an http(s) URL", label, name, v))
+			}
+		}
+	}
+	return warn
+}
+
+// checkRSSDates warns when a named date child is present but not an RFC-822 date.
+func checkRSSDates(tag *xmlpb.Tag, label string, names ...string) []string {
+	var warn []string
+	for _, name := range names {
+		for _, e := range childElems(tag, name) {
+			if v := strings.TrimSpace(gatherText(e)); v != "" && !validRFC822(v) {
+				warn = append(warn, fmt.Sprintf("%s <%s> %q is not an RFC-822 date", label, name, v))
+			}
+		}
+	}
+	return warn
+}
+
+// checkImageDim warns when <image>'s width/height child is present but not a
+// positive integer within the RSS cap (width <= 144, height <= 400).
+func checkImageDim(img *xmlpb.Tag, dim string, max int) []string {
+	var warn []string
+	for _, e := range childElems(img, dim) {
+		v := strings.TrimSpace(gatherText(e))
+		if v == "" {
+			continue
+		}
+		if n, err := strconv.Atoi(v); err != nil || n < 1 || n > max {
+			warn = append(warn, fmt.Sprintf("<image> <%s> %q is not an integer in [1, %d]", dim, v, max))
 		}
 	}
 	return warn

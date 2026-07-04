@@ -151,6 +151,11 @@ func runChecks() bool {
 		gateFail = true
 	}
 
+	fmt.Println("\n[rss-generate] AST -> document round-trip over corpus/rss2.0 (gates):")
+	if !checkRSSGenerate() {
+		gateFail = true
+	}
+
 	return gateFail
 }
 
@@ -177,7 +182,27 @@ func checkGenerate() bool {
 		fmt.Println("  (no xml corpus — run: go run ./testing fetch)")
 		return true
 	}
+	return roundTripCorpus("generate", files)
+}
 
+// checkRSSGenerate runs the same round-trip fixed point over the real-world RSS
+// 2.0 corpus (the valid set; the invalid/ subdir is excluded), confirming feeds
+// round-trip at the infoset level exactly like the xml corpus — the RSS
+// counterpart to proto-sitemap's real-sitemap round-trip gate.
+func checkRSSGenerate() bool {
+	files, _ := filepath.Glob(filepath.Join(testingDir, "rss2.0", "*.xml"))
+	sort.Strings(files)
+	if len(files) == 0 {
+		fmt.Println("  (no rss corpus — run: go run ./testing fetch)")
+		return true
+	}
+	return roundTripCorpus("rss-generate", files)
+}
+
+// roundTripCorpus asserts parse(Generate(parse(b))) == parse(b) at the canonical
+// infoset over files, through the Documents.Generate RPC. Not-well-formed inputs
+// are skipped; any mismatch or a generated document that fails to re-parse GATES.
+func roundTripCorpus(label string, files []string) bool {
 	p, err := service.Default()
 	if err != nil {
 		fmt.Printf("  cannot start parser: %v\n", err)
@@ -191,7 +216,7 @@ func checkGenerate() bool {
 	ctx := context.Background()
 
 	roundTripped, skipped, failed := 0, 0, 0
-	bar := progress.New("generate", len(files))
+	bar := progress.New(label, len(files))
 	for _, fp := range files {
 		bar.Inc()
 		b, err := os.ReadFile(fp)
@@ -226,7 +251,7 @@ func checkGenerate() bool {
 		roundTripped++
 	}
 	bar.Finish()
-	fmt.Printf("  generate: %d round-tripped, %d skipped (not-wf), %d failed\n", roundTripped, skipped, failed)
+	fmt.Printf("  %s: %d round-tripped, %d skipped (not-wf), %d failed\n", label, roundTripped, skipped, failed)
 	return failed == 0
 }
 

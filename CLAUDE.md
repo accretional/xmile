@@ -188,6 +188,10 @@ Documents.Process(bytes, schema, mode) -> ProcessResponse
     (`parse(Generate(parse(b))) == parse(b)`, at the canonical infoset — text
     runs coalesced, encoding normalized to UTF-8). `service/generate_test.go` is
     the self-contained companion.
+  - **rss-generate — gates.** The same round-trip fixed point over the real-world
+    RSS 2.0 corpus (`corpus/rss2.0`, the valid set), confirming feeds round-trip
+    at the infoset level — the RSS counterpart to a real-feed round-trip gate.
+    `service/rss_test.go`'s `TestRSSRoundTrip` is the self-contained companion.
 - The corpus is fetched and organized by file type via `go run ./testing` (or
   `go run ./testing fetch` to rebuild only the corpus). Corpora are gitignored.
 - The XML corpus is the applicable subset (XML 1.0 5th edition and 1.1, plus
