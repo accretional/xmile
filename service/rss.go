@@ -1,12 +1,21 @@
 package service
 
-// rss.go — RSS 2.0's irreducible, CFG-inexpressible semantics: the structural
-// pre-check (validateRSS, wired in as the "rss-2.0" format's PreValidate hook),
-// the soft conformance rules (RSSConformance), and a typed-feed convenience
-// (ParseRSS, RSSItemCount). RSS's *structure* is data — formats/rss-2.0.ebnf,
-// compiled on demand by the format registry; only what a grammar cannot say
-// lives here (the namespace-extensibility rule is the registry's nsExtensible
-// flag; the version/<channel> rule is validateRSS).
+// rss.go — the RSS 2.0 semantics the vocabulary grammar does not carry: the
+// structural pre-check (validateRSS, wired in as the "rss-2.0" format's
+// PreValidate hook), the soft conformance rules (RSSConformance), and a
+// typed-feed convenience (ParseRSS, RSSItemCount). RSS's *structure* is data —
+// formats/rss-2.0.ebnf, compiled on demand by the format registry.
+//
+// These rules are NOT here because a context-free grammar is incapable of
+// expressing them — they are all regular or context-free (version="2.0" is a
+// fixed attribute literal; "exactly one <channel>" and "an item needs a title
+// or description" are bounded cardinality/presence; width<=144 etc. are finite
+// numeric bounds). They are out of the grammar because rss-2.0.ebnf is a
+// projection schema over opaque attribute/leaf strings, and the projection is
+// intentionally loose (it checks neither values nor cardinality). The only truly
+// non-context-free constraints in the stack — start/end tag-name agreement and
+// namespace scoping — are the engine's, enforced by xmile as tree walks, not
+// RSS's. The namespace-extensibility rule is the registry's nsExtensible flag.
 
 import (
 	"fmt"
@@ -33,9 +42,11 @@ func ParseRSS(p *Parser, src string) (proto.Message, error) {
 	return res.Document, nil
 }
 
-// validateRSS enforces the *structural* RSS-2.0 constraints no CFG can express,
-// over the parsed Tag tree: the root is <rss version="2.0"> with exactly one
-// <channel>. These determine whether the document is RSS 2.0 at all; a
+// validateRSS enforces the *structural* RSS-2.0 constraints the vocabulary
+// grammar does not carry (regular/context-free, but out of a loose projection
+// schema over opaque attributes), over the parsed Tag tree: the root is
+// <rss version="2.0"> with exactly one <channel>. These determine whether the
+// document is RSS 2.0 at all; a
 // violation is a hard *ValidityError. Softer required-content rules (which
 // real-world feeds routinely bend) are reported by RSSConformance, not enforced
 // here — mirroring how the real-world corpora are reported, not gated.

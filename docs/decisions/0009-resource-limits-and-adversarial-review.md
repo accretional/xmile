@@ -59,6 +59,24 @@ gates: `service/hardening_test.go`.
    invariant holds because Doctype is absent on both sides, and the subset's
    side effects are already baked into the element tree).
 
+### Documentation — the RSS "CFG-inexpressible" claim was wrong (corrected)
+
+`formats/rss-2.0.ebnf` and `service/rss.go` claimed their Go-side rules are what
+"a CFG cannot express." That framing is a category error, the same one found in
+proto-sitemap (its ADR 0003): the vocabulary EBNF is a **projection schema, not
+a recognizer** (byte recognition is `lang/xml.ebnf`), so CFG expressive power is
+not why any rule is in Go. Every listed rule is in fact **regular or
+context-free**: `version="2.0"` is a fixed attribute literal (regular); "exactly
+one `<channel>`" and "an item needs a title or description" are bounded
+cardinality/presence (context-free); `width<=144`/`height<=400` are finite
+numeric bounds (regular); RFC-822 dates are regular; `isPermaLink` defaulting to
+"true" is a default value, not a membership constraint at all. They live in Go
+because attributes/leaves are opaque strings in the `EBNF_VOCAB` front-end and
+the projection is intentionally loose (it checks neither values nor cardinality)
+— not because a CFG is incapable. The only genuinely non-context-free constraints
+in the stack (tag-name agreement, namespace scoping) are the engine's tree
+walks. Comments in `rss-2.0.ebnf` and `rss.go` corrected to say so.
+
 ### Sound — confirmed closed (no change needed)
 
 - **XXE / external-entity SSRF: closed.** External general and parameter entities

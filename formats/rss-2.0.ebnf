@@ -24,10 +24,15 @@
        other reference becomes a message field. (Same rule CompileDTD uses:
        declared -> message, undeclared -> scalar.)
 
-   What is NOT here (a CFG cannot express it; enforced in service/rss.go):
-     - version must be "2.0"; an <item> needs at least a title or
-       description; <image> width <= 144 and height <= 400; <guid>
-       isPermaLink defaults to "true"; link/url URI schemes; RFC-822 dates.
+   What is NOT here (the projection schema doesn't carry it — enforced in
+   service/rss.go. These are regular or context-free, NOT CFG-inexpressible:
+   they are out of the grammar because attributes/leaves are opaque strings and
+   projection checks neither values nor cardinality):
+     - version must be "2.0" (a fixed attribute literal — regular); an <item>
+       needs at least a title or description (bounded presence — context-free);
+       <image> width <= 144 and height <= 400 (finite numeric bounds — regular);
+       <guid> isPermaLink defaults to "true" (a default value, not a membership
+       constraint at all); link/url URI schemes; RFC-822 dates (regular).
 
    Namespace extensibility (RSS 2.0: "may contain elements and attributes
    not described here, only if defined in a namespace") is enforced by the
