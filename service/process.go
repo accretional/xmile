@@ -1,7 +1,8 @@
 package service
 
 // process.go — the unified instance-level entry point of ADR 0008. Process is
-// the mode-aware classifier that subsumes Parse and ParseRSS: it parses bytes
+// the mode-aware classifier that subsumes the former per-format parse entry
+// points (a plain Parse and the vocabulary parsers): it parses bytes
 // into the generic XML AST and, given a schema, projects that AST into the
 // schema's typed message. Generic XML is simply the loosest schema — Process
 // with no schema returns the Tag tree, exactly the old Parse — and a format
@@ -32,8 +33,8 @@ type Schema struct {
 	Root         protoreflect.MessageDescriptor
 	NSExtensible bool
 	// PreValidate enforces structural constraints neither the grammar nor the
-	// descriptor can (e.g. RSS's "<rss version='2.0'> with exactly one
-	// <channel>"). Optional; nil means none.
+	// descriptor can express (e.g. a required root attribute value, or a fixed
+	// child-element cardinality). Optional; nil means none.
 	PreValidate func(*xmlpb.Xml) error
 	// Open makes the schema partial: unmodeled markup is tolerated, not rejected,
 	// so a minimal schema for a large format (OOXML docx/xlsx) still accepts every
@@ -142,4 +143,18 @@ func schemaFromCompiled(fdp *descriptorpb.FileDescriptorProto, nsExtensible bool
 		return nil, fmt.Errorf("link schema descriptor: %w", err)
 	}
 	return &Schema{File: fd, NSExtensible: nsExtensible}, nil
+}
+
+// dedupStrings returns in with duplicates removed, preserving first-seen order —
+// used to tidy the out-of-vocabulary markup list in the projection error above.
+func dedupStrings(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }

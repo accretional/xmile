@@ -19,7 +19,7 @@ Office Open XML / OPC packages (DOCX, XLSX) — the package layer (`service/opc.
 - Real-world `.docx` test corpus — [superdoc-dev/docx-corpus](https://github.com/superdoc-dev/docx-corpus) (736K+ `.docx` scraped from the public web via Common Crawl; served at https://docxcorp.us, listed by https://api.docxcorp.us/manifest). The testing runner samples ~2000 into `testing/corpus/docx-web/` and reports the parse rate (`go run ./testing fetch`).
 
 The level-2 part vocabularies are first-class `formats/` specs that ride the
-compile→project path (like `rss-2.0`), authored against ECMA-376 Part 1 /
+compile→project path, authored against ECMA-376 Part 1 /
 ISO/IEC 29500-1 in the supported XSD subset and loaded *open* so a minimal
 schema still accepts every valid part (the modeled core is typed, the rest
 passes through):

@@ -14,5 +14,5 @@ package formats
 
 import "embed"
 
-//go:embed *.ebnf *.xsd
+//go:embed *.xsd
 var FS embed.FS

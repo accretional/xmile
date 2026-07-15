@@ -20,7 +20,7 @@ import (
 func main() {
 	cst := flag.Bool("cst", false, "print the raw concrete syntax tree")
 	validate := flag.Bool("validate", false, "validate against the DTD (validating mode; generic XML only)")
-	schema := flag.String("schema", "", "project against a registered format (e.g. rss-2.0); empty = generic XML")
+	schema := flag.String("schema", "", "project against a registered format (e.g. docx); empty = generic XML")
 	flag.Parse()
 
 	var src []byte

@@ -8,12 +8,11 @@
 // The checks, by kind:
 //   - XML conformance (corpus/xml/<verdict>/): the base parser, validating; the
 //     deterministic W3C set must be 100% — this GATES.
-//   - Format vocabularies: each format's spec lives in formats/ (e.g.
-//     formats/rss-2.0.ebnf); the runner compiles it to a descriptor and projects
-//     every corpus doc against it — the working "compile spec -> process docs"
-//     flow. Reported (real-world feeds drift).
+//   - Generate round-trip (corpus/xml/): parse -> Generate -> parse must be a
+//     fixed point at the canonical infoset — this GATES.
 //   - OPC packages (corpus/{docx,xlsx}/valid/): ProcessPackage unpacks each and
-//     parses its parts — this GATES (the bundled packages are deterministic).
+//     parses its parts, and every modeled part projects against its open schema —
+//     this GATES (the bundled packages are deterministic).
 //   - XSD suite (corpus/xsd/): CompileXSD over the W3C suite — reported.
 package main
 
@@ -44,7 +43,6 @@ var formats = []struct {
 	isZip bool
 }{
 	{"xml", ".xml", false},
-	{"rss", ".opml", false},
 	{"docx", ".docx", true},
 	{"xlsx", ".xlsx", true},
 }
@@ -68,10 +66,6 @@ func ensureCorpus() {
 	if empty("xml/not-wf") {
 		fetchCorpus()
 	}
-	if empty("rss2.0") {
-		downloadRSS2()
-		classifyRSS2()
-	}
 	if empty("xsd") {
 		downloadXSD()
 	}
@@ -83,8 +77,6 @@ func ensureCorpus() {
 // fetchAll (re)builds the whole corpus.
 func fetchAll() {
 	fetchCorpus()
-	downloadRSS2()
-	classifyRSS2()
 	downloadXSD()
 	downloadDocxCorpus()
 }
@@ -94,28 +86,6 @@ func empty(sub string) bool {
 	return len(e) == 0
 }
 
-// classifyRSS2 splits the fetched RSS 2.0 feeds into the valid set and a curated
-// invalid/ set by what ParseRSS rejects — a parser-defined split, so it lives
-// with the runner, not the parser-independent fetcher.
-func classifyRSS2() {
-	p, err := service.Default()
-	if err != nil {
-		return
-	}
-	files, _ := filepath.Glob(filepath.Join(testingDir, "rss2.0", "*.xml"))
-	invalidDir := filepath.Join(testingDir, "rss2.0", "invalid")
-	os.MkdirAll(invalidDir, 0o755)
-	for _, fp := range files {
-		data, err := os.ReadFile(fp)
-		if err != nil {
-			continue
-		}
-		if _, perr := service.ParseRSS(p, string(data)); perr != nil {
-			os.Rename(fp, filepath.Join(invalidDir, filepath.Base(fp)))
-		}
-	}
-}
-
 // runChecks runs every check and returns true if a gating check failed.
 func runChecks() bool {
 	gateFail := false
@@ -123,11 +93,6 @@ func runChecks() bool {
 	fmt.Println("[xml] W3C conformance (gates):")
 	if !checkXMLConformance() {
 		gateFail = true
-	}
-
-	fmt.Println("\n[vocab] format spec -> compile -> project corpus docs:")
-	for _, vf := range vocabFormats {
-		checkVocab(vf)
 	}
 
 	fmt.Println("\n[opc] docx/xlsx packages (gates):")
@@ -148,11 +113,6 @@ func runChecks() bool {
 
 	fmt.Println("\n[generate] AST -> document round-trip over corpus/xml (gates):")
 	if !checkGenerate() {
-		gateFail = true
-	}
-
-	fmt.Println("\n[rss-generate] AST -> document round-trip over corpus/rss2.0 (gates):")
-	if !checkRSSGenerate() {
 		gateFail = true
 	}
 
@@ -183,20 +143,6 @@ func checkGenerate() bool {
 		return true
 	}
 	return roundTripCorpus("generate", files)
-}
-
-// checkRSSGenerate runs the same round-trip fixed point over the real-world RSS
-// 2.0 corpus (the valid set; the invalid/ subdir is excluded), confirming feeds
-// round-trip at the infoset level exactly like the xml corpus — the RSS
-// counterpart to proto-sitemap's real-sitemap round-trip gate.
-func checkRSSGenerate() bool {
-	files, _ := filepath.Glob(filepath.Join(testingDir, "rss2.0", "*.xml"))
-	sort.Strings(files)
-	if len(files) == 0 {
-		fmt.Println("  (no rss corpus — run: go run ./testing fetch)")
-		return true
-	}
-	return roundTripCorpus("rss-generate", files)
 }
 
 // roundTripCorpus asserts parse(Generate(parse(b))) == parse(b) at the canonical
@@ -404,65 +350,6 @@ func classify(src string) string {
 }
 
 // --- format vocabularies: compile the spec from formats/, project the docs ---
-
-// vocabFormats lists formats validated by the "compile spec -> process docs"
-// flow: each name resolves to a spec in formats/ (service.Format) and a corpus
-// of documents that must project cleanly (and an invalid set that must be
-// rejected). Adding a format is dropping its spec in formats/ and a line here.
-var vocabFormats = []struct {
-	name        string // service.Format name (= formats/ spec basename)
-	validGlob   string
-	invalidGlob string
-}{
-	{"rss-2.0", "testing/corpus/rss2.0/*.xml", "testing/corpus/rss2.0/invalid/*.xml"},
-}
-
-func checkVocab(vf struct {
-	name        string
-	validGlob   string
-	invalidGlob string
-}) {
-	schema, err := service.Format(vf.name)
-	if err != nil {
-		fmt.Printf("  %s: cannot load format: %v\n", vf.name, err)
-		return
-	}
-	p, _ := service.Default()
-
-	valid, _ := filepath.Glob(vf.validGlob)
-	pass, items := 0, 0
-	bar := progress.New(vf.name+" valid", len(valid))
-	for _, fp := range valid {
-		bar.Inc()
-		data, err := os.ReadFile(fp)
-		if err != nil {
-			continue
-		}
-		res, perr := p.Process(string(data), schema, true)
-		if perr == nil {
-			pass++
-			items += service.RSSItemCount(res.Document)
-		}
-	}
-	bar.Finish()
-	fmt.Printf("  %s: %d/%d docs projected cleanly (%.1f%%), %d items\n",
-		vf.name, pass, len(valid), pct(pass, len(valid)), items)
-
-	invalid, _ := filepath.Glob(vf.invalidGlob)
-	if len(invalid) > 0 {
-		rejected := 0
-		for _, fp := range invalid {
-			data, err := os.ReadFile(fp)
-			if err != nil {
-				continue
-			}
-			if _, perr := p.Process(string(data), schema, true); perr != nil {
-				rejected++
-			}
-		}
-		fmt.Printf("  %s: invalid set — %d/%d correctly rejected\n", vf.name, rejected, len(invalid))
-	}
-}
 
 // --- OPC packages: ProcessPackage over docx/xlsx, gates on failure ---
 

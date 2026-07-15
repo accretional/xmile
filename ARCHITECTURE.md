@@ -11,14 +11,14 @@ loosest schema.
                          LEVELS
   L0  XML itself ............ lang/xml.ebnf + the parser (one engine)
   L1  schema languages ...... DTD · EBNF-vocab · XSD  (service/language front-ends)
-  L2  formats (DATA) ........ formats/*.ebnf|*.xsd   (rss-2.0, …; compiled on demand)
+  L2  formats (DATA) ........ formats/*.xsd         (docx, xlsx; compiled on demand)
 ```
 
 ## The two services and how they connect
 
 ```
             ┌──────────────────────── Schemas.Compile (type-level) ───────────────┐
- format     │  formats/rss-2.0.ebnf ─┐                                             │
+ format     │  formats/docx.xsd     ─┐                                             │
  spec ──────┤  a .dtd / .xsd        ─┼─▶ language front-end ─▶ gluon compiler ─────┼─▶ FileDescriptorProto
             │      (DTD|EBNF|XSD)     │   (CompileSource)        (compiler.Compile)  │   (one message/element)
             └────────────────────────┴─────────────────────────────────────────────┘
@@ -29,7 +29,7 @@ loosest schema.
  + schema?  │  (well-formed + ns)     (homogeneous) │                                │──▶ ProcessResponse
             │                                        └─ a schema ─▶ project walk ────┤    { document | error,
             │                                            (engine.project, by descr.) │      verdict, diagnostics }
-            └────────────────────────────────────────────────── document:{rss:…} ───┘
+            └────────────────────────────────────────────────── document:{note:…} ──┘
 ```
 
 - **One parser.** Every document is parsed once by the universal XML parser into
@@ -40,7 +40,7 @@ loosest schema.
   comes from `Schemas.Compile`; the walk fills it.
 - **Validity**: generic XML validates against its own DTD (`validate.go`, only in
   `VALIDATE` mode); a format validates by projection coverage + the few rules a
-  grammar can't state (e.g. RSS's `version`/`<channel>`, the namespace rule).
+  grammar can't state (e.g. a required `version`/root element, the namespace rule).
 
 ## Instance pipeline (inside Process)
 
@@ -58,14 +58,6 @@ Process{ source: <a x="1">hi</a> }
      verdict: WELL_FORMED }
 ```
 
-**RSS 2.0** — `formats/rss-2.0.ebnf` compiled on demand, keyed by root `rss`:
-```
-Process{ format:"rss-2.0", mode:VALIDATE,
-         source: <rss version="2.0"><channel><title>T</title>…</channel></rss> }
- ▶ { document: { rss: { version:"2.0", channel:{ alt1:[ {title:{text:"T"}}, … ] } } },
-     verdict: VALID }
-```
-
 **Compile a new format, then process it** (the same path for any DTD/EBNF/XSD):
 ```
 Schemas.Compile{ language: DTD, source: "<!ELEMENT note (#PCDATA)>" }
@@ -77,7 +69,7 @@ Process{ compile:{ language: DTD, source:"…note dtd…" }, source: "<note>hi</
 
 **Refused** — verdict, never a non-OK RPC status:
 ```
-Process{ format:"rss-2.0", source:<rss version="2.0"><bogus/></rss> }
+Process{ compile:{ language: DTD, source:"…note dtd…" }, source:<note><bogus/></note> }
  ▶ { error:{ verdict: INVALID, reason:"out-of-vocabulary markup …" }, verdict: INVALID }
 ```
 
@@ -110,7 +102,7 @@ differ.
 | `lang/xml.ebnf`, `lang/dtd.ebnf`, `lang/*.lex` | L0 grammar + lexing (compiled by `genproto`) |
 | `service/` (parser, project, validate, namespaces, engine) | the one XML engine + generic projection |
 | `service/language/` | L1 front-ends: `CompileDTD`/`CompileGrammar`/`CompileXSD`/`CompileSource` |
-| `formats/` | L2 format specs as data (`rss-2.0.ebnf`, …), compiled on demand |
+| `formats/` | L2 format specs as data (`docx.xsd`, `xlsx.xsd`), compiled on demand |
 | `service/{grpc,schema_grpc}.go`, `cmd/xmlserve` | the `Documents` + `Schemas` gRPC services |
 | `testing/` | one fetcher + one corpus runner (`go run ./testing`) |
 | `docs/decisions/0008-*` | the design record |

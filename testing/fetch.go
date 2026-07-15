@@ -3,18 +3,14 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"html"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,9 +46,9 @@ type tcTest struct {
 }
 
 // fetchCorpus builds testing/corpus/<format>/<verdict>/ by downloading the
-// W3C XML conformance suite (classified by its manifests into xml/<verdict>/),
-// the OOXML reference files, and real-world RSS feeds — all organized by file
-// type. Idempotent: a corpus already present is left in place.
+// W3C XML conformance suite (classified by its manifests into xml/<verdict>/)
+// and the OOXML reference files — all organized by file type. Idempotent: a
+// corpus already present is left in place.
 func fetchCorpus() error {
 	for _, f := range formats {
 		for _, v := range verdictDirs {
@@ -71,185 +67,12 @@ func fetchCorpus() error {
 	}
 
 	downloadOOXML()
-	fetchRSS()
 	return nil
 }
 
 func xmlCorpusPresent() bool {
 	e, _ := os.ReadDir(filepath.Join(testingDir, "xml", "not-wf"))
 	return len(e) > 0
-}
-
-const rssRepo = "plenaryapp/awesome-rss-feeds"
-
-// fetchRSS pulls the repo's OPML feed-list files (which are XML) into
-// rss/valid/, and best-effort fetches a sample of the actual RSS/Atom feeds
-// those OPMLs point to, so the corpus exercises real-world feed XML.
-func fetchRSS() {
-	dst := filepath.Join(testingDir, "rss", "valid")
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return
-	}
-	os.MkdirAll(filepath.Join(testingDir, "rss", "not-wf"), 0o755)
-
-	// Idempotent: if feeds are already fetched, don't hit the network again —
-	// just re-check their classification against the current oracle (so an
-	// oracle fix relabels the existing corpus without a volatile re-fetch).
-	if rssCorpusPresent() {
-		fmt.Println("rss:  corpus already present")
-		reconcileRSS()
-		return
-	}
-
-	paths, err := listRepoOPML(rssRepo)
-	if err != nil {
-		fmt.Printf("rss:  could not reach %s (%v) — skipping\n", rssRepo, err)
-		return
-	}
-
-	_ = dst
-	opml, feeds := 0, 0
-	var feedURLs []string
-	for _, p := range paths {
-		body, err := httpGet(rawURL(rssRepo, p), 10*time.Second)
-		if err != nil {
-			continue
-		}
-		// Real-world OPML often has unescaped '&'; classify by a reference
-		// parser (encoding/xml) so the folder reflects true well-formedness.
-		if routeRSS(body, "opml_"+sanitizeName(p)) {
-			opml++
-		}
-		if len(feedURLs) < 300 {
-			feedURLs = append(feedURLs, extractXMLUrls(body)...)
-		}
-	}
-
-	seen := map[string]bool{}
-	for _, u := range feedURLs {
-		if feeds >= 30 {
-			break
-		}
-		if seen[u] {
-			continue
-		}
-		seen[u] = true
-		body, err := httpGet(u, 6*time.Second)
-		if err != nil || !looksLikeXML(body) {
-			continue
-		}
-		if routeRSS(body, fmt.Sprintf("feed_%03d.xml", feeds)) {
-			feeds++
-		}
-	}
-	fmt.Printf("rss:  %d OPML + %d live feeds (classified valid/not-wf by encoding/xml)\n", opml, feeds)
-}
-
-// rssCorpusPresent reports whether any rss feeds have already been fetched.
-func rssCorpusPresent() bool {
-	for _, v := range []string{"valid", "not-wf"} {
-		e, _ := os.ReadDir(filepath.Join(testingDir, "rss", v))
-		if len(e) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// reconcileRSS re-evaluates the already-fetched feeds with the current
-// reference oracle and moves any whose verdict changed, so the corpus labels
-// stay correct after an oracle change without re-fetching from the network.
-func reconcileRSS() {
-	moved := 0
-	for _, v := range []string{"valid", "not-wf"} {
-		dir := filepath.Join(testingDir, "rss", v)
-		entries, _ := os.ReadDir(dir)
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			body, err := os.ReadFile(filepath.Join(dir, e.Name()))
-			if err != nil {
-				continue
-			}
-			want := "not-wf"
-			if referenceWellFormed(body) {
-				want = "valid"
-			}
-			if want != v {
-				if os.Rename(filepath.Join(dir, e.Name()), filepath.Join(testingDir, "rss", want, e.Name())) == nil {
-					moved++
-				}
-			}
-		}
-	}
-	if moved > 0 {
-		fmt.Printf("rss:  reclassified %d feed(s) to match the reference oracle\n", moved)
-	} else {
-		fmt.Println("rss:  corpus labels already consistent with the oracle")
-	}
-}
-
-// routeRSS writes a fetched feed into rss/valid or rss/not-wf depending on
-// whether Go's standard encoding/xml accepts it — an independent reference
-// oracle. The corpus check then verifies our parser agrees.
-func routeRSS(body []byte, name string) bool {
-	verdict := "not-wf"
-	if referenceWellFormed(body) {
-		verdict = "valid"
-	}
-	return os.WriteFile(filepath.Join(testingDir, "rss", verdict, name), body, 0o644) == nil
-}
-
-// referenceWellFormed reports whether the standard library's XML decoder
-// accepts the document as well-formed. Two adjustments make it a more faithful
-// conformance oracle than the stock decoder (both verified against libxml2):
-//   - a CharsetReader for the non-UTF-8 encodings this project supports, so a
-//     well-formed Latin-1 feed is judged on its structure rather than rejected
-//     for a charset the bare decoder cannot read; and
-//   - rejecting a "<?xml ...?>" processing instruction anywhere but the very
-//     start of the document — elsewhere its target is the reserved name "xml"
-//     (XML 1.0 §2.6), which the stock decoder otherwise tolerates.
-func referenceWellFormed(b []byte) bool {
-	dec := xml.NewDecoder(bytes.NewReader(b))
-	dec.Strict = true
-	dec.CharsetReader = referenceCharset
-	first := true
-	for {
-		tok, err := dec.Token()
-		if err == io.EOF {
-			return true
-		}
-		if err != nil {
-			return false
-		}
-		if pi, ok := tok.(xml.ProcInst); ok && strings.EqualFold(pi.Target, "xml") && !first {
-			return false
-		}
-		first = false
-	}
-}
-
-// referenceCharset lets the reference decoder read the encodings this project
-// supports: UTF-8/ASCII pass through unchanged, and Latin-1 maps each byte to
-// its Unicode rune. Any other declared encoding returns an error, so the
-// decoder rejects it — the same scope as the runtime parser.
-func referenceCharset(label string, input io.Reader) (io.Reader, error) {
-	switch strings.ToLower(strings.TrimSpace(label)) {
-	case "utf-8", "utf8", "us-ascii", "ascii", "":
-		return input, nil
-	case "iso-8859-1", "latin1", "latin-1", "iso8859-1", "iso_8859-1":
-		data, err := io.ReadAll(input)
-		if err != nil {
-			return nil, err
-		}
-		var sb strings.Builder
-		for _, c := range data {
-			sb.WriteRune(rune(c))
-		}
-		return strings.NewReader(sb.String()), nil
-	}
-	return nil, fmt.Errorf("unsupported encoding %q", label)
 }
 
 // hasExternalSubset reports whether a real DOCTYPE references an external
@@ -529,225 +352,7 @@ func sparseCheckout(repo string, subdirs []string, dir string) error {
 	return run("checkout")
 }
 
-// --- Real-world RSS 2.0 corpus at scale (was rss2.go) ---
-
-// rss2Dir is the dedicated real-world RSS 2.0 corpus, fetched at scale for the
-// rss-parse harness (testing/rss-parse). Unlike the small curated rss0.91 set,
-// this aims for thousands of genuine RSS 2.0 feeds drawn from many publishers,
-// so the projector is exercised against the long tail of real-world markup.
-const rss2Dir = "rss2.0"
-
-// rss2OPMLRepos are GitHub repos of OPML feed-list files spanning many topics
-// and countries.
-var rss2OPMLRepos = []string{
-	"plenaryapp/awesome-rss-feeds",
-	"kilimchoi/engineering-blogs",
-}
-
-// rss2TSVSources are raw URLs of tab-separated feed catalogs whose first column
-// is a feed URL (e.g. tfederman/fountain-of-rss, a crawler's catalog of tens of
-// thousands of live feeds). The largest, most diverse source.
-var rss2TSVSources = []string{
-	"https://raw.githubusercontent.com/tfederman/fountain-of-rss/main/feeds.tsv",
-}
-
-// rss2TSVCap bounds how many URLs are taken from each TSV catalog, so the fetch
-// stays within a few minutes (the catalogs hold tens of thousands).
-const rss2TSVCap = 5000
-
-// rss2Versioned matches the <rss version="2.0"> signature so only genuine RSS
-// 2.0 feeds are kept (Atom, RSS 1.0/RDF and 0.9x are dropped).
-var rss2Versioned = regexp.MustCompile(`(?s)<rss\b[^>]*\bversion\s*=\s*["']2\.0["']`)
-
-const (
-	rss2Concurrency = 64
-	rss2Timeout     = 8 * time.Second
-)
-
-// downloadRSS2 fetches as many real-world RSS 2.0 feeds as it can into
-// testing/corpus/rss2.0/. It harvests candidate feed URLs from the OPML and TSV
-// sources, then fetches them concurrently, keeping each response that is both
-// XML-well-formed (by the encoding/xml reference oracle) and a version-2.0
-// <rss> document. Idempotent: a populated corpus is left untouched.
-func downloadRSS2() {
-	dst := filepath.Join(testingDir, rss2Dir)
-	if e, _ := os.ReadDir(dst); len(e) > 0 {
-		fmt.Println("rss2.0: corpus already present")
-		return
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		fmt.Println("rss2.0:", err)
-		return
-	}
-
-	urls := gatherFeedURLs()
-	if len(urls) == 0 {
-		fmt.Println("rss2.0: no candidate feed URLs (network?) — skipping")
-		return
-	}
-	fmt.Printf("rss2.0: %d candidate feed URLs; fetching with %d workers...\n", len(urls), rss2Concurrency)
-	n := fetchInto(dst, urls, 0)
-	fmt.Printf("rss2.0: %d RSS 2.0 feeds -> corpus/%s/ (from %d candidates)\n", n, rss2Dir, len(urls))
-}
-
-// gatherFeedURLs collects and de-duplicates candidate feed URLs from every
-// source: OPML files in the source repos, then the TSV catalogs.
-func gatherFeedURLs() []string {
-	seen := map[string]bool{}
-	var urls []string
-	add := func(u string) {
-		if u != "" && !seen[u] {
-			seen[u] = true
-			urls = append(urls, u)
-		}
-	}
-
-	for _, repo := range rss2OPMLRepos {
-		opmls := repoFilesRawURLs(repo, ".opml")
-		if len(opmls) == 0 {
-			fmt.Printf("rss2.0: %s -> no OPML files (skipped)\n", repo)
-			continue
-		}
-		before := len(urls)
-		for _, ou := range opmls {
-			if body, err := httpGet(ou, 15*time.Second); err == nil {
-				for _, u := range extractXMLUrls(body) {
-					add(u)
-				}
-			}
-		}
-		fmt.Printf("rss2.0: %s -> %d OPML files, %d new feed URLs\n", repo, len(opmls), len(urls)-before)
-	}
-
-	for _, src := range rss2TSVSources {
-		body, err := httpGet(src, 30*time.Second)
-		if err != nil {
-			fmt.Printf("rss2.0: could not fetch %s (%v)\n", src, err)
-			continue
-		}
-		before := len(urls)
-		taken := 0
-		for _, line := range strings.Split(string(body), "\n") {
-			if taken >= rss2TSVCap {
-				break
-			}
-			first, _, _ := strings.Cut(line, "\t")
-			first = strings.TrimSpace(first)
-			if strings.HasPrefix(first, "http") {
-				add(first)
-				taken++
-			}
-		}
-		fmt.Printf("rss2.0: TSV catalog -> %d new feed URLs (of %d taken)\n", len(urls)-before, taken)
-	}
-
-	return urls
-}
-
-// fetchInto fetches urls concurrently and writes each well-formed version-2.0
-// <rss> response to dst as feed_NNNN.xml, numbering from startIdx. Returns the
-// count written.
-func fetchInto(dst string, urls []string, startIdx int) int {
-	var written, attempts int64
-	var wg sync.WaitGroup
-	ch := make(chan string)
-	worker := func() {
-		defer wg.Done()
-		for u := range ch {
-			if k := atomic.AddInt64(&attempts, 1); k%500 == 0 {
-				fmt.Printf("rss2.0: %d/%d tried, %d kept\n", k, len(urls), atomic.LoadInt64(&written))
-			}
-			body, err := httpGet(u, rss2Timeout)
-			if err != nil || !rss2Versioned.Match(body) || !referenceWellFormed(body) {
-				continue
-			}
-			idx := int(atomic.AddInt64(&written, 1)) - 1 + startIdx
-			_ = os.WriteFile(filepath.Join(dst, fmt.Sprintf("feed_%04d.xml", idx)), body, 0o644)
-		}
-	}
-	for range rss2Concurrency {
-		wg.Add(1)
-		go worker()
-	}
-	for _, u := range urls {
-		ch <- u
-	}
-	close(ch)
-	wg.Wait()
-	return int(written)
-}
-
-// repoFilesRawURLs returns raw.githubusercontent URLs for every file with the
-// given extension in a GitHub repo, trying the master then main branch (repos
-// differ), via the git-tree API.
-func repoFilesRawURLs(repo, ext string) []string {
-	for _, branch := range []string{"master", "main"} {
-		body, err := httpGet(fmt.Sprintf("https://api.github.com/repos/%s/git/trees/%s?recursive=1", repo, branch), 15*time.Second)
-		if err != nil {
-			continue
-		}
-		var tree struct {
-			Tree []struct {
-				Path string `json:"path"`
-				Type string `json:"type"`
-			} `json:"tree"`
-		}
-		if json.Unmarshal(body, &tree) != nil {
-			continue
-		}
-		var out []string
-		for _, e := range tree.Tree {
-			if e.Type == "blob" && strings.HasSuffix(strings.ToLower(e.Path), ext) {
-				segs := strings.Split(e.Path, "/")
-				for i := range segs {
-					segs[i] = url.PathEscape(segs[i])
-				}
-				out = append(out, "https://raw.githubusercontent.com/"+repo+"/"+branch+"/"+strings.Join(segs, "/"))
-			}
-		}
-		if len(out) > 0 {
-			return out
-		}
-	}
-	return nil
-}
-
-// --- HTTP + OPML helpers shared by the RSS fetchers (was rssfetch.go) ---
-
-// listRepoOPML returns the repo-relative paths of every .opml file in a
-// GitHub repository (default branch), via the git-tree API.
-func listRepoOPML(repo string) ([]string, error) {
-	body, err := httpGet("https://api.github.com/repos/"+repo+"/git/trees/master?recursive=1", 15*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	var tree struct {
-		Tree []struct {
-			Path string `json:"path"`
-			Type string `json:"type"`
-		} `json:"tree"`
-	}
-	if err := json.Unmarshal(body, &tree); err != nil {
-		return nil, err
-	}
-	var out []string
-	for _, e := range tree.Tree {
-		if e.Type == "blob" && strings.HasSuffix(e.Path, ".opml") {
-			out = append(out, e.Path)
-		}
-	}
-	return out, nil
-}
-
-// rawURL builds a raw.githubusercontent.com URL, percent-encoding each path
-// segment (the RSS repo has spaces and parentheses in filenames).
-func rawURL(repo, path string) string {
-	segs := strings.Split(path, "/")
-	for i := range segs {
-		segs[i] = url.PathEscape(segs[i])
-	}
-	return "https://raw.githubusercontent.com/" + repo + "/master/" + strings.Join(segs, "/")
-}
+// --- HTTP helper shared by the fetchers ---
 
 // httpGet fetches a URL with a timeout and a 5 MB cap, following redirects.
 func httpGet(u string, timeout time.Duration) ([]byte, error) {
@@ -756,7 +361,7 @@ func httpGet(u string, timeout time.Duration) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// A browser-like UA: many feed hosts reject unknown bot agents with 403,
+	// A browser-like UA: many hosts reject unknown bot agents with 403,
 	// which would shrink the real-world corpus for no good reason.
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 	resp, err := c.Do(req)
@@ -768,58 +373,6 @@ func httpGet(u string, timeout time.Duration) ([]byte, error) {
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, 5<<20))
-}
-
-// extractXMLUrls pulls the xmlUrl="..." values out of an OPML document.
-func extractXMLUrls(opml []byte) []string {
-	var out []string
-	s := string(opml)
-	for {
-		i := strings.Index(s, "xmlUrl=")
-		if i < 0 {
-			break
-		}
-		s = s[i+len("xmlUrl="):]
-		if s == "" {
-			break
-		}
-		q := s[0]
-		if q != '"' && q != '\'' {
-			continue
-		}
-		j := strings.IndexByte(s[1:], q)
-		if j < 0 {
-			break
-		}
-		u := html.UnescapeString(s[1 : 1+j])
-		s = s[1+j:]
-		if strings.HasPrefix(u, "http") {
-			out = append(out, u)
-		}
-	}
-	return out
-}
-
-// looksLikeXML reports whether a response body is plausibly an XML feed
-// (and not an HTML error/landing page), without fully parsing it.
-func looksLikeXML(b []byte) bool {
-	n := len(b)
-	if n > 256 {
-		n = 256
-	}
-	t := strings.TrimSpace(strings.TrimPrefix(string(b[:n]), "\ufeff"))
-	lt := strings.ToLower(t)
-	if strings.HasPrefix(lt, "<!doctype html") || strings.HasPrefix(lt, "<html") {
-		return false
-	}
-	return strings.HasPrefix(t, "<?xml") || strings.HasPrefix(t, "<rss") ||
-		strings.HasPrefix(t, "<feed") || strings.HasPrefix(t, "<rdf")
-}
-
-// sanitizeName turns a repo path into a flat, filesystem-safe filename.
-func sanitizeName(p string) string {
-	r := strings.NewReplacer("/", "_", " ", "_", "(", "", ")", "")
-	return r.Replace(p)
 }
 
 // --- W3C XSD test-suite download (was xsd.go) ---
@@ -882,7 +435,7 @@ func downloadXSD() {
 // the public web by the superdoc-dev/docx-corpus project. Unlike the curated
 // docx/ set (python-docx / mammoth / PHPWord, which gate), these are messy
 // real-world documents, so the runner reports their parse rate rather than
-// gating on it — the docx analogue of the rss2.0 set.
+// gating on it.
 const docxCorpusDir = "docx-web"
 
 // docxManifestURL lists every document in the dataset as a direct download URL
