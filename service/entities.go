@@ -42,9 +42,10 @@ type entityInfo struct {
 // dtdInfo summarizes the parts of a parsed DTD needed for the entity
 // well-formedness constraints.
 type dtdInfo struct {
-	general     map[string]entityInfo
-	hasPERef    bool // internal subset references a parameter entity
-	hasExternal bool // DOCTYPE names an external subset
+	general            map[string]entityInfo
+	hasPERef           bool // internal subset references a parameter entity
+	hasExternal        bool // DOCTYPE names an external subset
+	hasExternalGeneral bool // some general entity is declared SYSTEM/PUBLIC
 }
 
 // buildDTDInfo extracts the entity declarations and structural flags from a
@@ -79,6 +80,9 @@ func buildDTDInfo(dtdRoot *pb.ASTNode) *dtdInfo {
 		ent := entityInfo{}
 		if ev := firstDescendant(ek, "entityValue"); ev != nil {
 			ent.external = firstDescendant(ev, "extID") != nil
+			if ent.external {
+				info.hasExternalGeneral = true
+			}
 			ent.unparsed = hasTerminal(ev, "NDATA")
 			if lit := firstDescendant(ev, "litDq"); lit != nil {
 				ent.value = lit.GetValue()
@@ -101,7 +105,8 @@ func buildDTDInfo(dtdRoot *pb.ASTNode) *dtdInfo {
 func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error {
 	contentRefs := map[string]bool{}
 	attrRefs := map[string]bool{}
-	if err := walkEnt(root, info, false, contentRefs, attrRefs); err != nil {
+	checked := map[string]bool{} // entities expandCheck has proven clean (memo)
+	if err := walkEnt(root, info, false, contentRefs, attrRefs, checked); err != nil {
 		return err
 	}
 	// An entity referenced in an attribute value must expand to a valid
@@ -110,7 +115,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error
 		if info.general[name].external {
 			continue
 		}
-		expanded, err := info.expandValue(name, map[string]bool{})
+		expanded, err := info.expandValueCapped(name, map[string]bool{})
 		if err != nil {
 			return err
 		}
@@ -133,7 +138,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error
 		if ent := info.general[name]; ent.external {
 			continue
 		}
-		expanded, err := info.expandValue(name, map[string]bool{})
+		expanded, err := info.expandValueCapped(name, map[string]bool{})
 		if err != nil {
 			return err
 		}
@@ -144,7 +149,7 @@ func (p *Parser) checkEntities(root *pb.ASTNode, info *dtdInfo, is11 bool) error
 	return nil
 }
 
-func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs map[string]bool) error {
+func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs, checked map[string]bool) error {
 	if n == nil {
 		return nil
 	}
@@ -177,7 +182,7 @@ func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs ma
 				}
 				// Transitively validate the replacement text: no recursion,
 				// no undeclared/unparsed sub-entity.
-				if err := expandCheck(name, info, map[string]bool{}); err != nil {
+				if err := expandCheck(name, info, map[string]bool{}, checked); err != nil {
 					if wf, ok := err.(*WFError); ok && wf.Offset == 0 {
 						wf.Offset = n.GetLocation().GetOffset()
 					}
@@ -187,7 +192,7 @@ func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs ma
 		}
 	}
 	for _, c := range n.GetChildren() {
-		if err := walkEnt(c, info, inAttr, contentRefs, attrRefs); err != nil {
+		if err := walkEnt(c, info, inAttr, contentRefs, attrRefs, checked); err != nil {
 			return err
 		}
 	}
@@ -195,8 +200,14 @@ func walkEnt(n *pb.ASTNode, info *dtdInfo, inAttr bool, contentRefs, attrRefs ma
 }
 
 // externalInChain reports whether name, or any entity reachable from its
-// replacement text, is an external entity.
+// replacement text, is an external entity. When the DTD declares no external
+// general entity at all the answer is trivially no, short-circuited without
+// walking the reference graph — which also makes a purely-internal
+// entity-expansion bomb O(1) here instead of an exponential traversal.
 func (info *dtdInfo) externalInChain(name string, visiting map[string]bool) bool {
+	if !info.hasExternalGeneral {
+		return false
+	}
 	if visiting[name] {
 		return false
 	}
@@ -258,7 +269,7 @@ func checkDTDRefs(dtdRoot *pb.ASTNode, info *dtdInfo, is11 bool) error {
 			case ent.external:
 				return &WFError{Msg: "external entity reference in attribute default"}
 			default:
-				if err := expandCheck(r, info, map[string]bool{}); err != nil {
+				if err := expandCheck(r, info, map[string]bool{}, map[string]bool{}); err != nil {
 					return err
 				}
 			}
@@ -427,8 +438,12 @@ func checkValueCharRefs(s string, is11 bool) error {
 // expandValue fully expands an internal entity's replacement text for the
 // well-formedness reparse: character references become literal characters,
 // predefined entities are left as references (they denote data), and
-// general-entity references are expanded recursively. Recursion is fatal.
-func (info *dtdInfo) expandValue(name string, visiting map[string]bool) (string, error) {
+// general-entity references are expanded recursively. Recursion is fatal. The
+// total expanded size is capped at maxEntityExpansionBytes: a small nest of
+// entities can otherwise expand as 2ⁿ (the "billion laughs" attack), so a
+// caller starts a fresh budget with expandValueCapped and the budget is shared
+// across the whole recursive expansion.
+func (info *dtdInfo) expandValue(name string, visiting map[string]bool, budget *int) (string, error) {
 	if visiting[name] {
 		return "", &WFError{Msg: "recursive reference to entity " + name}
 	}
@@ -438,15 +453,35 @@ func (info *dtdInfo) expandValue(name string, visiting map[string]bool) (string,
 	}
 	visiting[name] = true
 	defer delete(visiting, name)
-	return info.expandText(ent.value, visiting)
+	return info.expandText(ent.value, visiting, budget)
 }
 
-func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, error) {
+// expandValueCapped is expandValue with a fresh maxEntityExpansionBytes budget —
+// the entry point every caller outside the recursion uses.
+func (info *dtdInfo) expandValueCapped(name string, visiting map[string]bool) (string, error) {
+	budget := maxEntityExpansionBytes
+	return info.expandValue(name, visiting, &budget)
+}
+
+var errEntityTooLarge = &WFError{Msg: "entity expansion exceeds the " + strconv.Itoa(maxEntityExpansionBytes) + "-byte limit (possible entity-expansion attack)"}
+
+func (info *dtdInfo) expandText(s string, visiting map[string]bool, budget *int) (string, error) {
 	var b strings.Builder
+	// add appends to b while charging the shared budget; the budget bounds total
+	// output across the entire recursive expansion, catching 2ⁿ blow-up.
+	add := func(str string) error {
+		if *budget -= len(str); *budget < 0 {
+			return errEntityTooLarge
+		}
+		b.WriteString(str)
+		return nil
+	}
 	for i := 0; i < len(s); i++ {
 		if strings.HasPrefix(s[i:], "<![CDATA[") {
 			if j := strings.Index(s[i+9:], "]]>"); j >= 0 {
-				b.WriteString(s[i : i+9+j+3])
+				if err := add(s[i : i+9+j+3]); err != nil {
+					return "", err
+				}
 				i = i + 9 + j + 2
 				continue
 			}
@@ -454,14 +489,18 @@ func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, err
 		}
 		if strings.HasPrefix(s[i:], "<!--") {
 			if j := strings.Index(s[i+4:], "-->"); j >= 0 {
-				b.WriteString(s[i : i+4+j+3])
+				if err := add(s[i : i+4+j+3]); err != nil {
+					return "", err
+				}
 				i = i + 4 + j + 2
 				continue
 			}
 			return "", &WFError{Msg: "unterminated comment in entity value"}
 		}
 		if s[i] != '&' {
-			b.WriteByte(s[i])
+			if err := add(s[i : i+1]); err != nil {
+				return "", err
+			}
 			continue
 		}
 		if i+1 < len(s) && s[i+1] == '#' { // character reference -> literal char
@@ -470,7 +509,9 @@ func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, err
 				j++
 			}
 			if j >= len(s) {
-				b.WriteByte('&')
+				if err := add("&"); err != nil {
+					return "", err
+				}
 				continue
 			}
 			// A reference to a (restricted) control character denotes data,
@@ -480,9 +521,13 @@ func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, err
 			ref := s[i : j+1]
 			t := charRefText(ref)
 			if tr := []rune(t); len(tr) == 1 && isControlRune(tr[0]) {
-				b.WriteString(ref)
+				if err := add(ref); err != nil {
+					return "", err
+				}
 			} else {
-				b.WriteString(t)
+				if err := add(t); err != nil {
+					return "", err
+				}
 			}
 			i = j
 			continue
@@ -494,26 +539,39 @@ func (info *dtdInfo) expandText(s string, visiting map[string]bool) (string, err
 		if j < len(s) && s[j] == ';' && j > i+1 {
 			ref := s[i+1 : j]
 			if builtinEntities[ref] {
-				b.WriteString(s[i : j+1]) // predefined: keep as reference
+				if err := add(s[i : j+1]); err != nil { // predefined: keep as reference
+					return "", err
+				}
 			} else {
-				sub, err := info.expandValue(ref, visiting)
+				sub, err := info.expandValue(ref, visiting, budget)
 				if err != nil {
 					return "", err
 				}
-				b.WriteString(sub)
+				if err := add(sub); err != nil {
+					return "", err
+				}
 			}
 			i = j
 			continue
 		}
-		b.WriteByte('&')
+		if err := add("&"); err != nil {
+			return "", err
+		}
 	}
 	return b.String(), nil
 }
 
 // expandCheck transitively validates an internal entity's replacement text:
 // it detects recursion (a cycle of references) and references to undeclared
-// or unparsed sub-entities.
-func expandCheck(name string, info *dtdInfo, visiting map[string]bool) error {
+// or unparsed sub-entities. checked memoizes entities already proven clean:
+// a nil return is a global property (no cycle, no bad sub-reference reachable),
+// so re-reaching a checked entity needs no re-walk. Without it a nested
+// entity-expansion bomb would take exponential time here even before any string
+// is built.
+func expandCheck(name string, info *dtdInfo, visiting, checked map[string]bool) error {
+	if checked[name] {
+		return nil
+	}
 	if visiting[name] {
 		return &WFError{Msg: "recursive reference to entity " + name}
 	}
@@ -535,12 +593,13 @@ func expandCheck(name string, info *dtdInfo, visiting map[string]bool) error {
 		case subEnt.unparsed:
 			return &WFError{Msg: "reference to unparsed entity " + sub}
 		default:
-			if err := expandCheck(sub, info, visiting); err != nil {
+			if err := expandCheck(sub, info, visiting, checked); err != nil {
 				return err
 			}
 		}
 	}
 	delete(visiting, name)
+	checked[name] = true
 	return nil
 }
 

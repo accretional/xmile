@@ -28,9 +28,8 @@ var formatMeta = map[string]struct {
 	// so every valid part projects without error. See projectOptions.open.
 	open bool
 }{
-	"rss-2.0": {nsExtensible: true, preValidate: validateRSS},
-	"docx":    {open: true},
-	"xlsx":    {open: true},
+	"docx": {open: true},
+	"xlsx": {open: true},
 }
 
 // langByExt maps a spec-file extension to its schema language.
@@ -80,7 +79,7 @@ func loadFormatSpec(name string) ([]byte, xmlpb.SchemaLanguage, error) {
 }
 
 // protoPackage derives a valid proto package name from a format name (e.g.
-// "rss-2.0" -> "rss20"). Cosmetic only: projection matches messages by name.
+// "my-format-1.0" -> "myformat10"). Cosmetic only: projection matches messages by name.
 func protoPackage(name string) string {
 	var b strings.Builder
 	for _, r := range name {

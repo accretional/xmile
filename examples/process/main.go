@@ -3,9 +3,8 @@
 //
 //	go run ./examples/process
 //
-// It shows the four capabilities: parse generic XML, project a feed into the
-// typed RSS 2.0 AST, compile a DTD into a schema and project against it, and
-// unpack an OPC package.
+// It shows three capabilities: parse generic XML, compile a DTD into a schema
+// and project a document against it, and unpack an OPC package.
 package main
 
 import (
@@ -34,21 +33,7 @@ func main() {
 	fmt.Println("== 1. generic XML AST ==")
 	fmt.Print(prototext.Format(res.Document))
 
-	// 2. Typed RSS 2.0 — Format selects a registered vocabulary.
-	rss, err := service.Format("rss-2.0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	res, err = p.Process(`<rss version="2.0"><channel><title>T</title>`+
-		`<link>L</link><description>D</description>`+
-		`<item><title>first</title></item></channel></rss>`, rss, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("\n== 2. typed RSS 2.0 AST ==")
-	fmt.Print(prototext.Format(res.Document))
-
-	// 3. Compile a DTD into a schema, then project a document against it
+	// 2. Compile a DTD into a schema, then project a document against it
 	//    (the compile-then-use path; the same works for XSD and EBNF).
 	const noteDTD = `<!ELEMENT note (to, from, body)>` +
 		`<!ELEMENT to (#PCDATA)><!ELEMENT from (#PCDATA)><!ELEMENT body (#PCDATA)>`
@@ -61,15 +46,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("\n== 3. document projected against a compiled DTD schema ==")
+	fmt.Println("\n== 2. document projected against a compiled DTD schema ==")
 	fmt.Print(prototext.Format(res.Document))
 
-	// 4. Unpack an OPC package (built in-memory here; normally a .docx/.xlsx).
+	// 3. Unpack an OPC package (built in-memory here; normally a .docx/.xlsx).
 	pkg, err := service.ProcessPackage(samplePackage())
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("\n== 4. OPC package ==")
+	fmt.Println("\n== 3. OPC package ==")
 	for _, part := range pkg.Parts {
 		fmt.Printf("part %s (%s): root <%s>\n", part.Name, part.ContentType, part.Document.GetRoot().GetName())
 	}

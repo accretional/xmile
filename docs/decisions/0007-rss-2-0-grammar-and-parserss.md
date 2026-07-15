@@ -5,6 +5,9 @@
   `projectRSS` is the generic `project` engine in `service/engine.go`). The
   grammar (`lang/rss.ebnf`), the namespace-extensibility rule, and the hard/soft
   validity split (`validateRSS` / `RSSConformance`) all stand.
+- **Note (2026-07-14):** RSS 2.0 has since been extracted from xmile into its own
+  repo, github.com/accretional/proto-rss; this ADR is retained as historical
+  record.
 - **Date:** 2026-06-17
 - **Decision:** Express RSS 2.0 as a hand-written **EBNF schema grammar**
   (`lang/rss.ebnf`), compile it to a typed proto AST through the same gluon

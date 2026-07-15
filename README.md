@@ -57,21 +57,16 @@ job, not repeated here:
 
 ```bash
 grpcurl -plaintext \
-  -d "{\"format\": \"rss-2.0\", \"mode\": \"VALIDATE\", \"source\": \"$(printf '%s' \
-     '<rss version="2.0"><channel><title>T</title><link>L</link><description>D</description></channel></rss>' \
-     | base64)\"}" \
+  -d "{\"compile\": {\"language\": \"DTD\", \"source\": \"$(printf '%s' \
+     '<!ELEMENT note (#PCDATA)>' | base64)\"}, \"mode\": \"VALIDATE\", \
+     \"source\": \"$(printf '%s' '<note>hi</note>' | base64)\"}" \
   :50051 xml.Documents/Process
 ```
 ```json
 {
   "document": {
-    "rss": {
-      "version": "2.0",
-      "channel": { "alt1": [
-        { "title": { "text": "T" } },
-        { "link": { "text": "L" } },
-        { "description": { "text": "D" } }
-      ] }
+    "note": {
+      "text": "hi"
     }
   },
   "verdict": "VALID"

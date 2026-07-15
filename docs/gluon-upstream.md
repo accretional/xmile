@@ -4,7 +4,7 @@ Candidate changes to `../gluon/v2` that the xmile redesign (ADR 0008) might want
 **None is required to start** — each has an xmile-side workaround. The rule:
 build in xmile first, promote to gluon only when a *second* consumer would share
 it. Substrate (universal AST ops, lowering, codegen) is gluon's job; domain
-(XSD/DTD/RSS semantics, OPC packaging) is xmile's.
+(XSD/DTD semantics, OPC packaging) is xmile's.
 
 Status legend: `deferred` (worth doing, not now) · `required` (blocks a phase) ·
 `done`.

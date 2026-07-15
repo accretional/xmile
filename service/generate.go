@@ -9,10 +9,13 @@ package service
 //
 // No schema and no reflection are needed for the element tree (Tag/Attribute/
 // ContentItem are concrete) — it is a plain recursive walk plus XML escaping.
-// The one reflective part is the DOCTYPE: dtd.Doctype is a concrete *syntax*
-// tree whose terminals were stripped into dtdpb.MessagePrefix at compile time,
-// so a generic walk that re-emits each message's stripped prefix and its string
-// leaves in field order reconstructs the internal subset verbatim.
+//
+// The DOCTYPE is preserved: the projector stores the verbatim DOCTYPE body in
+// Xml.Doctype (project.go), and Generate re-emits "<!DOCTYPE" + body + ">", so a
+// document round-trips with its DOCTYPE intact. The body is currently carried
+// whole in Doctype.Name (a preservation shim); unparseCST walks it reflectively,
+// so this same path already serves a fully-structured dtd.Doctype CST proto if
+// the projector is ever taught to build one.
 
 import (
 	"fmt"
@@ -46,8 +49,14 @@ func Generate(x *xmlpb.Xml) ([]byte, error) {
 	for _, m := range x.GetPrologMisc() {
 		writeMisc(&b, m)
 	}
+	// Re-emit the DOCTYPE. The "<!DOCTYPE" open and ">" close come from
+	// lang/xml.ebnf's doctypedecl (not the dtd grammar), so they are not in the
+	// dtd proto's MessagePrefix and must be written here; unparseCST emits the
+	// body (Doctype.Name, the verbatim DOCTYPE body) in between.
 	if dt := x.GetDoctype(); dt != nil {
+		b.WriteString("<!DOCTYPE")
 		unparseCST(dt.ProtoReflect(), &b)
+		b.WriteByte('>')
 	}
 	writeTag(&b, root)
 	for _, m := range x.GetEpilogMisc() {
@@ -205,8 +214,8 @@ func writeCharRef(b *strings.Builder, r rune) {
 // keywords, e.g. "<!ELEMENT", ">"), then each set field in field order — string
 // leaves verbatim (whitespace lives in OptS/S.s) and message fields recursively.
 // Because the tree preserves every token and inter-token whitespace, this
-// reconstructs the internal subset exactly, so a document with a DOCTYPE
-// round-trips like any other.
+// would reconstruct the internal subset exactly once Xml.Doctype is populated.
+// It is currently unreachable (Doctype is always nil — see the package comment).
 func unparseCST(m protoreflect.Message, b *strings.Builder) {
 	for _, tok := range dtdpb.MessagePrefix["."+string(m.Descriptor().FullName())] {
 		b.WriteString(tok)
