@@ -10,15 +10,12 @@ package service
 // No schema and no reflection are needed for the element tree (Tag/Attribute/
 // ContentItem are concrete) — it is a plain recursive walk plus XML escaping.
 //
-// LIMITATION — the DOCTYPE is not reproduced. The projector does not yet build
-// Xml.Doctype from the parsed internal subset (project.go's dtd_text TODO), so
-// x.GetDoctype() is always nil and Generate emits no DOCTYPE. The invariant
-// parse(Generate(parse(b))) == parse(b) still holds because Doctype is absent on
-// both sides, but a document's internal subset is genuinely dropped by a
-// parse→generate round-trip (its side effects — entity expansions, attribute
-// defaults — are already baked into the element tree, so the serialized element
-// content is unaffected). The unparseCST path below is the reflective
-// re-emitter kept ready for when Doctype is populated; it is dormant until then.
+// The DOCTYPE is preserved: the projector stores the verbatim DOCTYPE body in
+// Xml.Doctype (project.go), and Generate re-emits "<!DOCTYPE" + body + ">", so a
+// document round-trips with its DOCTYPE intact. The body is currently carried
+// whole in Doctype.Name (a preservation shim); unparseCST walks it reflectively,
+// so this same path already serves a fully-structured dtd.Doctype CST proto if
+// the projector is ever taught to build one.
 
 import (
 	"fmt"
@@ -52,10 +49,14 @@ func Generate(x *xmlpb.Xml) ([]byte, error) {
 	for _, m := range x.GetPrologMisc() {
 		writeMisc(&b, m)
 	}
-	// Dormant until the projector populates Xml.Doctype (see the package comment):
-	// GetDoctype() is presently always nil, so no DOCTYPE is emitted.
+	// Re-emit the DOCTYPE. The "<!DOCTYPE" open and ">" close come from
+	// lang/xml.ebnf's doctypedecl (not the dtd grammar), so they are not in the
+	// dtd proto's MessagePrefix and must be written here; unparseCST emits the
+	// body (Doctype.Name, the verbatim DOCTYPE body) in between.
 	if dt := x.GetDoctype(); dt != nil {
+		b.WriteString("<!DOCTYPE")
 		unparseCST(dt.ProtoReflect(), &b)
+		b.WriteByte('>')
 	}
 	writeTag(&b, root)
 	for _, m := range x.GetEpilogMisc() {

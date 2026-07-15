@@ -100,33 +100,33 @@ func TestHardening_EntityBombRejected(t *testing.T) {
 	}
 }
 
-// Current behavior pinned: a DOCTYPE parses but is not reproduced by Generate
-// (Xml.Doctype is never populated — see generate.go). If Doctype is ever wired
-// up, this test flips and flags the doc/limitation for update.
-func TestHardening_DoctypeNotReproduced(t *testing.T) {
+// The DOCTYPE is preserved: the projector stores the verbatim body in
+// Xml.Doctype and Generate re-emits it, so a document round-trips with its
+// DOCTYPE intact (project.go / generate.go).
+func TestHardening_DoctypeReproduced(t *testing.T) {
 	p := hp(t)
 	const doc = `<?xml version="1.0"?><!DOCTYPE a [ <!ELEMENT a (#PCDATA)> ]><a>hi</a>`
 	x, err := p.Parse(doc, false)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if x.GetDoctype() != nil {
-		t.Fatal("Doctype is now populated — update generate.go's LIMITATION note and this test")
+	if x.GetDoctype() == nil {
+		t.Fatal("Doctype should be populated from the parsed DOCTYPE")
 	}
 	out, err := Generate(x)
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
-	if strings.Contains(string(out), "DOCTYPE") {
-		t.Errorf("DOCTYPE unexpectedly reproduced: %s", out)
+	if !strings.Contains(string(out), "<!DOCTYPE a [ <!ELEMENT a (#PCDATA)> ]>") {
+		t.Errorf("DOCTYPE not reproduced verbatim; got: %s", out)
 	}
-	// The element-level round-trip still holds despite the dropped DOCTYPE.
+	// Full round-trip including the DOCTYPE: the re-parsed AST equals the first.
 	x2, err := p.Parse(string(out), false)
 	if err != nil {
 		t.Fatalf("reparse: %v", err)
 	}
-	if !proto.Equal(x.GetRoot(), x2.GetRoot()) {
-		t.Errorf("element tree changed across round-trip")
+	if !proto.Equal(x, x2) {
+		t.Errorf("AST changed across round-trip (DOCTYPE or element tree)")
 	}
 }
 

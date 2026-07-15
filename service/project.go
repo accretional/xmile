@@ -6,6 +6,7 @@ import (
 
 	pb "github.com/accretional/gluon/v2/pb"
 
+	dtdpb "github.com/accretional/xmile/proto/pb/dtd"
 	xmlpb "github.com/accretional/xmile/proto/pb/xml"
 )
 
@@ -38,7 +39,15 @@ func projectDocument(p *Parser, root *pb.ASTNode, info *dtdInfo, is11 bool) *xml
 	if prolog := directChild(root, "prolog"); prolog != nil {
 		doc.XmlDecl = projectXMLDecl(prolog)
 		doc.PrologMisc = projectMiscs(prolog)
-		// TODO(dtd): parse the dtd_text span into doc.Doctype (dtd.Doctype).
+		// The dtd_text span (lang/xml.ebnf: doctypedecl = "<!DOCTYPE" dtd_text
+		// ">") is the whole DOCTYPE body captured verbatim — the root name, any
+		// external id, and the "[" internal subset "]". Preserve it so Generate
+		// re-emits the DOCTYPE and a document round-trips with its DOCTYPE intact.
+		// Doctype.Name carries the raw body verbatim (a preservation shim, not the
+		// fully-structured dtd.Doctype CST proto); only Generate reads it back.
+		if span := firstDescendant(prolog, "dtd_text"); span != nil {
+			doc.Doctype = &dtdpb.Doctype{Name: span.GetValue()}
+		}
 	}
 	if el := directChild(root, "element"); el != nil {
 		doc.Root = pr.tag(el)
